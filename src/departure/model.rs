@@ -26,6 +26,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::api::model::StopMonitoringDelivery;
+use crate::weather::model::WeatherSnapshot;
 
 /// API-agnostic departure board sent to all display renderers.
 #[derive(Debug, Clone, Serialize)]
@@ -41,6 +42,9 @@ pub struct DepartureBoard {
     /// When set, the board is "offline" — no departures, show this message instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offline_message: Option<String>,
+    /// Latest weather snapshot; None when weather is disabled or not yet fetched.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weather: Option<WeatherSnapshot>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -141,6 +145,7 @@ impl DepartureBoard {
             monitoring_ref,
             lines,
             offline_message: None,
+            weather: None,
         }
     }
 
@@ -152,6 +157,7 @@ impl DepartureBoard {
             monitoring_ref,
             lines: Vec::new(),
             offline_message: Some(message),
+            weather: None,
         }
     }
 }

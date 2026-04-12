@@ -32,6 +32,7 @@ use tracing::warn;
 
 use crate::departure::model::DepartureBoard;
 use crate::display::DisplayRenderer;
+use crate::weather::model::{WeatherCoords, WeatherSnapshot};
 
 /// Shared application state for the web server and polling task.
 pub struct AppState {
@@ -76,6 +77,23 @@ pub struct AppState {
     /// Unix timestamp (seconds) of the next scheduled poll. Updated by the poll task.
     /// Uses AtomicI64 for lock-free reads from the status endpoint.
     pub next_poll_at: AtomicI64,
+
+    // ── Weather widget ──────────────────────────────────────────────────
+    /// When true the weather widget is enabled.
+    pub weather_enabled: bool,
+    /// When true, simulated weather is used instead of calling Meteoblue.
+    pub weather_simulation: bool,
+    /// Meteoblue API key (resolved from config on startup).
+    pub weather_api_key: Option<String>,
+    /// City name as configured (e.g. "Strasbourg").
+    pub weather_location: Option<String>,
+    /// Resolved geographic coordinates (populated after startup location lookup).
+    pub weather_coords: RwLock<Option<WeatherCoords>>,
+    /// Latest fetched weather snapshot; included in every board broadcast.
+    pub latest_weather: RwLock<Option<WeatherSnapshot>>,
+    /// How often to refresh weather data (minutes).
+    #[allow(dead_code)]
+    pub weather_polling_interval_minutes: u64,
 }
 
 impl AppState {
@@ -89,6 +107,11 @@ impl AppState {
         polling_interval_minutes: u64,
         always_query: bool,
         query_intervals_str: Option<String>,
+        weather_enabled: bool,
+        weather_simulation: bool,
+        weather_api_key: Option<String>,
+        weather_location: Option<String>,
+        weather_polling_interval_minutes: u64,
     ) -> Arc<Self> {
         let (tx, _) = broadcast::channel(4);
         let http_client = Client::builder()
@@ -121,6 +144,13 @@ impl AppState {
             query_intervals_raw: query_intervals_str,
             polling_interval_minutes,
             next_poll_at: AtomicI64::new(0),
+            weather_enabled,
+            weather_simulation,
+            weather_api_key,
+            weather_location,
+            weather_coords: RwLock::new(None),
+            latest_weather: RwLock::new(None),
+            weather_polling_interval_minutes,
         })
     }
 }

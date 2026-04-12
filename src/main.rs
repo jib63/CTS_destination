@@ -27,6 +27,7 @@ mod config;
 mod departure;
 mod display;
 mod server;
+mod weather;
 
 use anyhow::Result;
 use tracing::info;
@@ -50,34 +51,56 @@ async fn main() -> Result<()> {
 
     let (config, token) = config::AppConfig::load(&config_path)?;
 
+    let meteoblue_key = config.resolve_meteoblue_key();
+    let weather_enabled = config.meteoblue_enabled && (meteoblue_key.is_some() || config.meteoblue_simulation);
+    if config.meteoblue_enabled && meteoblue_key.is_none() && !config.meteoblue_simulation {
+        tracing::warn!("meteoblue_enabled = true but no meteoblue_api_key configured and meteoblue_simulation = false — weather disabled");
+    }
+    let weather_interval = config.meteoblue_polling_interval_minutes.unwrap_or(60);
+
     info!(
-        stop = %config.monitoring_ref,
-        interval_min = config.polling_interval_minutes,
-        addr = %config.listen_addr,
+        stop            = %config.cts_monitoring_ref,
+        interval_min    = config.cts_polling_interval_minutes,
+        addr            = %config.listen_addr,
+        cts_simulation  = config.cts_simulation,
+        weather         = weather_enabled,
+        wx_simulation   = config.meteoblue_simulation,
         "CTS departure board starting"
     );
 
     let app_state = AppState::new(
-        config.monitoring_ref.clone(),
+        config.cts_monitoring_ref.clone(),
         config_path,
         token,
-        config.max_stop_visits,
-        config.vehicle_mode.clone(),
-        config.simulation,
-        config.polling_interval_minutes,
-        config.always_query,
-        config.query_intervals.clone(),
+        config.cts_max_stop_visits,
+        config.cts_vehicle_mode.clone(),
+        config.cts_simulation,
+        config.cts_polling_interval_minutes,
+        config.cts_always_query,
+        config.cts_query_intervals.clone(),
+        weather_enabled,
+        config.meteoblue_simulation,
+        meteoblue_key,
+        config.meteoblue_location.clone(),
+        weather_interval,
     );
 
     let renderers: Vec<Box<dyn DisplayRenderer>> = vec![Box::new(WebRenderer {
         state: app_state.clone(),
     })];
 
-    let interval_mins = config.polling_interval_minutes;
+    let interval_mins = config.cts_polling_interval_minutes;
     let poll_state = app_state.clone();
     tokio::spawn(async move {
         api::client::poll_loop(interval_mins, poll_state, renderers).await;
     });
+
+    if weather_enabled {
+        let wx_state = app_state.clone();
+        tokio::spawn(async move {
+            weather::client::weather_poll_loop(wx_state, weather_interval).await;
+        });
+    }
 
     let router = build_router(app_state.clone());
     let listener = tokio::net::TcpListener::bind(&config.listen_addr).await?;

@@ -51,6 +51,7 @@ pub fn simulate_board(monitoring_ref: &str) -> DepartureBoard {
         monitoring_ref: monitoring_ref.to_owned(),
         lines,
         offline_message: None,
+        weather: None,
     }
 }
 

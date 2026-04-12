@@ -137,10 +137,117 @@ html, body {
 
 /* ── Board footer (fills remaining vertical space) ── */
 #board-footer {
-    flex: 1 0 0;      /* Grow to fill leftover height, never shrink */
+    flex: 1 999 auto; /* Grow to fill leftover space; shrink first (before tram rows) */
     background: var(--header-bg);
     border-top: 1px solid rgba(255,255,255,0.08);
     min-height: 0;
+    overflow: hidden; /* Collapses cleanly to zero when tram rows need the space */
+    display: flex;
+    align-items: center;
+}
+
+/* ── Weather row ── */
+#weather-row {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.8rem, 2.5vw, 2.5rem);
+    padding: clamp(0.5rem, 1.8vh, 1.4rem) clamp(0.75rem, 2vw, 2rem);
+    width: 100%;
+    font-size: clamp(0.9rem, 2.5vw, 1.7rem);
+    color: var(--text);
+}
+
+#weather-icon {
+    width:  clamp(2.8rem, 6.5vw, 5rem);
+    height: clamp(2.8rem, 6.5vw, 5rem);
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4));
+}
+
+.wx-sep-bar {
+    width: 1px;
+    align-self: stretch;
+    background: rgba(255,255,255,0.15);
+    margin: 0.35em 0;
+    flex-shrink: 0;
+}
+
+.wx-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.06em;
+}
+
+.wx-label {
+    font-size: 0.52em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.42);
+    text-transform: uppercase;
+}
+
+.wx-temps {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+}
+
+.wx-temp-min {
+    background: #1565c0;
+    color: #fff;
+    border-radius: 4px;
+    padding: 0.1em 0.42em;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.wx-temp-max {
+    background: #2e7d32;
+    color: #fff;
+    border-radius: 4px;
+    padding: 0.1em 0.42em;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.wx-temp-sep {
+    color: rgba(255,255,255,0.3);
+    font-weight: 300;
+}
+
+.wx-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.wx-value {
+    font-size: 0.95em;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.wx-unit {
+    font-size: 0.7em;
+    font-weight: 500;
+    color: var(--subtext);
+}
+
+.wx-location {
+    margin-left: auto;
+    font-size: 0.62em;
+    font-weight: 500;
+    color: rgba(255,255,255,0.32);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    padding-right: 0.4em;
+}
+
+/* Inline SVG icons within weather items */
+.wx-item svg {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
 }
 
 /* Alternating rows — subtle lightness difference, no border between them */
@@ -546,6 +653,39 @@ html, body {
 }
 
 #status-overlay.hidden { display: none; }
+
+/* ── Status tabs ── */
+#status-tabs {
+    display: flex;
+    gap: 0;
+    background: rgba(0,0,0,0.25);
+    border-bottom: 2px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+
+.status-tab {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: rgba(255,255,255,0.5);
+    padding: 0.7em 1.4em;
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -2px;
+}
+
+.status-tab:hover { color: rgba(255,255,255,0.8); }
+
+.status-tab.active {
+    color: #fff;
+    border-bottom-color: #ffc107;
+}
+
+.status-tab-panel { display: none; }
+.status-tab-panel.active { display: contents; }
 
 #status-content {
     flex: 1;

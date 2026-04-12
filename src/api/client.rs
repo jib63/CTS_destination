@@ -75,7 +75,10 @@ pub async fn poll_loop(
             if !in_window {
                 let (msg, sleep_secs) = offline_msg_and_sleep(&state.query_intervals);
                 info!(sleep_secs, "Outside query window; sleeping until next interval");
-                let board = DepartureBoard::offline(monitoring_ref, msg);
+                let mut board = DepartureBoard::offline(monitoring_ref, msg);
+                if state.weather_enabled {
+                    board.weather = state.latest_weather.read().await.clone();
+                }
                 for renderer in &renderers {
                     if let Err(e) = renderer.update(&board) {
                         error!(renderer = renderer.name(), error = %e, "Renderer update failed (offline)");
@@ -89,7 +92,10 @@ pub async fn poll_loop(
 
         if state.simulation {
             // ── Simulation mode — no network call ───────────────────────────
-            let board = crate::api::simulation::simulate_board(&monitoring_ref);
+            let mut board = crate::api::simulation::simulate_board(&monitoring_ref);
+            if state.weather_enabled {
+                board.weather = state.latest_weather.read().await.clone();
+            }
             info!(stop = %board.stop_name, lines = board.lines.len(), "Simulation: generated fake board");
             for renderer in &renderers {
                 if let Err(e) = renderer.update(&board) {
@@ -101,7 +107,10 @@ pub async fn poll_loop(
         } else {
             // ── Live mode — query CTS API ────────────────────────────────────
             match fetch_departures(&state, &monitoring_ref).await {
-                Ok((board, min_cycle_secs)) => {
+                Ok((mut board, min_cycle_secs)) => {
+                    if state.weather_enabled {
+                        board.weather = state.latest_weather.read().await.clone();
+                    }
                     info!(
                         stop = %board.stop_name,
                         monitoring_ref = %monitoring_ref,

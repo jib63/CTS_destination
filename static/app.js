@@ -60,6 +60,86 @@
 
     // ── Board rendering ────────────────────────────────────────────────────
 
+    // ── Weather display ────────────────────────────────────────────────────
+
+    function pictocodeToIcon(code) {
+        var night = code > 100;
+        var c = night ? code - 100 : code;
+        if (night && c <= 3) return "#w-night-clear";
+        if (night)           return "#w-night-cloudy";
+        if (c === 1)         return "#w-sunny";
+        if (c === 2 || c === 30) return "#w-mostly-sunny";
+        if (c === 3)         return "#w-partly-cloudy";
+        if (c === 4 || c === 31 || c === 34) return "#w-cloudy";
+        if (c === 5 || c === 6) return "#w-fog";
+        if (c === 7)         return "#w-drizzle";
+        if (c === 8 || c === 9 || c === 10 || c === 11 || c === 19 || c === 33 || c === 35) return "#w-rain";
+        if (c === 20 || c === 21 || c === 22 || c === 23 || c === 25 || c === 26 || c === 28) return "#w-thunder";
+        if (c === 12 || c === 13 || c === 24 || c === 27 || c === 29 || c === 32) return "#w-sleet";
+        if (c >= 14 && c <= 18) return "#w-snow";
+        return "#w-rain"; // fallback
+    }
+
+    function renderWeather(board) {
+        var footer = document.getElementById("board-footer");
+        if (!board || !board.weather) {
+            footer.innerHTML = "";
+            return;
+        }
+        var w = board.weather;
+        var iconId = pictocodeToIcon(w.pictocode);
+
+        footer.innerHTML =
+            '<div id="weather-row">' +
+            '<svg id="weather-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="' + iconId + '"/></svg>' +
+
+            '<div class="wx-group">' +
+            '<span class="wx-label">Temp\u00e9rature</span>' +
+            '<div class="wx-temps">' +
+            '<span class="wx-temp-min">' + Math.round(w.temp_min) + '\u00a0\u00b0C</span>' +
+            '<span class="wx-temp-sep">/</span>' +
+            '<span class="wx-temp-max">' + Math.round(w.temp_max) + '\u00a0\u00b0C</span>' +
+            '</div></div>' +
+
+            '<div class="wx-sep-bar"></div>' +
+
+            '<div class="wx-group">' +
+            '<span class="wx-label">Maintenant</span>' +
+            '<div class="wx-item">' +
+            '<span class="wx-value">' + Math.round(w.temp_now) + '<span class="wx-unit">\u00a0\u00b0C</span></span>' +
+            '</div></div>' +
+
+            '<div class="wx-sep-bar"></div>' +
+
+            '<div class="wx-group">' +
+            '<span class="wx-label">Pr\u00e9cipitations</span>' +
+            '<div class="wx-item">' +
+            '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<path d="M12 3C12 3 5 10 5 15C5 18.87 8.13 22 12 22C15.87 22 19 18.87 19 15C19 10 12 3 12 3Z" fill="#5ba3d8"/>' +
+            '</svg>' +
+            '<span class="wx-value">' + w.precipitation.toFixed(1) + '<span class="wx-unit">\u00a0mm</span></span>' +
+            '</div></div>' +
+
+            '<div class="wx-sep-bar"></div>' +
+
+            '<div class="wx-group">' +
+            '<span class="wx-label">Ensoleillement</span>' +
+            '<div class="wx-item">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+            '<circle cx="12" cy="12" r="5" fill="#FFD600"/>' +
+            '<g stroke="#FFD600" stroke-width="2" stroke-linecap="round">' +
+            '<line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>' +
+            '<line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>' +
+            '<line x1="4.9" y1="4.9" x2="7.1" y2="7.1"/><line x1="16.9" y1="16.9" x2="19.1" y2="19.1"/>' +
+            '<line x1="19.1" y1="4.9" x2="16.9" y2="7.1"/><line x1="7.1" y1="16.9" x2="4.9" y2="19.1"/>' +
+            '</g></svg>' +
+            '<span class="wx-value">' + w.sunshine_hours.toFixed(0) + '<span class="wx-unit">\u00a0h</span></span>' +
+            '</div></div>' +
+
+            '<div class="wx-location">' + escHtml(w.location_name) + '</div>' +
+            '</div>';
+    }
+
     function renderBoard() {
         if (!departureData) return;
 
@@ -110,6 +190,7 @@
         });
 
         updateTimers();
+        renderWeather(departureData);
     }
 
     // ── Countdown timers ───────────────────────────────────────────────────
@@ -168,6 +249,9 @@
 
     // ── Status overlay ─────────────────────────────────────────────────────
 
+    var activeStatusTab = "cts";
+    var lastStatusData = null;
+
     function openStatus() {
         document.getElementById("status-overlay").classList.remove("hidden");
         fetchAndRenderStatus();
@@ -179,20 +263,23 @@
 
     function fetchAndRenderStatus() {
         var content = document.getElementById("status-content");
-        content.innerHTML = '<div class="config-loading-msg">Chargement…</div>';
+        content.innerHTML = '<div class="config-loading-msg">Chargement\u2026</div>';
 
         fetch("/api/status")
             .then(function (r) {
                 if (!r.ok) throw new Error("HTTP " + r.status);
                 return r.json();
             })
-            .then(renderStatus)
+            .then(function (data) {
+                lastStatusData = data;
+                renderStatusTab(activeStatusTab, data);
+            })
             .catch(function (err) {
                 content.innerHTML = '<div class="config-loading-msg">Erreur\u00a0: ' + err.message + '</div>';
             });
     }
 
-    function renderStatus(data) {
+    function renderStatusTab(tab, data) {
         var content = document.getElementById("status-content");
         content.innerHTML = "";
 
@@ -205,17 +292,25 @@
             content.appendChild(el);
         }
 
-        row("Arrêt surveillé", escHtml(data.monitoring_ref || "—"), "highlight");
+        if (tab === "cts") {
+            renderStatusCts(data.cts || {}, data.server_local_time, row);
+        } else {
+            renderStatusMeteoblue(data.meteoblue || {}, row);
+        }
+    }
+
+    function renderStatusCts(cts, serverLocalTime, row) {
+        row("Arrêt surveillé", escHtml(cts.monitoring_ref || "—"), "highlight");
 
         row("Mode",
-            data.simulation ? "Simulation (pas d\u2019appel API)" : "Temps réel",
-            data.simulation ? "highlight" : "");
+            cts.simulation ? "Simulation (pas d\u2019appel API)" : "Temps r\u00e9el",
+            cts.simulation ? "highlight" : "");
 
-        row("Intervalle de scrutation", data.polling_interval_minutes + "\u00a0min");
+        row("Intervalle de scrutation", (cts.polling_interval_minutes || "—") + "\u00a0min");
 
-        if (data.next_poll_at && data.next_poll_at > 0) {
-            var diffSec = Math.round((data.next_poll_at * 1000 - Date.now()) / 1000);
-            var nextStr = diffSec <= 0 ? "Immédiatement"
+        if (cts.next_poll_at && cts.next_poll_at > 0) {
+            var diffSec = Math.round((cts.next_poll_at * 1000 - Date.now()) / 1000);
+            var nextStr = diffSec <= 0 ? "Imm\u00e9diatement"
                 : diffSec < 120 ? "dans\u00a0" + diffSec + "\u00a0s"
                 : "dans\u00a0" + Math.round(diffSec / 60) + "\u00a0min";
             row("Prochain appel API", nextStr);
@@ -223,26 +318,92 @@
             row("Prochain appel API", "—", "dim");
         }
 
-        row("Interrogation permanente", data.always_query ? "Oui" : "Non");
+        row("Interrogation permanente", cts.always_query ? "Oui" : "Non");
 
-        if (!data.always_query) {
-            row("Fenêtre active", data.in_window ? "Oui" : "Non",
-                data.in_window ? "" : "dim");
+        if (!cts.always_query) {
+            row("Fen\u00eatre active", cts.in_window ? "Oui" : "Non",
+                cts.in_window ? "" : "dim");
             row("Plages horaires",
-                escHtml(data.query_intervals_raw || "—"),
-                data.query_intervals_raw ? "" : "dim");
+                escHtml(cts.query_intervals_raw || "—"),
+                cts.query_intervals_raw ? "" : "dim");
         }
 
         var srvTime = "—";
-        if (data.server_local_time) {
+        if (serverLocalTime) {
             try {
-                srvTime = new Date(data.server_local_time).toLocaleTimeString("fr-FR", {
+                srvTime = new Date(serverLocalTime).toLocaleTimeString("fr-FR", {
                     hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short"
                 });
-            } catch (_) { srvTime = data.server_local_time; }
+            } catch (_) { srvTime = serverLocalTime; }
         }
         row("Heure serveur", srvTime, "dim");
     }
+
+    function renderStatusMeteoblue(mb, row) {
+        row("Widget météo",
+            mb.enabled ? "Activ\u00e9" : "D\u00e9sactiv\u00e9",
+            mb.enabled ? "" : "dim");
+
+        row("Mode",
+            mb.simulation ? "Simulation (pas d\u2019appel API)" : "Temps r\u00e9el",
+            mb.simulation ? "highlight" : "");
+
+        row("Localisation configur\u00e9e",
+            escHtml(mb.location_config || "—"),
+            mb.location_config ? "" : "dim");
+
+        row("Localisation r\u00e9solue",
+            escHtml(mb.location_resolved || "—"),
+            mb.location_resolved ? "" : "dim");
+
+        if (mb.lat != null) {
+            row("Coordonn\u00e9es",
+                mb.lat.toFixed(4) + "\u00b0N, " + mb.lon.toFixed(4) + "\u00b0E — " + mb.asl + "\u00a0m", "dim");
+        }
+
+        row("Intervalle de relev\u00e9", (mb.polling_interval_minutes || "—") + "\u00a0min");
+
+        if (mb.last_fetch) {
+            var fetchTime = "—";
+            try {
+                fetchTime = new Date(mb.last_fetch).toLocaleTimeString("fr-FR", {
+                    hour: "2-digit", minute: "2-digit", second: "2-digit"
+                });
+            } catch (_) { fetchTime = mb.last_fetch; }
+            row("Dernier relev\u00e9", fetchTime);
+        } else {
+            row("Dernier relev\u00e9", "Aucun", "dim");
+        }
+
+        if (mb.temp_now != null) {
+            row("Temp\u00e9rature actuelle",
+                Math.round(mb.temp_now) + "\u00a0\u00b0C");
+            row("Min\u00a0/ Max du jour",
+                Math.round(mb.temp_min) + "\u00a0\u00b0C\u00a0/\u00a0" + Math.round(mb.temp_max) + "\u00a0\u00b0C");
+            row("Pr\u00e9cipitations",
+                mb.precipitation.toFixed(1) + "\u00a0mm");
+            row("Ensoleillement",
+                mb.sunshine_hours.toFixed(0) + "\u00a0h");
+            row("Pictocode", String(mb.pictocode), "dim");
+        } else {
+            row("Donn\u00e9es m\u00e9t\u00e9o", "Pas encore disponibles", "dim");
+        }
+    }
+
+    // Tab switching
+    document.getElementById("status-tabs").addEventListener("click", function (e) {
+        var btn = e.target.closest(".status-tab");
+        if (!btn) return;
+        var tab = btn.dataset.tab;
+        if (tab === activeStatusTab) return;
+        activeStatusTab = tab;
+        document.querySelectorAll(".status-tab").forEach(function (b) {
+            b.classList.toggle("active", b.dataset.tab === tab);
+        });
+        if (lastStatusData) {
+            renderStatusTab(tab, lastStatusData);
+        }
+    });
 
     function escHtml(s) {
         return String(s)

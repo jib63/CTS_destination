@@ -147,14 +147,39 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> Response {
 
     let next_poll_at = state.next_poll_at.load(Ordering::Relaxed);
 
+    // ── Meteoblue snapshot ───────────────────────────────────────────────────
+    let weather = state.latest_weather.read().await.clone();
+    let weather_coords = state.weather_coords.read().await.clone();
+
+    let meteoblue = serde_json::json!({
+        "enabled": state.weather_enabled,
+        "simulation": state.weather_simulation,
+        "location_config": state.weather_location,
+        "location_resolved": weather_coords.as_ref().map(|c| &c.name),
+        "lat": weather_coords.as_ref().map(|c| c.lat),
+        "lon": weather_coords.as_ref().map(|c| c.lon),
+        "asl": weather_coords.as_ref().map(|c| c.asl),
+        "polling_interval_minutes": state.weather_polling_interval_minutes,
+        "last_fetch": weather.as_ref().map(|w| w.fetched_at.to_rfc3339()),
+        "pictocode": weather.as_ref().map(|w| w.pictocode),
+        "temp_now": weather.as_ref().map(|w| w.temp_now),
+        "temp_min": weather.as_ref().map(|w| w.temp_min),
+        "temp_max": weather.as_ref().map(|w| w.temp_max),
+        "precipitation": weather.as_ref().map(|w| w.precipitation),
+        "sunshine_hours": weather.as_ref().map(|w| w.sunshine_hours),
+    });
+
     Json(serde_json::json!({
-        "simulation": state.simulation,
-        "monitoring_ref": monitoring_ref,
-        "polling_interval_minutes": state.polling_interval_minutes,
-        "always_query": state.always_query,
-        "in_window": in_window,
-        "query_intervals_raw": state.query_intervals_raw,
-        "next_poll_at": next_poll_at,
+        "cts": {
+            "simulation": state.simulation,
+            "monitoring_ref": monitoring_ref,
+            "polling_interval_minutes": state.polling_interval_minutes,
+            "always_query": state.always_query,
+            "in_window": in_window,
+            "query_intervals_raw": state.query_intervals_raw,
+            "next_poll_at": next_poll_at,
+        },
+        "meteoblue": meteoblue,
         "server_local_time": now.to_rfc3339(),
     }))
     .into_response()
