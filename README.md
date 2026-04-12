@@ -33,6 +33,8 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 
 ## Build
 
+### On the target machine (Linux aarch64)
+
 ```bash
 # Development build
 cargo build
@@ -44,6 +46,54 @@ cargo build --release
 ```
 
 The release binary is written to `target/release/cts-departures`.
+
+### Cross-compiling from macOS (M1/M2/M3) → Freebox Delta / Linux aarch64
+
+Even though both your Mac and the Freebox are ARM64, the Mac produces a
+Mach-O binary (macOS) while the Freebox needs a Linux ELF. The solution is
+[`cargo-zigbuild`](https://github.com/rust-cross/cargo-zigbuild): Zig ships
+a built-in cross-linker — no Docker, no extra toolchain required.
+
+**One-time setup:**
+```bash
+cargo install cargo-zigbuild
+rustup target add aarch64-unknown-linux-musl
+```
+
+`zig` itself is downloaded automatically on first run. You can also install
+it manually:
+```bash
+# macOS aarch64 pre-built binary
+curl -fL https://ziglang.org/download/0.13.0/zig-macos-aarch64-0.13.0.tar.xz \
+  | tar -xJ -C ~/.local/
+export PATH="$HOME/.local/zig-0.13.0:$PATH"   # add to ~/.zshrc to make permanent
+```
+
+**Build & deploy:**
+```bash
+./build_freebox.sh
+```
+
+This produces a **fully static ELF binary** (no glibc dependency) in
+`dist-freebox/` and prints the `scp` command to copy it to the Freebox.
+
+```
+dist-freebox/
+├── cts-departures    ← statically linked Linux aarch64 ELF, ~3.4 MB
+└── config.toml       ← pre-configured with listen_addr = 0.0.0.0:80
+```
+
+You can also run the cross-compilation step directly:
+```bash
+export PATH="$HOME/.local/zig-0.13.0:$PATH"
+cargo zigbuild --target aarch64-unknown-linux-musl --release
+# binary → target/aarch64-unknown-linux-musl/release/cts-departures
+```
+
+> **Why `musl` and not `gnu`?**
+> `musl` produces a fully static binary with no runtime dependency on the
+> Freebox's glibc version. Simpler to deploy, zero "wrong glibc" surprises.
+> The binary is ~3.4 MB thanks to `opt-level = "s"` + `lto = true`.
 
 ---
 

@@ -1,1 +1,6 @@
 /target
+/dist/
+/dist-freebox/
+*.zip
+.DS_Store
+demo.toml
