@@ -17,8 +17,8 @@
     --line-default: #546e7a;
 
     --header-bg: #1a2744;
-    --row-dark:  #1e5fa8;
-    --row-light: #2e7acc;
+    --row-dark:  #1966b8;   /* slightly darker row  — matches reference */
+    --row-light: #2474cc;   /* slightly lighter row — matches reference */
     --text:      #ffffff;
     --subtext:   rgba(255,255,255,0.75);
 }
@@ -108,7 +108,7 @@ html, body {
 }
 
 .col-label {
-    min-width: clamp(60px, 10vw, 130px);
+    min-width: clamp(100px, 20vw, 220px);
     text-align: center;
 }
 
@@ -119,14 +119,17 @@ html, body {
     flex-direction: column;
     overflow: hidden;
     flex-shrink: 1;   /* Can give space back to siblings if necessary */
+    /* No gap — rows are flush, no horizontal separator */
 }
 
 .departure-row {
     display: grid;
-    grid-template-columns: auto 1fr clamp(80px, 13vw, 160px) clamp(80px, 13vw, 160px);
+    grid-template-columns: auto 1fr clamp(100px, 20vw, 220px) clamp(100px, 20vw, 220px);
     align-items: center;
-    gap: clamp(0.6rem, 2vw, 2rem);
-    padding: 0 clamp(0.75rem, 2vw, 2rem);
+    /* No column-gap — vertical separators are drawn as border-left on time cells */
+    column-gap: 0;
+    row-gap: 0;
+    padding: 0 0 0 clamp(0.75rem, 2vw, 2rem);
     /* ~15 vh per row → 3 rows ≈ 45 vh, leaving ~half screen for the footer */
     height: clamp(100px, 15vh, 150px);
     flex-shrink: 0;   /* Never compress a row */
@@ -140,8 +143,9 @@ html, body {
     min-height: 0;
 }
 
-.departure-row:nth-child(odd)  { background: var(--row-dark); }
-.departure-row:nth-child(even) { background: var(--row-light); }
+/* Alternating rows — subtle lightness difference, no border between them */
+.departure-row:nth-child(odd)  { background: var(--row-light); }
+.departure-row:nth-child(even) { background: var(--row-dark); }
 
 /* ── Line badge ── */
 .line-badge {
@@ -156,6 +160,8 @@ html, body {
     color: white;
     flex-shrink: 0;
     text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    /* Space badge away from destination (replaces the removed column-gap) */
+    margin-right: clamp(0.6rem, 2vw, 2rem);
 }
 
 /* ── Destination ── */
@@ -177,6 +183,12 @@ html, body {
     align-items: baseline;
     justify-content: center;
     gap: 0.15em;
+    /* Vertical column separator — same dark navy as the header */
+    border-left: 3px solid var(--header-bg);
+    /* ~37% of column width on each side, matching the reference board */
+    padding: 0 clamp(1.5rem, 4.5vw, 5rem);
+    align-self: stretch;        /* border spans full row height */
+    align-items: center;
 }
 
 .time-cell .unit {
