@@ -135,9 +135,9 @@ html, body {
     flex-shrink: 0;   /* Never compress a row */
 }
 
-/* ── Board footer (fills remaining vertical space) ── */
+/* ── Board footer (sits immediately after rows; shrinks before tram rows if space is tight) ── */
 #board-footer {
-    flex: 1 999 auto; /* Grow to fill leftover space; shrink first (before tram rows) */
+    flex: 0 999 auto; /* Don't grow; shrink first (before tram rows) when space is tight */
     background: var(--header-bg);
     border-top: 1px solid rgba(255,255,255,0.08);
     min-height: 0;
