@@ -1,0 +1,39 @@
+# Path to file containing the CTS API token (UUID)
+api_token = "GET YOURS ON https://www.cts-strasbourg.eu/fr/open-data/"
+
+# Stop code to monitor — find codes via the CTS stoppoints-discovery API
+# or the CTS open data portal. Examples:
+#   "233A"  = Homme de Fer (direction Neuhof / Kehl)
+#   "233B"  = Homme de Fer (other direction)
+#   "298A"  = Jean Jaurès (C → Neuhof, D → Kehl Rathaus)
+#   "298B"  = Jean Jaurès (C → Gare Centrale, D → Poteries)
+monitoring_ref = "298A"
+
+# When true, the CTS API is never contacted; fake departure data is generated
+# locally. Useful for UI development and offline testing.
+simulation = false
+
+# How often to poll the CTS API (in minutes)
+# The API's ShortestPossibleCycle is 30s; this value will be used as-is
+# unless it is shorter than that API minimum.
+polling_interval_minutes = 2
+
+# Maximum number of departure times to request from the API
+max_stop_visits = 10
+
+# Optional: filter by vehicle mode. Uncomment to restrict results.
+# vehicle_mode = "tram"
+
+# Web server bind address. Use 0.0.0.0 to listen on all interfaces.
+listen_addr = "0.0.0.0:3000"
+
+# ── Query time window ────────────────────────────────────────────────────────
+# If always_query = true, the CTS API is polled at all times (query_intervals is ignored).
+# If false, polling only occurs inside the windows defined by query_intervals.
+#
+# query_intervals: semicolon-separated list of HH:MM-HH:MM ranges (local time).
+# If a range end < start the two values are swapped automatically.
+# Example: morning + afternoon + evening service windows:
+#   query_intervals = "6:02-9:58;14:03-18:09;22:02-23:00"
+always_query = false
+query_intervals = "6:02-9:58;14:03-17:59;22:02-23:00"

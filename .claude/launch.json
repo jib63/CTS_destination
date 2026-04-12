@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cts-demo",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": ["run", "--", "demo.toml"],
+      "port": 3001
+    }
+  ]
+}

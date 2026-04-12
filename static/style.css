@@ -1,0 +1,577 @@
+/* ── Reset ── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ── CTS line colors (badge backgrounds) ── */
+:root {
+    --line-A: #c8102e;
+    --line-B: #7b2d8b;
+    --line-C: #e07b10;
+    --line-D: #2e8b3c;
+    --line-E: #6f2c91;
+    --line-F: #c5145b;
+    --line-G: #5c6bc0;
+    --line-default: #546e7a;
+
+    --header-bg: #1a2744;
+    --row-dark:  #1e5fa8;
+    --row-light: #2e7acc;
+    --text:      #ffffff;
+    --subtext:   rgba(255,255,255,0.75);
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #0d1b3e;
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ── Board container ── */
+#board {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* ── Header ── */
+#header {
+    background: var(--header-bg);
+    display: flex;
+    align-items: center;
+    gap: clamp(0.5rem, 2vw, 2rem);
+    padding: clamp(0.4rem, 1.2vh, 1rem) clamp(0.5rem, 1.5vw, 1.5rem);
+    flex-shrink: 0;
+    border-bottom: 2px solid rgba(255,255,255,0.12);
+}
+
+#clock {
+    font-size: clamp(1.4rem, 4vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+#date {
+    font-size: clamp(0.9rem, 2.5vw, 1.6rem);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+#branding {
+    font-size: clamp(0.75rem, 2vw, 1.3rem);
+    font-weight: 700;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.brand-bus  { color: var(--text); }
+.brand-tram { color: var(--text); }
+.brand-euro {
+    font-size: 0.6em;
+    font-weight: 400;
+    vertical-align: super;
+    color: var(--subtext);
+}
+
+/* ── CTS Logo ── */
+#logo {
+    background: white;
+    border-radius: 4px;
+    padding: 0.1em 0.3em;
+    font-size: clamp(1rem, 2.5vw, 1.8rem);
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+}
+
+.logo-c { color: #e2001a; }
+.logo-t { color: #003f8a; }
+.logo-s { color: #e2001a; }
+
+/* ── Column headers ── */
+#col-headers {
+    display: flex;
+    gap: clamp(0.5rem, 3vw, 3rem);
+    font-size: clamp(0.6rem, 1.5vw, 1rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--subtext);
+    white-space: nowrap;
+}
+
+.col-label {
+    min-width: clamp(60px, 10vw, 130px);
+    text-align: center;
+}
+
+/* ── Departure rows ── */
+#departures {
+    /* No flex-grow: rows size themselves; #board-footer absorbs the rest */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 1;   /* Can give space back to siblings if necessary */
+}
+
+.departure-row {
+    display: grid;
+    grid-template-columns: auto 1fr clamp(80px, 13vw, 160px) clamp(80px, 13vw, 160px);
+    align-items: center;
+    gap: clamp(0.6rem, 2vw, 2rem);
+    padding: 0 clamp(0.75rem, 2vw, 2rem);
+    /* ~15 vh per row → 3 rows ≈ 45 vh, leaving ~half screen for the footer */
+    height: clamp(100px, 15vh, 150px);
+    flex-shrink: 0;   /* Never compress a row */
+}
+
+/* ── Board footer (fills remaining vertical space) ── */
+#board-footer {
+    flex: 1 0 0;      /* Grow to fill leftover height, never shrink */
+    background: var(--header-bg);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    min-height: 0;
+}
+
+.departure-row:nth-child(odd)  { background: var(--row-dark); }
+.departure-row:nth-child(even) { background: var(--row-light); }
+
+/* ── Line badge ── */
+.line-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width:  clamp(2.8rem, 7vw, 5.5rem);
+    height: clamp(2.8rem, 7vw, 5.5rem);
+    border-radius: 8px;
+    font-weight: 900;
+    font-size: clamp(1.6rem, 5vw, 3.8rem);
+    color: white;
+    flex-shrink: 0;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* ── Destination ── */
+.destination {
+    font-size: clamp(1.3rem, 3.8vw, 3rem);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Time cells ── */
+.time-cell {
+    text-align: center;
+    font-size: clamp(1.8rem, 5.5vw, 4.2rem);
+    font-weight: 900;
+    white-space: nowrap;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.15em;
+}
+
+.time-cell .unit {
+    font-size: 0.42em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--subtext);
+}
+
+.time-cell .arriving {
+    font-size: 0.55em;
+    font-weight: 700;
+    color: #ffc107;
+}
+
+.time-cell .theoretical {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+/* ── Status dot ── */
+#status-btn {
+    background: none;
+    border: none;
+    padding: 0.3em 0.4em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+#status-dot {
+    display: block;
+    width: clamp(0.7rem, 1.6vw, 1rem);
+    height: clamp(0.7rem, 1.6vw, 1rem);
+    border-radius: 50%;
+    background: #546e7a;
+    transition: background 0.3s;
+}
+
+#status-dot.green  { background: #4caf50; }
+#status-dot.yellow { background: #ffc107; }
+#status-dot.red    { background: #f44336; animation: pulse-red 1.5s ease-in-out infinite; }
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+/* ── Configuration button (in header) ── */
+#config-btn {
+    background: none;
+    border: 1.5px solid rgba(255,255,255,0.35);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.85);
+    padding: 0.3em 0.7em;
+    font-size: clamp(0.7rem, 1.5vw, 0.95rem);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+#config-btn:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.7);
+    color: white;
+}
+
+/* ── Configuration overlay ── */
+#config-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #0d1b3e;
+    display: flex;
+    flex-direction: column;
+}
+
+#config-overlay.hidden { display: none; }
+
+/* Both levels fill the overlay */
+#config-level1,
+#config-level2 {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#config-level2.hidden { display: none; }
+
+/* ── Shared top-bar ── */
+.config-topbar {
+    background: var(--header-bg);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: clamp(0.5rem, 1.5vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
+    border-bottom: 2px solid rgba(255,255,255,0.12);
+    flex-shrink: 0;
+}
+
+#config-back,
+#config-back2 {
+    background: none;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    color: white;
+    padding: 0.35em 0.8em;
+    font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+#config-back:hover,
+#config-back2:hover { background: rgba(255,255,255,0.1); }
+
+.config-heading {
+    font-size: clamp(1rem, 2.5vw, 1.5rem);
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+}
+
+.config-heading-group { display: flex; flex-direction: column; }
+
+.config-subheading {
+    font-size: clamp(0.7rem, 1.5vw, 0.88rem);
+    color: rgba(255,255,255,0.55);
+    margin-top: 0.1rem;
+}
+
+/* ── Search bar (level 1) ── */
+#config-search-bar {
+    background: var(--header-bg);
+    padding: 0.6rem clamp(0.75rem, 2vw, 1.5rem) 0.75rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+#config-filter {
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    border-radius: 8px;
+    color: white;
+    padding: 0.55em 1em;
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+#config-filter::placeholder { color: rgba(255,255,255,0.35); }
+#config-filter:focus {
+    border-color: rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.13);
+}
+
+/* ── Stop cards grid (level 1) ── */
+#stops-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: clamp(0.75rem, 2vw, 1.25rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.6rem;
+    align-content: start;
+}
+
+#stops-grid::-webkit-scrollbar { width: 6px; }
+#stops-grid::-webkit-scrollbar-track { background: transparent; }
+#stops-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.stop-card {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.13);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+}
+
+.stop-card:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.4);
+    transform: translateY(-1px);
+}
+
+.stop-card:active { transform: translateY(0); }
+
+.stop-card.selected {
+    border-color: #ffc107;
+    background: rgba(255,193,7,0.12);
+}
+
+.stop-card.selected .stop-name { color: #ffc107; }
+
+.stop-name {
+    font-size: clamp(0.8rem, 1.8vw, 0.95rem);
+    font-weight: 600;
+    color: white;
+    line-height: 1.3;
+}
+
+.stop-code {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.42);
+    margin-top: 0.2rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Direction cards grid (level 2) ── */
+#directions-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: clamp(0.75rem, 2vw, 1.25rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.85rem;
+    align-content: start;
+}
+
+#directions-grid::-webkit-scrollbar { width: 6px; }
+#directions-grid::-webkit-scrollbar-track { background: transparent; }
+#directions-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.direction-card {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.13);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.direction-card:hover {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.38);
+    transform: translateY(-1px);
+}
+
+.direction-card:active { transform: translateY(0); }
+
+.direction-card.selected {
+    border-color: #ffc107;
+    background: rgba(255,193,7,0.1);
+}
+
+/* Transport mode tag (TRAM / BUS / TOUS) */
+.mode-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    padding: 0.2em 0.55em;
+    border-radius: 4px;
+    align-self: flex-start;
+}
+
+.mode-tag.tram  { background: rgba(46,139,60,0.35);  color: #6ee07a; border: 1px solid rgba(46,139,60,0.5); }
+.mode-tag.bus   { background: rgba(224,123,16,0.35); color: #fdb96e; border: 1px solid rgba(224,123,16,0.5); }
+.mode-tag.all   { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.2); }
+.mode-tag.other { background: rgba(100,100,120,0.35); color: #bbb; border: 1px solid rgba(100,100,120,0.5); }
+
+/* Lines list inside a direction card */
+.dir-lines { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.dir-line-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Small line badge reusing existing colors */
+.line-badge-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 4px;
+    font-weight: 900;
+    font-size: 0.85rem;
+    color: white;
+    flex-shrink: 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.dir-destination {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dir-code {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.35);
+    margin-top: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Offline / no-service message ── */
+.offline-message {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.2rem, 3.5vw, 2.2rem);
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.04em;
+    text-align: center;
+    padding: 2rem;
+}
+
+/* ── Shared loading / empty states ── */
+.config-loading-msg {
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 3rem 1rem;
+    font-size: 1rem;
+}
+
+#config-loading.hidden,
+#config-loading2.hidden { display: none; }
+
+.grid-empty {
+    grid-column: 1 / -1;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.95rem;
+}
+
+/* ── Status overlay ── */
+#status-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #0d1b3e;
+    display: flex;
+    flex-direction: column;
+}
+
+#status-overlay.hidden { display: none; }
+
+#status-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: clamp(1rem, 3vw, 2rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#status-content::-webkit-scrollbar { width: 6px; }
+#status-content::-webkit-scrollbar-track { background: transparent; }
+#status-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.status-row {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.status-label {
+    font-size: clamp(0.62rem, 1.2vw, 0.75rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.42);
+    text-transform: uppercase;
+}
+
+.status-value {
+    font-size: clamp(0.92rem, 2vw, 1.15rem);
+    font-weight: 600;
+    color: white;
+    word-break: break-all;
+}
+
+.status-value.highlight { color: #ffc107; }
+.status-value.dim       { color: rgba(255,255,255,0.55); font-style: italic; font-weight: 400; }

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTS — Prochains passages</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ── Departure board ── -->
+    <div id="board">
+        <header id="header">
+            <div id="clock">--:--</div>
+            <div id="date">--</div>
+            <button id="config-btn" title="Choisir un arrêt">Configuration</button>
+            <button id="status-btn" title="État du système"><span id="status-dot"></span></button>
+            <div id="branding">
+                <span class="brand-bus">bus</span><span class="brand-tram">tram</span>
+                <sup class="brand-euro">eurométropole</sup>
+            </div>
+            <div id="logo">
+                <span class="logo-c">c</span><span class="logo-t">T</span><span class="logo-s">s</span>
+            </div>
+            <div id="col-headers">
+                <span class="col-label">PROCHAIN</span>
+                <span class="col-label">SUIVANT</span>
+            </div>
+        </header>
+        <div id="departures"><!-- Populated by app.js --></div>
+        <div id="board-footer"><!-- Reserved for weather / info panel --></div>
+    </div>
+
+    <!-- ── Status overlay ── -->
+    <div id="status-overlay" class="hidden">
+        <div class="config-topbar">
+            <button id="status-back">← Retour</button>
+            <h1 class="config-heading">État du système</h1>
+        </div>
+        <div id="status-content"></div>
+    </div>
+
+    <!-- ── Configuration overlay ── -->
+    <div id="config-overlay" class="hidden">
+
+        <!-- Level 1 : stop name picker -->
+        <div id="config-level1">
+            <div class="config-topbar">
+                <button id="config-back">← Retour</button>
+                <h1 class="config-heading">Choisir un arrêt</h1>
+            </div>
+            <div id="config-search-bar">
+                <input id="config-filter" type="text"
+                       placeholder="Filtrer par nom d'arrêt…"
+                       autocomplete="off" spellcheck="false">
+            </div>
+            <div id="config-loading">Chargement des arrêts…</div>
+            <div id="stops-grid"></div>
+        </div>
+
+        <!-- Level 2 : transport type + direction picker -->
+        <div id="config-level2" class="hidden">
+            <div class="config-topbar">
+                <button id="config-back2">← Arrêts</button>
+                <div class="config-heading-group">
+                    <h1 class="config-heading" id="config-stop-title">—</h1>
+                    <span class="config-subheading">Choisir le type et le sens</span>
+                </div>
+            </div>
+            <div id="config-loading2" class="hidden">Chargement des directions…</div>
+            <div id="directions-grid"></div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
