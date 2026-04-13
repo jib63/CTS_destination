@@ -122,7 +122,7 @@ async fn render_and_send(
     }
 
     // Send every frame to the device as one animated GIF.
-    if let Some(ref host) = addr {
+    if let Some(host) = addr {
         let pic_id  = bg_frame.wrapping_add(1);
         let pic_num = frames.len();
         let url     = format!("http://{}/post", host);
