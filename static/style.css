@@ -135,9 +135,95 @@ html, body {
     flex-shrink: 0;   /* Never compress a row */
 }
 
+/* ── Extras row: birthday + Jour J side by side, same height as a departure row ── */
+#extras-row {
+    height: clamp(100px, 15vh, 150px);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+#birthday-row {
+    flex: 1;
+    background: #2a3d7a;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: clamp(0.6rem, 2vw, 2rem);
+    padding: 0 clamp(0.75rem, 2vw, 2rem);
+}
+
+#jour-j-row {
+    flex: 1;
+    background: #1a5060;
+    border-left: 3px solid #0d1b3e;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: clamp(0.6rem, 2vw, 2rem);
+    padding: 0 clamp(0.75rem, 2vw, 2rem);
+}
+
+.birthday-icon,
+.jour-j-icon {
+    flex-shrink: 0;
+    width:  clamp(2.4rem, 6vw, 4.8rem);
+    height: clamp(2.4rem, 6vw, 4.8rem);
+}
+
+.birthday-text-wrap {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+    font-size: clamp(1.3rem, 3.8vw, 3rem);
+    color: #e6dca8;
+    font-weight: 700;
+}
+
+.birthday-text-wrap.scrolling span {
+    display: inline-block;
+    animation: board-marquee 22s linear infinite;
+}
+
+.jour-j-badge {
+    flex-shrink: 0;
+    font-size: clamp(1.5rem, 4.5vw, 3.6rem);
+    font-weight: 900;
+    color: #f0c83c;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.jour-j-text-wrap {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+    font-size: clamp(1.2rem, 3.5vw, 2.8rem);
+    color: #7ec8dc;
+    font-weight: 600;
+}
+
+.jour-j-text-wrap.scrolling span {
+    display: inline-block;
+    animation: board-marquee 20s linear infinite;
+}
+
+@keyframes board-marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
 /* ── Board footer (sits immediately after rows; shrinks before tram rows if space is tight) ── */
 #board-footer {
-    flex: 0 999 auto; /* Don't grow; shrink first (before tram rows) when space is tight */
+    flex: 0 50 auto; /* Shrinks after birthday (200) and Jour J (400) rows */
     background: var(--header-bg);
     border-top: 1px solid rgba(255,255,255,0.08);
     min-height: 0;
@@ -378,15 +464,85 @@ html, body {
 
 #config-overlay.hidden { display: none; }
 
-/* Both levels fill the overlay */
-#config-level1,
-#config-level2 {
+/* ── Config tabs ── */
+#config-tabs {
+    display: flex;
+    gap: 0;
+    background: rgba(0,0,0,0.25);
+    border-bottom: 2px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+
+.config-tab {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: rgba(255,255,255,0.5);
+    padding: 0.7em 1.4em;
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -2px;
+}
+
+.config-tab:hover { color: rgba(255,255,255,0.8); }
+
+.config-tab.active {
+    color: #fff;
+    border-bottom-color: #ffc107;
+}
+
+/* ── Config tab panels ── */
+#config-tab-arret {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+#config-tab-arret.hidden { display: none; }
+
+#config-tab-jour-j {
+    flex: 1;
+    overflow-y: auto;
+    padding: clamp(1rem, 3vw, 2rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#config-tab-jour-j.hidden { display: none; }
+
+#config-tab-jour-j::-webkit-scrollbar { width: 6px; }
+#config-tab-jour-j::-webkit-scrollbar-track { background: transparent; }
+#config-tab-jour-j::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+/* Level 1 fills the arret tab */
+#config-level1 {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Level 2 overlays level 1 within the arret tab */
+#config-level2 {
+    position: absolute;
+    inset: 0;
+    background: #0d1b3e;
+    display: flex;
+    flex-direction: column;
 }
 
 #config-level2.hidden { display: none; }
+
+/* Secondary topbar for level 2 */
+.config-level2-bar {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
 
 /* ── Shared top-bar ── */
 .config-topbar {

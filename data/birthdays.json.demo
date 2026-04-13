@@ -1,0 +1,13 @@
+{
+  "birthdays": [
+    { "name": "Jean Martin",    "date": "11/04/1982" },
+    { "name": "Claire Dupont",  "date": "10/04" },
+    { "name": "Nicolas Petit",  "date": "03/07/1986" },
+    { "name": "Sophie Bernard", "date": "25/12" },
+    { "name": "Luc Girard",     "date": "01/01/1969" },
+    { "name": "Emma Leroy",     "date": "14/02/1989" },
+    { "name": "Théo Moreau",    "date": "31/10" },
+    { "name": "Jib M",          "date": "13/04/1978" },
+    { "name": "Coline R",       "date": "13/04/1999" }
+  ]
+}

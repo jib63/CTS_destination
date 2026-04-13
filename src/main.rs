@@ -1,41 +1,21 @@
-// Copyright (c) 2026, Jean-Baptiste Meyer
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// SPDX-License-Identifier: MIT
 
-mod api;
 mod config;
+mod cts;
 mod departure;
 mod display;
-mod server;
-mod weather;
+mod meteoblue;
+mod pixoo64;
+mod web;
 
 use anyhow::Result;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-use crate::display::web::{AppState, WebRenderer};
 use crate::display::DisplayRenderer;
-use crate::server::router::build_router;
+use crate::pixoo64::renderer::{pixoo_worker, Pixoo64Renderer};
+use crate::web::{AppState, WebRenderer};
+use crate::web::router::build_router;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -51,6 +31,11 @@ async fn main() -> Result<()> {
 
     let (config, token) = config::AppConfig::load(&config_path)?;
 
+    let pixoo_enabled = config.pixoo64_enabled;
+    let pixoo_address = config.pixoo64_address.clone();
+    let pixoo_sim     = config.pixoo64_simulation;
+    let pixoo_refresh = config.pixoo64_refresh_interval_seconds.unwrap_or(1);
+
     let meteoblue_key = config.resolve_meteoblue_key();
     let weather_enabled = config.meteoblue_enabled && (meteoblue_key.is_some() || config.meteoblue_simulation);
     if config.meteoblue_enabled && meteoblue_key.is_none() && !config.meteoblue_simulation {
@@ -65,6 +50,8 @@ async fn main() -> Result<()> {
         cts_simulation  = config.cts_simulation,
         weather         = weather_enabled,
         wx_simulation   = config.meteoblue_simulation,
+        pixoo64         = pixoo_enabled,
+        pixoo_sim       = pixoo_sim,
         "CTS departure board starting"
     );
 
@@ -83,22 +70,40 @@ async fn main() -> Result<()> {
         meteoblue_key,
         config.meteoblue_location.clone(),
         weather_interval,
+        config.meteoblue_always_query,
+        config.meteoblue_query_intervals.clone(),
+        pixoo_enabled,
+        config.birthday_enabled,
+        config.birthday_file.clone(),
+        config.jour_j_enabled,
+        config.jour_j_date.clone(),
+        config.jour_j_label.clone(),
+        config.cts_demo_lines.unwrap_or(4),
     );
 
-    let renderers: Vec<Box<dyn DisplayRenderer>> = vec![Box::new(WebRenderer {
+    let mut renderers: Vec<Box<dyn DisplayRenderer>> = vec![Box::new(WebRenderer {
         state: app_state.clone(),
     })];
+
+    if pixoo_enabled {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Box<crate::departure::model::DepartureBoard>>();
+        renderers.push(Box::new(Pixoo64Renderer::new(tx)));
+        let pstate = app_state.clone();
+        tokio::spawn(async move {
+            pixoo_worker(rx, pstate, pixoo_address, pixoo_sim, pixoo_refresh).await;
+        });
+    }
 
     let interval_mins = config.cts_polling_interval_minutes;
     let poll_state = app_state.clone();
     tokio::spawn(async move {
-        api::client::poll_loop(interval_mins, poll_state, renderers).await;
+        cts::client::poll_loop(interval_mins, poll_state, renderers).await;
     });
 
     if weather_enabled {
         let wx_state = app_state.clone();
         tokio::spawn(async move {
-            weather::client::weather_poll_loop(wx_state, weather_interval).await;
+            meteoblue::client::weather_poll_loop(wx_state, weather_interval).await;
         });
     }
 

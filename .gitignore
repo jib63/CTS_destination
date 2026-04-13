@@ -4,3 +4,5 @@
 *.zip
 .DS_Store
 demo.toml
+export_birthdays.applescript
+/data/birthdays.json

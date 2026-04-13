@@ -1,32 +1,10 @@
-// Copyright (c) 2026, Jean-Baptiste Meyer
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// SPDX-License-Identifier: MIT
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Local, NaiveDate, Utc};
 use serde::Serialize;
 
-use crate::api::model::StopMonitoringDelivery;
-use crate::weather::model::WeatherSnapshot;
+use crate::cts::model::StopMonitoringDelivery;
+use crate::meteoblue::model::WeatherSnapshot;
 
 /// API-agnostic departure board sent to all display renderers.
 #[derive(Debug, Clone, Serialize)]
@@ -45,6 +23,12 @@ pub struct DepartureBoard {
     /// Latest weather snapshot; None when weather is disabled or not yet fetched.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weather: Option<WeatherSnapshot>,
+    /// Birthday names for today (empty when the feature is disabled or no match).
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub birthdays_today: Vec<String>,
+    /// Jour J countdown: (days_remaining, event_label). None when disabled or unconfigured.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jour_j: Option<(i64, String)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -97,7 +81,7 @@ impl DepartureBoard {
             };
 
             let destination = match &journey.via {
-                Some(via) if !via.is_empty() => {
+                Some(via) if !<String as AsRef<str>>::as_ref(via).is_empty() => {
                     format!("{} via {}", journey.destination_name, via)
                 }
                 _ => journey.destination_name.clone(),
@@ -146,6 +130,8 @@ impl DepartureBoard {
             lines,
             offline_message: None,
             weather: None,
+            birthdays_today: Vec::new(),
+            jour_j: None,
         }
     }
 
@@ -158,6 +144,66 @@ impl DepartureBoard {
             lines: Vec::new(),
             offline_message: Some(message),
             weather: None,
+            birthdays_today: Vec::new(),
+            jour_j: None,
         }
+    }
+
+    /// Load today's birthdays from the given JSON file path.
+    /// Silently returns an empty list on any error.
+    pub fn load_birthdays(file_path: &str) -> Vec<String> {
+        let content = match std::fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => return Vec::new(),
+        };
+        let v: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => return Vec::new(),
+        };
+        let today = Local::now();
+        let today_dd_mm = format!("{:02}/{:02}", today.day(), today.month());
+        v["birthdays"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|entry| {
+                let date = entry["date"].as_str()?;
+                let name = entry["name"].as_str()?;
+
+                // Accept "DD/MM" or "DD/MM/YYYY"
+                let parts: Vec<&str> = date.split('/').collect();
+                let (dd, mm, birth_year): (u32, u32, Option<i32>) = match parts.as_slice() {
+                    [dd, mm] => (dd.parse().ok()?, mm.parse().ok()?, None),
+                    [dd, mm, yyyy] => (dd.parse().ok()?, mm.parse().ok()?, yyyy.parse().ok()),
+                    _ => return None,
+                };
+
+                // Filter to today
+                if format!("{:02}/{:02}", dd, mm) != today_dd_mm {
+                    return None;
+                }
+
+                // Calculate age from birth year if present
+                let display = match birth_year {
+                    Some(y) => format!("{} ({})", name, today.year() - y),
+                    None    => name.to_owned(),
+                };
+                Some(display)
+            })
+            .collect()
+    }
+
+    /// Compute days remaining until the given date (DD/MM/YYYY format).
+    /// Returns None if the date is unparseable or in the past.
+    pub fn compute_jour_j(date_str: &str) -> Option<i64> {
+        let parts: Vec<&str> = date_str.split('/').collect();
+        if parts.len() != 3 { return None; }
+        let d: u32 = parts[0].parse().ok()?;
+        let m: u32 = parts[1].parse().ok()?;
+        let y: i32 = parts[2].parse().ok()?;
+        let target = NaiveDate::from_ymd_opt(y, m, d)?;
+        let today  = Local::now().date_naive();
+        let diff   = target.signed_duration_since(today).num_days();
+        if diff >= 0 { Some(diff) } else { None }
     }
 }

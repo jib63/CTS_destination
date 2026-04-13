@@ -27,18 +27,31 @@ cts_max_stop_visits = 10
 
 # ── Query time window ─────────────────────────────────────────────────────────
 # If cts_always_query = true, the CTS API is polled at all times (cts_query_intervals is ignored).
-# If false, polling only occurs inside the windows defined by cts_query_intervals.
+# If false, polling only occurs when the current local time matches cts_query_intervals.
 #
-# cts_query_intervals: semicolon-separated list of HH:MM-HH:MM ranges (local time).
-# If a range end < start the two values are swapped automatically.
-# Example: morning + afternoon + evening service windows:
-#   cts_query_intervals = "6:02-9:58;14:03-18:09;22:02-23:00"
+# cts_query_intervals: one or more 5-field crontab expressions ("min hour dom month dow"),
+# separated by semicolons. Polling occurs when the current time matches ANY clause.
+# Day-of-week: 0=Sunday … 6=Saturday.
+#
+# Examples:
+#   Every day 6h–23h:                  "* 6-23 * * *"
+#   Weekdays 6h–23h, weekends 8h–23h:  "* 6-23 * * 1-5; * 8-23 * * 0,6"
+#   Morning + afternoon + evening:     "* 6-9,14-18,22-23 * * *"
+#   Every 30 min during peak hours:    "0,30 7-9,17-19 * * 1-5"
 cts_always_query = false
-cts_query_intervals = "6:02-9:58;14:03-17:59;22:02-23:00"
+cts_query_intervals = "* 6-9,14-17,22-23 * * 1-5; * 6-23 * * 0,6"
 
 # ── Server ────────────────────────────────────────────────────────────────────
 # Web server bind address. Use 0.0.0.0 to listen on all interfaces.
 listen_addr = "0.0.0.0:3000"
+
+# ── Divoom Pixoo64 LED display (optional) ────────────────────────────────────
+# Set pixoo64_enabled = true to drive a Divoom Pixoo64 64×64 LED matrix.
+# The IP address of the device on your LAN is required when not in simulation mode.
+# pixoo64_enabled = true
+# pixoo64_address = "192.168.1.42"
+# pixoo64_simulation = true           # render PNG preview only, no device calls
+# pixoo64_refresh_interval_seconds = 1
 
 # ── Meteoblue weather widget (optional) ──────────────────────────────────────
 # Set meteoblue_enabled = true to display weather information in the board footer.
@@ -50,3 +63,21 @@ listen_addr = "0.0.0.0:3000"
 # meteoblue_location = "Strasbourg"
 # meteoblue_polling_interval_minutes = 60
 # meteoblue_simulation = false
+#
+# meteoblue_always_query = true   # set to false to restrict weather polling to a time window
+# meteoblue_query_intervals = "* 6-23 * * *"   # same crontab syntax as cts_query_intervals
+
+# ── Birthday feature (optional) ───────────────────────────────────────────────
+# When enabled, today's birthdays from the JSON file are shown on the board
+# (both Pixoo64 and web) whenever fewer than 4 departure rows are displayed.
+#
+# birthday_enabled = true
+# birthday_file = "data/birthdays.json"
+
+# ── Jour J countdown (optional) ───────────────────────────────────────────────
+# When enabled, a countdown to the configured date is shown on the board.
+# The date can also be updated via the web UI (Status → Compteur J).
+#
+# jour_j_enabled = true
+# jour_j_date = "25/12/2026"
+# jour_j_label = "Noël"

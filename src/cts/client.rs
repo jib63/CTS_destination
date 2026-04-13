@@ -1,43 +1,21 @@
-// Copyright (c) 2026, Jean-Baptiste Meyer
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// SPDX-License-Identifier: MIT
 
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use chrono::{Local, Timelike, Utc};
+use chrono::{Local, Utc};
 use std::sync::atomic::Ordering;
 use tracing::{error, info, warn};
 use url::Url;
 
-use crate::api::model::{
+use crate::cts::model::{
     parse_iso_duration_secs, LineDirection, PhysicalStopInfo, SiriResponse,
     StopDiscoveryResponse, StopInfo,
 };
 use crate::departure::model::{DepartureBoard};
-use crate::display::web::AppState;
+use crate::web::AppState;
 use crate::display::DisplayRenderer;
 
 pub async fn poll_loop(
@@ -63,38 +41,48 @@ pub async fn poll_loop(
         let monitoring_ref = state.monitoring_ref.read().await.clone();
 
         // ── Time-window gate ────────────────────────────────────────────────
-        if !state.always_query {
+        if !state.cts_always_query {
             let now = Local::now();
-            let current_mins = (now.hour() * 60 + now.minute()) as u16;
-
             let in_window = state
-                .query_intervals
+                .cts_query_intervals
                 .iter()
-                .any(|(s, e)| current_mins >= *s && current_mins <= *e);
+                .any(|m| m.matches(&now));
 
             if !in_window {
-                let (msg, sleep_secs) = offline_msg_and_sleep(&state.query_intervals);
-                info!(sleep_secs, "Outside query window; sleeping until next interval");
-                let mut board = DepartureBoard::offline(monitoring_ref, msg);
-                if state.weather_enabled {
-                    board.weather = state.latest_weather.read().await.clone();
+                info!("Outside query window; sleeping 60 s before recheck");
+                let mut board = DepartureBoard::offline(monitoring_ref, "Pas de service".to_string());
+                if state.meteoblue_enabled {
+                    board.weather = state.meteoblue_latest.read().await.clone();
                 }
                 for renderer in &renderers {
                     if let Err(e) = renderer.update(&board) {
                         error!(renderer = renderer.name(), error = %e, "Renderer update failed (offline)");
                     }
                 }
-                next_poll = tokio::time::Instant::now() + Duration::from_secs(sleep_secs);
-                state.next_poll_at.store(Utc::now().timestamp() + sleep_secs as i64, Ordering::Relaxed);
+                next_poll = tokio::time::Instant::now() + Duration::from_secs(60);
+                state.cts_next_poll_at.store(Utc::now().timestamp() + 60, Ordering::Relaxed);
                 continue;
             }
         }
 
-        if state.simulation {
+        if state.cts_simulation {
             // ── Simulation mode — no network call ───────────────────────────
-            let mut board = crate::api::simulation::simulate_board(&monitoring_ref);
-            if state.weather_enabled {
-                board.weather = state.latest_weather.read().await.clone();
+            let (jj_date, jj_label) = {
+                let d = state.jour_j_date.read().await.clone();
+                let l = state.jour_j_label.read().await.clone();
+                (d, l)
+            };
+            let mut board = crate::cts::simulation::simulate_board(
+                &monitoring_ref,
+                state.cts_demo_lines,
+                state.birthday_enabled,
+                state.birthday_file.as_deref(),
+                state.jour_j_enabled,
+                jj_date.as_deref(),
+                jj_label.as_deref(),
+            );
+            if state.meteoblue_enabled {
+                board.weather = state.meteoblue_latest.read().await.clone();
             }
             info!(stop = %board.stop_name, lines = board.lines.len(), "Simulation: generated fake board");
             for renderer in &renderers {
@@ -103,13 +91,13 @@ pub async fn poll_loop(
                 }
             }
             next_poll = tokio::time::Instant::now() + base_interval;
-            state.next_poll_at.store(Utc::now().timestamp() + base_interval.as_secs() as i64, Ordering::Relaxed);
+            state.cts_next_poll_at.store(Utc::now().timestamp() + base_interval.as_secs() as i64, Ordering::Relaxed);
         } else {
             // ── Live mode — query CTS API ────────────────────────────────────
             match fetch_departures(&state, &monitoring_ref).await {
                 Ok((mut board, min_cycle_secs)) => {
-                    if state.weather_enabled {
-                        board.weather = state.latest_weather.read().await.clone();
+                    if state.meteoblue_enabled {
+                        board.weather = state.meteoblue_latest.read().await.clone();
                     }
                     info!(
                         stop = %board.stop_name,
@@ -139,12 +127,12 @@ pub async fn poll_loop(
                     };
 
                     next_poll = tokio::time::Instant::now() + effective_interval;
-                    state.next_poll_at.store(Utc::now().timestamp() + effective_interval.as_secs() as i64, Ordering::Relaxed);
+                    state.cts_next_poll_at.store(Utc::now().timestamp() + effective_interval.as_secs() as i64, Ordering::Relaxed);
                 }
                 Err(e) => {
                     error!(error = %e, "Failed to fetch departures; will retry in 30s");
                     next_poll = tokio::time::Instant::now() + Duration::from_secs(30);
-                    state.next_poll_at.store(Utc::now().timestamp() + 30, Ordering::Relaxed);
+                    state.cts_next_poll_at.store(Utc::now().timestamp() + 30, Ordering::Relaxed);
                 }
             }
         }
@@ -161,8 +149,8 @@ async fn fetch_departures(
     {
         let mut pairs = url.query_pairs_mut();
         pairs.append_pair("MonitoringRef", monitoring_ref);
-        pairs.append_pair("MaximumStopVisits", &state.max_stop_visits.to_string());
-        if let Some(ref mode) = state.vehicle_mode {
+        pairs.append_pair("MaximumStopVisits", &state.cts_max_stop_visits.to_string());
+        if let Some(ref mode) = state.cts_vehicle_mode {
             pairs.append_pair("VehicleMode", mode);
         }
     }
@@ -170,7 +158,7 @@ async fn fetch_departures(
     let response = state
         .http_client
         .get(url.clone())
-        .basic_auth(&state.api_token, Some(""))
+        .basic_auth(&state.cts_api_token, Some(""))
         .header("Accept", "application/json")
         .send()
         .await
@@ -191,7 +179,20 @@ async fn fetch_departures(
         .context("API response contained no StopMonitoringDelivery")?;
 
     let min_cycle_secs = parse_iso_duration_secs(&delivery.shortest_possible_cycle);
-    let board = DepartureBoard::from_delivery(&delivery, Utc::now(), monitoring_ref.to_owned());
+    let mut board = DepartureBoard::from_delivery(&delivery, Utc::now(), monitoring_ref.to_owned());
+
+    if state.birthday_enabled {
+        let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
+        board.birthdays_today = DepartureBoard::load_birthdays(path);
+    }
+
+    if state.jour_j_enabled {
+        let date  = state.jour_j_date.read().await.clone();
+        let label = state.jour_j_label.read().await.clone();
+        if let (Some(d), Some(l)) = (date, label) {
+            board.jour_j = DepartureBoard::compute_jour_j(&d).map(|days| (days, l));
+        }
+    }
 
     Ok((board, min_cycle_secs))
 }
@@ -201,7 +202,7 @@ pub async fn fetch_stops(state: &AppState) -> Result<Vec<StopInfo>> {
     let response = state
         .http_client
         .get("https://api.cts-strasbourg.eu/v1/siri/2.0/stoppoints-discovery")
-        .basic_auth(&state.api_token, Some(""))
+        .basic_auth(&state.cts_api_token, Some(""))
         .header("Accept", "application/json")
         .send()
         .await
@@ -249,7 +250,7 @@ pub async fn fetch_stop_details(state: &AppState, logical_code: &str) -> Result<
     let response = state
         .http_client
         .get(url)
-        .basic_auth(&state.api_token, Some(""))
+        .basic_auth(&state.cts_api_token, Some(""))
         .header("Accept", "application/json")
         .send()
         .await
@@ -303,73 +304,3 @@ pub async fn fetch_stop_details(state: &AppState, logical_code: &str) -> Result<
     Ok(order.into_iter().filter_map(|k| map.remove(&k)).collect())
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/// Build the offline UI message and compute seconds to sleep until the next
-/// interval opens (minimum 60 s so we never busy-loop).
-///
-/// The message shows the current no-service gap:
-///   "Pas de service entre 9h58 et 14h03"
-fn offline_msg_and_sleep(intervals: &[(u16, u16)]) -> (String, u64) {
-    if intervals.is_empty() {
-        return ("Pas de service".to_string(), 3600);
-    }
-
-    let now = Local::now();
-    let current_mins = (now.hour() * 60 + now.minute()) as u16;
-    let elapsed_secs = now.second() as u64;
-
-    // Left boundary of the current gap = end of the most recent past interval
-    let gap_from: u16 = intervals
-        .iter()
-        .map(|(_, e)| *e)
-        .filter(|&e| e <= current_mins)
-        .max()
-        .unwrap_or_else(|| {
-            // We're before any interval today → gap started at end of last interval (yesterday)
-            intervals.iter().map(|(_, e)| *e).max().unwrap_or(0)
-        });
-
-    // Right boundary of the current gap = start of the next upcoming interval
-    let gap_to: u16 = intervals
-        .iter()
-        .map(|(s, _)| *s)
-        .filter(|&s| s > current_mins)
-        .min()
-        .unwrap_or_else(|| {
-            // We're after all intervals today → service resumes tomorrow at first start
-            intervals.iter().map(|(s, _)| *s).min().unwrap_or(0)
-        });
-
-    let is_tomorrow = gap_to <= current_mins; // wrapped around midnight
-
-    let msg = if is_tomorrow {
-        format!(
-            "Pas de service entre {} et {} (demain)",
-            fmt_mins(gap_from),
-            fmt_mins(gap_to)
-        )
-    } else {
-        format!(
-            "Pas de service entre {} et {}",
-            fmt_mins(gap_from),
-            fmt_mins(gap_to)
-        )
-    };
-
-    // Sleep until gap_to (when service resumes)
-    let target = gap_to as u64;
-    let current = current_mins as u64;
-    let raw_secs = if !is_tomorrow && target > current {
-        (target - current) * 60 - elapsed_secs
-    } else {
-        (1440 - current + target) * 60 - elapsed_secs
-    };
-
-    (msg, raw_secs.max(60))
-}
-
-/// Format minutes-since-midnight as "9h00" / "14h03" (2-digit minutes, no leading zero on hours).
-fn fmt_mins(m: u16) -> String {
-    format!("{}h{:02}", m / 60, m % 60)
-}

@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Pixoo64 Mockup v3 — CTS</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #06080f;
+  color: #bbc;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 24px 20px 48px;
+}
+h1 { text-align: center; color: #fff; font-size: 21px; margin-bottom: 4px; letter-spacing: 0.03em; }
+.subtitle { text-align: center; color: #556; font-size: 12px; margin-bottom: 30px; }
+
+.layouts { display: flex; gap: 52px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.layout-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.layout-label { font-size: 13px; font-weight: 700; color: #ffc107; letter-spacing: 0.08em; text-transform: uppercase; }
+
+canvas {
+  border: 1px solid #1e2a40;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 0 40px rgba(60,120,255,0.15), inset 0 0 0 1px #0a1020;
+  border-radius: 4px;
+}
+.layout-desc { font-size: 11px; color: #556; max-width: 340px; text-align: center; line-height: 1.5; }
+
+.zone-log {
+  font-size: 10px; font-family: 'Courier New', monospace; color: #445;
+  max-width: 340px; min-height: 32px; text-align: left;
+  background: #0a0e1a; border: 1px solid #1a2234; border-radius: 4px;
+  padding: 5px 8px; line-height: 1.6;
+}
+.zone-log span { color: #e0c060; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 28px; }
+.ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ctrl-label { font-size: 10px; color: #445; letter-spacing: 0.1em; text-transform: uppercase; }
+select, button {
+  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
+  padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
+  transition: background 0.12s;
+}
+select:hover, button:hover { background: #162038; border-color: #3a5070; }
+select:focus { outline: 1px solid #3a5a8a; }
+
+.info { text-align: center; margin-top: 28px; font-size: 11px; color: #334; line-height: 1.9;
+  border-top: 1px solid #0e1624; padding-top: 18px; }
+.info em { color: #557; font-style: normal; }
+</style>
+</head>
+<body>
+<h1>Pixoo64 — Maquette CTS v3</h1>
+<p class="subtitle">Affichage LED 64×64 px — zoom 8× — rafraîchissement 1 s</p>
+
+<div class="layouts">
+  <div class="layout-box">
+    <div class="layout-label">Mode Départs</div>
+    <canvas id="ca" width="512" height="512"></canvas>
+    <div class="zone-log" id="zoneLog">En attente du premier tick…</div>
+    <div class="layout-desc">
+      Défilement du nom de l'arrêt · Anniversaires et Compteur Jour J dans l'espace libre
+    </div>
+  </div>
+  <div class="layout-box">
+    <div class="layout-label">Mode Horloge (Hors-ligne)</div>
+    <canvas id="cb" width="512" height="512"></canvas>
+    <div class="layout-desc">
+      Grande horloge avec secondes · fond contextuel animé chaque seconde<br>
+      <em>Nuit : étoiles · Jour : selon météo (soleil / nuages / pluie / neige)</em>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">Lignes tram</div>
+    <select id="selRows">
+      <option value="1">1 ligne</option>
+      <option value="2">2 lignes</option>
+      <option value="3">3 lignes</option>
+      <option value="4" selected>4 lignes</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Anniversaires</div>
+    <select id="selBirthday">
+      <option value="on" selected>Activés</option>
+      <option value="off">Désactivés</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Compteur Jour J</div>
+    <select id="selJourJ">
+      <option value="on" selected>Activé</option>
+      <option value="off">Désactivé</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Météo</div>
+    <select id="selWeather">
+      <option value="sunny">Ensoleillé 19°C</option>
+      <option value="cloudy" selected>Nuageux 14°C</option>
+      <option value="rain">Pluie 10°C</option>
+      <option value="snow">Neige −2°C</option>
+      <option value="thunder">Orage 11°C</option>
+      <option value="fog">Brouillard 8°C</option>
+      <option value="none">Météo désactivée</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Période</div>
+    <select id="selPeriod">
+      <option value="day" selected>Journée</option>
+      <option value="night">Nuit</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">Arrivée imminente</div>
+    <select id="selArriving">
+      <option value="no" selected>Non</option>
+      <option value="yes">Oui — ligne C</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <div class="ctrl-label">&nbsp;</div>
+    <button id="btnPause">⏸ Pause</button>
+  </div>
+</div>
+
+<p class="info">
+  Chaque LED = carré <em>7×7 px</em> avec grille <em>1 px</em> · Police bitmap <em>5×7 px</em> · Couleurs CTS officielles<br>
+  Défilement noms d'arrêt : 1 px/s · même vitesse pour Anniversaires et Compteur Jour J<br>
+  4 lignes → écran plein · 3 lignes → zone anniversaire · ≤2 lignes → anniversaire + Jour J
+</p>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PIXEL FONT 5×7  (MSB = leftmost pixel of each row)
+// ══════════════════════════════════════════════════════════════════════════════
+const FONT = {
+  '0':[0x0E,0x11,0x13,0x15,0x19,0x11,0x0E],'1':[0x04,0x0C,0x04,0x04,0x04,0x04,0x0E],
+  '2':[0x0E,0x11,0x01,0x06,0x08,0x10,0x1F],'3':[0x0E,0x11,0x01,0x06,0x01,0x11,0x0E],
+  '4':[0x02,0x06,0x0A,0x12,0x1F,0x02,0x02],'5':[0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
+  '6':[0x06,0x08,0x10,0x1E,0x11,0x11,0x0E],'7':[0x1F,0x01,0x02,0x04,0x08,0x08,0x08],
+  '8':[0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E],'9':[0x0E,0x11,0x11,0x0F,0x01,0x11,0x0E],
+  'A':[0x04,0x0A,0x11,0x11,0x1F,0x11,0x11],'B':[0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
+  'C':[0x0E,0x11,0x10,0x10,0x10,0x11,0x0E],'D':[0x1C,0x12,0x11,0x11,0x11,0x12,0x1C],
+  'E':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F],'F':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
+  'G':[0x0E,0x11,0x10,0x17,0x11,0x11,0x0F],'H':[0x11,0x11,0x11,0x1F,0x11,0x11,0x11],
+  'I':[0x0E,0x04,0x04,0x04,0x04,0x04,0x0E],'J':[0x07,0x02,0x02,0x02,0x12,0x12,0x0C],
+  'K':[0x11,0x12,0x14,0x18,0x14,0x12,0x11],'L':[0x10,0x10,0x10,0x10,0x10,0x10,0x1F],
+  'M':[0x11,0x1B,0x15,0x15,0x11,0x11,0x11],'N':[0x11,0x19,0x15,0x13,0x11,0x11,0x11],
+  'O':[0x0E,0x11,0x11,0x11,0x11,0x11,0x0E],'P':[0x1E,0x11,0x11,0x1E,0x10,0x10,0x10],
+  'Q':[0x0E,0x11,0x11,0x11,0x15,0x12,0x0D],'R':[0x1E,0x11,0x11,0x1E,0x14,0x12,0x11],
+  'S':[0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E],'T':[0x1F,0x04,0x04,0x04,0x04,0x04,0x04],
+  'U':[0x11,0x11,0x11,0x11,0x11,0x11,0x0E],'V':[0x11,0x11,0x11,0x11,0x0A,0x0A,0x04],
+  'W':[0x11,0x11,0x11,0x15,0x15,0x1B,0x11],'X':[0x11,0x11,0x0A,0x04,0x0A,0x11,0x11],
+  'Y':[0x11,0x11,0x0A,0x04,0x04,0x04,0x04],'Z':[0x1F,0x01,0x02,0x04,0x08,0x10,0x1F],
+  'a':[0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F],'b':[0x10,0x10,0x16,0x19,0x11,0x19,0x16],
+  'c':[0x00,0x00,0x0E,0x10,0x10,0x11,0x0E],'d':[0x01,0x01,0x0D,0x13,0x11,0x13,0x0D],
+  'e':[0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E],'f':[0x06,0x08,0x1E,0x08,0x08,0x08,0x08],
+  'g':[0x00,0x0D,0x13,0x11,0x0F,0x01,0x0E],'h':[0x10,0x10,0x16,0x19,0x11,0x11,0x11],
+  'i':[0x04,0x00,0x0C,0x04,0x04,0x04,0x0E],'j':[0x02,0x00,0x06,0x02,0x02,0x12,0x0C],
+  'k':[0x10,0x12,0x14,0x18,0x14,0x12,0x11],'l':[0x0C,0x04,0x04,0x04,0x04,0x04,0x0E],
+  'm':[0x00,0x00,0x1A,0x15,0x15,0x11,0x11],'n':[0x00,0x00,0x16,0x19,0x11,0x11,0x11],
+  'o':[0x00,0x00,0x0E,0x11,0x11,0x11,0x0E],'p':[0x00,0x16,0x19,0x11,0x19,0x16,0x10],
+  'q':[0x00,0x0D,0x13,0x11,0x13,0x0D,0x01],'r':[0x00,0x00,0x16,0x19,0x10,0x10,0x10],
+  's':[0x00,0x00,0x0E,0x10,0x0E,0x01,0x1E],'t':[0x08,0x08,0x1E,0x08,0x08,0x09,0x06],
+  'u':[0x00,0x00,0x11,0x11,0x11,0x13,0x0D],'v':[0x00,0x00,0x11,0x11,0x11,0x0A,0x04],
+  'w':[0x00,0x00,0x11,0x11,0x15,0x1B,0x11],'x':[0x00,0x00,0x11,0x0A,0x04,0x0A,0x11],
+  'y':[0x00,0x11,0x11,0x0F,0x01,0x11,0x0E],'z':[0x00,0x00,0x1F,0x02,0x04,0x08,0x1F],
+  ' ':[0,0,0,0,0,0,0],':':[0,0x04,0x04,0,0x04,0x04,0],'-':[0,0,0,0x1F,0,0,0],
+  '.':[0,0,0,0,0,0x04,0x04],'/':[0x01,0x02,0x04,0x04,0x08,0x10,0],
+  '<':[0x01,0x06,0x18,0x18,0x06,0x01,0],'\u00B0':[0x0C,0x12,0x12,0x0C,0,0,0],
+  '\u00B7':[0,0,0,0x04,0,0,0],'!':[0x04,0x04,0x04,0x04,0,0x04,0],
+  '~':[0,0x08,0x15,0x02,0,0,0],'+':[0,0x04,0x04,0x1F,0x04,0x04,0],
+  '\'':[0x04,0x04,0,0,0,0,0],
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FRAMEBUFFER  (64×64 × 3 bytes RGB)
+// ══════════════════════════════════════════════════════════════════════════════
+const W = 64, H = 64;
+const fbA = new Uint8Array(W * H * 3);
+const fbB = new Uint8Array(W * H * 3);
+const GRID = [8, 12, 22];
+
+// ── Clipping support ──────────────────────────────────────────────────────────
+let _clip = null; // {x1,y1,x2,y2} inclusive
+
+function setClip(x1, y1, x2, y2) { _clip = {x1, y1, x2, y2}; }
+function clearClip() { _clip = null; }
+
+function ps(fb, x, y, r, g, b) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  if (_clip && (x < _clip.x1 || x > _clip.x2 || y < _clip.y1 || y > _clip.y2)) return;
+  const i = (y*W+x)*3; fb[i]=r; fb[i+1]=g; fb[i+2]=b;
+}
+
+// fr() does NOT use clip — use for backgrounds and areas that don't need clipping
+function fr(fb, x, y, w, h, r, g, b) {
+  const x1=Math.max(0,x), y1=Math.max(0,y);
+  const x2=Math.min(W,x+w), y2=Math.min(H,y+h);
+  for (let py=y1; py<y2; py++)
+    for (let px=x1; px<x2; px++) { const i=(py*W+px)*3; fb[i]=r;fb[i+1]=g;fb[i+2]=b; }
+}
+
+function blend(fb, x, y, r, g, b, alpha) {
+  if (x<0||x>=W||y<0||y>=H) return;
+  const i=(y*W+x)*3;
+  fb[i  ] = (fb[i  ]*(256-alpha)+r*alpha)>>8;
+  fb[i+1] = (fb[i+1]*(256-alpha)+g*alpha)>>8;
+  fb[i+2] = (fb[i+2]*(256-alpha)+b*alpha)>>8;
+}
+
+// dc() uses ps() at scale=1 so it respects clip; uses fr() at scale>1 (no clip needed for clock)
+function dc(fb, x, y, ch, r, g, b, sc) {
+  sc = sc||1;
+  const rows = FONT[ch.toUpperCase ? ch : ch]||FONT[' '];
+  const glyph = FONT[ch] || FONT[ch.toUpperCase?.()] || FONT[' '];
+  for (let row=0; row<7; row++) {
+    const bits = glyph[row];
+    for (let col=0; col<5; col++) {
+      if (bits&(1<<(4-col))) {
+        if (sc === 1) ps(fb, x+col, y+row, r, g, b);
+        else fr(fb, x+col*sc, y+row*sc, sc, sc, r, g, b);
+      }
+    }
+  }
+}
+
+function dt(fb, x, y, text, r, g, b, sc) {
+  sc=sc||1; let cx=x;
+  for (const ch of text) {
+    const glyph = FONT[ch] || FONT[' '];
+    if (sc === 1) {
+      for (let row=0; row<7; row++) {
+        const bits = glyph[row];
+        for (let col=0; col<5; col++)
+          if (bits&(1<<(4-col))) ps(fb, cx+col, y+row, r, g, b);
+      }
+    } else {
+      for (let row=0; row<7; row++) {
+        const bits = glyph[row];
+        for (let col=0; col<5; col++)
+          if (bits&(1<<(4-col))) fr(fb, cx+col*sc, y+row*sc, sc, sc, r, g, b);
+      }
+    }
+    cx+=(5+1)*sc;
+  }
+  return cx;
+}
+
+function tw(str, sc) { sc=sc||1; if(!str||str.length===0)return 0; return str.length*(5+1)*sc - sc; }
+function dtR(fb, rx, y, str, r, g, b, sc) { dt(fb,rx-tw(str,sc),y,str,r,g,b,sc); }
+function dtC(fb, cx, y, str, r, g, b, sc) {
+  dt(fb, cx-Math.round(tw(str,sc)/2), y, str, r, g, b, sc);
+}
+
+// ── Temperature helpers: narrow minus (3 px wide, 4 px advance) ──────────────
+function twTmp(str) {
+  if (!str || str.length === 0) return 0;
+  let w = 0;
+  for (let i = 0; i < str.length; i++) w += (str[i] === '-') ? 4 : 6;
+  return w - 1; // subtract trailing gap
+}
+function dtTmp(fb, x, y, str, r, g, b) {
+  let cx = x;
+  for (const ch of str) {
+    if (ch === '-') {
+      // 3 pixels at cols 1, 2, 3 of a 5-px cell, centred on row 3
+      ps(fb, cx+1, y+3, r, g, b); ps(fb, cx+2, y+3, r, g, b); ps(fb, cx+3, y+3, r, g, b);
+      cx += 4;
+    } else {
+      const glyph = FONT[ch] || FONT[' '];
+      for (let row = 0; row < 7; row++) {
+        const bits = glyph[row];
+        for (let col = 0; col < 5; col++)
+          if (bits & (1 << (4-col))) ps(fb, cx+col, y+row, r, g, b);
+      }
+      cx += 6;
+    }
+  }
+  return cx;
+}
+function dtRTmp(fb, rx, y, str, r, g, b) { dtTmp(fb, rx - twTmp(str), y, str, r, g, b); }
+
+// ── Draw text clipped to [cx1..cx2] starting at logical x (may be negative for scroll) ──
+function dtScrolled(fb, drawX, textY, str, r, g, b, cx1, cx2) {
+  setClip(cx1, textY, cx2, textY+6);
+  dt(fb, drawX, textY, str, r, g, b, 1);
+  clearClip();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FLUSH FRAMEBUFFER → CANVAS  (LED grid: 7×7 pixel in 8×8 cell)
+// ══════════════════════════════════════════════════════════════════════════════
+function flush(canvas, fb) {
+  const ctx = canvas.getContext('2d');
+  const out = ctx.createImageData(512, 512);
+  const d = out.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]=GRID[0]; d[i+1]=GRID[1]; d[i+2]=GRID[2]; d[i+3]=255;
+  }
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const fi = (py*W+px)*3;
+      const r=fb[fi], g=fb[fi+1], b=fb[fi+2];
+      if ((r|g|b) === 0) continue;
+      for (let dy = 0; dy < 7; dy++) {
+        const row = (py*8+dy)*512;
+        for (let dx = 0; dx < 7; dx++) {
+          const si = (row + px*8+dx)*4;
+          d[si]=r; d[si+1]=g; d[si+2]=b; d[si+3]=255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CTS LINE COLOURS
+// ══════════════════════════════════════════════════════════════════════════════
+const LC = {
+  A:[200,16,46],B:[123,45,139],C:[224,123,16],D:[46,139,60],
+  E:[111,44,145],F:[197,20,91],G:[92,107,192],
+};
+function lc(line) { return LC[line[0]]||[69,90,100]; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PIXEL-ART ICONS
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Present/gift icon 7×7
+function drawPresent(fb, x, y) {
+  // Ribbon bow (top, 3 rows)
+  fr(fb, x+2, y,   3, 1, 255, 200, 80);  // bow top
+  fr(fb, x+1, y+1, 2, 1, 255, 180, 60);  fr(fb, x+4, y+1, 2, 1, 255, 180, 60); // bow sides
+  fr(fb, x,   y+2, 7, 1, 200, 130, 40);  // box top
+  // Vertical ribbon on box
+  fr(fb, x+3, y+2, 1, 5, 255, 200, 80);
+  // Box sides
+  fr(fb, x,   y+2, 1, 5, 160, 100, 30);  fr(fb, x+6, y+2, 1, 5, 160, 100, 30);
+  // Box bottom
+  fr(fb, x,   y+6, 7, 1, 200, 130, 40);
+}
+
+// Party popper icon 7×7
+function drawParty(fb, x, y) {
+  // Cone (bottom-left)
+  fr(fb, x,   y+5, 4, 2, 255, 160, 40);   // base
+  fr(fb, x+1, y+4, 3, 1, 255, 160, 40);
+  fr(fb, x+2, y+3, 2, 1, 255, 160, 40);   // tip
+  fr(fb, x+3, y+2, 1, 1, 220, 140, 30);   // point
+  // Sparkles / confetti
+  ps(fb, x+5, y,   255, 240, 80);    // yellow star
+  ps(fb, x+6, y+2, 80,  200, 255);   // cyan dot
+  ps(fb, x+4, y+1, 255, 100, 160);   // pink
+  ps(fb, x+6, y+4, 80,  255, 120);   // green
+  ps(fb, x+5, y+5, 255, 210, 60);    // yellow
+  ps(fb, x+6, y+6, 200, 100, 255);   // purple
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SMALL WEATHER ICONS (6×5)
+// ══════════════════════════════════════════════════════════════════════════════
+function wicon_sm(fb, x, y, type) {
+  const f=(dx,dy,w,h,r,g,b)=>fr(fb,x+dx,y+dy,w,h,r,g,b);
+  const p=(dx,dy,r,g,b)=>ps(fb,x+dx,y+dy,r,g,b);
+  if (type==='sunny') {
+    f(2,1,2,2,255,210,0); f(1,2,4,1,255,210,0); f(3,0,1,1,255,190,0);
+    p(0,1,255,190,0); p(5,1,255,190,0);
+  } else if (type==='cloudy'||type==='fog') {
+    f(2,0,2,1,110,130,160); f(1,1,4,1,120,140,170); f(0,2,6,2,120,140,170);
+    f(1,4,4,1,110,130,160);
+  } else if (type==='rain') {
+    f(2,0,2,1,80,100,130); f(1,1,4,1,90,110,140); f(0,2,6,2,80,100,130);
+    p(1,4,80,160,220); p(3,4,80,160,220); p(5,4,80,160,220);
+  } else if (type==='snow') {
+    f(2,0,2,1,100,120,150); f(1,1,4,1,110,130,160); f(0,2,6,2,100,120,150);
+    p(0,4,200,220,255); p(3,4,200,220,255); p(5,4,200,220,255);
+  } else if (type==='thunder') {
+    f(2,0,2,1,60,70,80); f(1,1,4,1,70,80,90); f(0,2,6,2,60,70,80);
+    f(3,4,1,2,255,230,0);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CONTEXTUAL BACKGROUNDS (clock mode)
+// ══════════════════════════════════════════════════════════════════════════════
+function mulberry32(seed) {
+  let a = seed;
+  return () => { a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+}
+const _rng = mulberry32(12345);
+const STARS = Array.from({length:50}, () => ({
+  x: Math.floor(_rng()*64), y: Math.floor(_rng()*55),
+  r: 140+Math.floor(_rng()*80), g: 140+Math.floor(_rng()*80),
+  b: 180+Math.floor(_rng()*75),
+  cycle: 2+Math.floor(_rng()*8),
+}));
+const RAIN_DROPS = Array.from({length:18}, (_,i) => ({
+  x: (i*7+2)%64, delay: (i*5)%22, len: 4+i%3,
+}));
+const SNOW_FLAKES = Array.from({length:22}, (_,i) => ({
+  x: (i*11+3)%64, phase: i*3, speed: 0.6+((i%3)*0.2),
+}));
+const CLOUD_BLOBS = [
+  {y:4, speed:1, size:12},{y:16,speed:0.7,size:10},{y:28,speed:1.2,size:8},
+];
+function drawCloud(fb, x, y, size, brightness) {
+  const hw=Math.round(size/2), hh=Math.round(size*0.35);
+  for (let dy=-hh;dy<=hh;dy++) {
+    const span=Math.round(hw*Math.sqrt(1-(dy/hh)*(dy/hh)));
+    for (let dx=-span;dx<=span;dx++) {
+      const fade=1-Math.sqrt(dx*dx/(hw*hw)+dy*dy/(hh*hh))*0.5;
+      const c=Math.round(brightness*fade);
+      const px=x+dx,py=y+dy;
+      if(px>=0&&px<64&&py>=0&&py<55) ps(fb,px,py,c,c+8,c+18);
+    }
+  }
+}
+function bgNight(fb,frame) {
+  fr(fb,0,0,64,55,2,5,16);
+  fr(fb,50,3,6,6,180,180,130);fr(fb,48,4,10,4,180,180,130);fr(fb,50,9,6,1,180,180,130);
+  fr(fb,52,3,6,7,2,5,16);fr(fb,54,4,5,5,2,5,16);
+  STARS.forEach((s,i) => {
+    const dim=(frame%s.cycle)===0;
+    const r=dim?s.r>>3:s.r, g=dim?s.g>>3:s.g, b=dim?s.b>>3:s.b;
+    ps(fb,s.x,s.y,r,g,b);
+    if(!dim&&s.cycle>6) {
+      if(s.x>0)ps(fb,s.x-1,s.y,r>>1,g>>1,b>>1);
+      if(s.x<63)ps(fb,s.x+1,s.y,r>>1,g>>1,b>>1);
+      if(s.y>0)ps(fb,s.x,s.y-1,r>>1,g>>1,b>>1);
+      if(s.y<54)ps(fb,s.x,s.y+1,r>>1,g>>1,b>>1);
+    }
+  });
+}
+function bgSunny(fb,frame) {
+  fr(fb,0,0,64,55,4,9,28);
+  for(let y=40;y<55;y++){const a=(y-40)/15*60;for(let x=0;x<64;x++)blend(fb,x,y,180,60,0,Math.round(a));}
+  const SX=54,SY=7;
+  for(let i=0;i<8;i++){const ang=((i*45+frame*15)%360)*Math.PI/180;for(let d=5;d<=12;d++){const rx=Math.round(SX+d*Math.cos(ang)),ry=Math.round(SY+d*Math.sin(ang));const alpha=Math.round((1-(d-5)/7)*180);if(rx>=0&&rx<64&&ry>=0&&ry<55)blend(fb,rx,ry,255,200,0,alpha);}}
+  fr(fb,SX-3,SY-3,7,7,255,215,0);fr(fb,SX-1,SY-4,3,9,255,215,0);fr(fb,SX-4,SY-1,9,3,255,215,0);
+}
+function bgCloudy(fb,frame) {
+  fr(fb,0,0,64,55,5,9,22);
+  CLOUD_BLOBS.forEach((blob,i)=>{const x=Math.round((64+20-(frame*blob.speed+i*26)%(64+20))-10);drawCloud(fb,x,blob.y,blob.size,45+i*8);drawCloud(fb,x+blob.size+4,blob.y+2,blob.size-2,38+i*7);});
+}
+function bgFog(fb,frame) {
+  fr(fb,0,0,64,55,10,13,20);
+  for(let band=0;band<6;band++){const y=(frame*1+band*9)%55;const br=25+band*5;for(let x=0;x<64;x++)blend(fb,x,y,br,br+5,br+12,120);if(y+1<55)for(let x=0;x<64;x++)blend(fb,x,y+1,br,br+5,br+12,60);}
+}
+function bgRain(fb,frame) {
+  fr(fb,0,0,64,55,3,6,16);
+  for(let y=0;y<14;y++){const a=(14-y)/14*180;for(let x=0;x<64;x++)blend(fb,x,y,30,40,55,Math.round(a));}
+  RAIN_DROPS.forEach(d=>{for(let l=0;l<d.len;l++){const y=(frame*2+d.delay*4+l*2)%56,x=Math.min(63,d.x+Math.floor(y*0.25))%64;if(y<55)blend(fb,x,y,50,120,220,200-l*40);}});
+  for(let i=0;i<4;i++){const x=(frame*3+i*18)%64;for(let y=0;y<55;y+=3)blend(fb,x,y,40,100,180,60);}
+}
+function bgSnow(fb,frame) {
+  fr(fb,0,0,64,55,3,7,20);
+  SNOW_FLAKES.forEach(f=>{const y=Math.floor((frame*f.speed+f.phase)%55),drift=Math.round(Math.sin((frame*0.4+f.phase)*0.5)*2),x=(f.x+drift+64)%64;ps(fb,x,y,210,230,255);if(x>0)ps(fb,x-1,y,100,120,180);if(x<63)ps(fb,x+1,y,100,120,180);if(y>0)ps(fb,x,y-1,100,120,180);if(y<54)ps(fb,x,y+1,100,120,180);});
+}
+function bgThunder(fb,frame) {
+  fr(fb,0,0,64,55,5,6,10);
+  const flash=(frame%17===0)||(frame%23===0);
+  if(flash)fr(fb,0,0,64,55,200,210,230);
+  else{for(let y=0;y<30;y++){const a=(30-y)/30*120;for(let x=0;x<64;x++)blend(fb,x,y,40,45,55,Math.round(a));}
+    const lx=28+(frame%5)*4;fr(fb,lx,18,3,1,255,240,80);fr(fb,lx-1,20,3,1,255,240,80);fr(fb,lx,22,3,1,255,240,80);fr(fb,lx-2,24,3,1,255,240,80);}
+}
+function drawBg(fb,weatherType,isNight,frame) {
+  if(isNight){bgNight(fb,frame);return;}
+  switch(weatherType){
+    case'sunny':bgSunny(fb,frame);break;case'cloudy':bgCloudy(fb,frame);break;
+    case'rain':bgRain(fb,frame);break;case'snow':bgSnow(fb,frame);break;
+    case'thunder':bgThunder(fb,frame);break;case'fog':bgFog(fb,frame);break;
+    default:bgCloudy(fb,frame);break;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DEPARTURE DATA  (full destination names for scrolling demo)
+// ══════════════════════════════════════════════════════════════════════════════
+const BASE = Date.now();
+const LINES = [
+  { line:'C',  dest:'Gare Centrale',       base: 150000 },
+  { line:'D',  dest:'Poteries',            base: 450000 },
+  { line:'10', dest:'Campus Esplanade',    base: 210000 },
+  { line:'A',  dest:'Illkirch-Lixenbuhl', base: 510000 },
+];
+
+// ── Birthday data (demo — today's birthdays) ──────────────────────────────────
+const BIRTHDAY_NAMES = ['Jean Martin', 'Claire Dupont'];
+const BIRTHDAY_TEXT  = BIRTHDAY_NAMES.join(' \u00B7 '); // "Jean Martin · Claire Dupont"
+
+// ── Jour J data (demo) ────────────────────────────────────────────────────────
+const JOUR_J_DAYS  = 42;
+const JOUR_J_LABEL = 'Anniversaire mariage';
+
+function getMinutes(baseOffset, arriving) {
+  if (arriving) return 'arr.';
+  const ms = BASE + baseOffset - Date.now();
+  if (ms < 60000) return 'arr.';
+  return String(Math.max(0, Math.floor(ms/60000))) + 'm';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SCROLL STATE
+// ══════════════════════════════════════════════════════════════════════════════
+const destScroll   = [0, 0, 0, 0];   // per-row destination scroll offset
+let   bdayScroll   = 0;              // birthday text scroll offset
+let   jourJScroll  = 0;              // Jour J event label scroll offset
+const SCROLL_PAUSE = 12;             // extra pixels of pause at end before reset
+
+function advanceScroll(current, textW, visibleW) {
+  if (textW <= visibleW) return 0;
+  const max = textW - visibleW + SCROLL_PAUSE;
+  return (current >= max) ? 0 : current + 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ZONE HIGHLIGHT (diff visualisation)
+// ══════════════════════════════════════════════════════════════════════════════
+let prevA = {
+  clockHHMM: null, weatherKey: null,
+  times: [null,null,null,null],
+  lineSet: null, nRows: null,
+  bdayOn: null, jourJOn: null,
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LAYOUT HELPER
+// ══════════════════════════════════════════════════════════════════════════════
+function getLayout(nRows, bdayOn, jourJOn) {
+  const tramEnd = 10 + nRows * 13; // last y pixel of last tram row
+  if (nRows >= 4 || (!bdayOn && !jourJOn)) {
+    return { tramEnd, sepY: null, bdayY: null, jourJY: null };
+  }
+  const sepY = tramEnd + 1;       // gray separator line
+  const afterSep = tramEnd + 3;   // first content row after separator
+
+  if (nRows === 3) {
+    // 53..63 = 11px for birthday (no Jour J — not enough space)
+    return { tramEnd, sepY, bdayY: bdayOn ? afterSep : null, jourJY: null };
+  } else {
+    // 2 or 1 row: split remaining space between birthday and Jour J
+    // Each zone gets 12px
+    const bdayY  = bdayOn  ? afterSep      : null;
+    const jourJY = jourJOn ? afterSep + (bdayOn ? 12 : 0) : null;
+    return { tramEnd, sepY, bdayY, jourJY };
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DRAW DEPARTURE MODE
+// ══════════════════════════════════════════════════════════════════════════════
+function drawDepartures(fb) {
+  const nRows  = parseInt(document.getElementById('selRows').value, 10);
+  const wx     = document.getElementById('selWeather').value;
+  const arr    = document.getElementById('selArriving').value === 'yes';
+  const bdayOn = document.getElementById('selBirthday').value === 'on';
+  const jourJOn= document.getElementById('selJourJ').value === 'on';
+  const now    = new Date();
+  const hhmm   = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const wxData = WX_PRESETS[wx] || null;
+  const wxKey  = wx + ':' + (wxData ? wxData.temp : '');
+  const layout = getLayout(nRows, bdayOn, jourJOn);
+
+  // ── Detect changes ──────────────────────────────────────────────────────────
+  const changed = new Set();
+  const needFull = (prevA.lineSet === null || prevA.nRows !== nRows || prevA.bdayOn !== bdayOn || prevA.jourJOn !== jourJOn);
+  if (needFull || prevA.clockHHMM !== hhmm) changed.add('CLOCK');
+  if (needFull || prevA.weatherKey !== wxKey) changed.add('WEATHER');
+  const curTimes = LINES.slice(0,4).map((l,i) => getMinutes(l.base, arr && i===0));
+  curTimes.forEach((t,i) => { if (prevA.times[i] !== t) changed.add('ROW_TIME_'+i); });
+  const lineSet = nRows + '|' + LINES.slice(0,nRows).map(l=>l.line).join(',');
+  if (needFull || prevA.lineSet !== lineSet) changed.add('ROWS_STATIC');
+
+  // ── Full background clear on structural change ──────────────────────────────
+  if (needFull) {
+    fr(fb, 0, 0, 64, 64, 6, 10, 20);
+  }
+
+  // ── Header (y=0..10) ────────────────────────────────────────────────────────
+  if (needFull || changed.has('CLOCK') || changed.has('WEATHER')) {
+    fr(fb, 0, 0, 64, 10, 20, 32, 60);
+    fr(fb, 0, 10, 64, 1, 28, 44, 75); // header separator
+  }
+  if (needFull || changed.has('CLOCK')) {
+    fr(fb, 1, 1, 34, 8, 20, 32, 60);
+    dt(fb, 2, 1, hhmm, 255, 255, 255);
+  }
+  if (needFull || changed.has('WEATHER')) {
+    fr(fb, 36, 1, 27, 8, 20, 32, 60);
+    if (wxData) {
+      wicon_sm(fb, 37, 2, wx);
+      dtR(fb, 62, 2, wxData.temp+'\u00B0', 180, 220, 255);
+    }
+  }
+
+  // ── Tram rows ────────────────────────────────────────────────────────────────
+  for (let i = 0; i < 4; i++) {
+    const ry = 11 + i * 13;
+    const rowBg = i%2===0 ? [16,26,52] : [12,20,44];
+
+    if (needFull || changed.has('ROWS_STATIC')) {
+      fr(fb, 0, ry, 64, 13, ...rowBg);
+      if (i < nRows) {
+        const line = LINES[i];
+        const [lr,lg,lb] = lc(line.line);
+        // Badge 11×9
+        fr(fb, 1, ry+2, 11, 9, lr, lg, lb);
+        // Badge text (centred)
+        const bw = tw(line.line.slice(0,2));
+        const bx = 1 + Math.max(0, Math.round((11 - bw) / 2));
+        dt(fb, bx, ry+3, line.line.slice(0,2), 255, 255, 255);
+        // Bottom micro-separator
+        if (i < nRows-1) fr(fb, 0, ry+12, 64, 1, 4, 8, 16);
+      }
+    }
+
+    // Destination text (scrolling, clipped)
+    if (i < nRows && (needFull || changed.has('ROWS_STATIC') || true)) {
+      // true: always redraw destination because scroll offset changes
+      const line    = LINES[i];
+      const arriving = arr && i === 0;
+      const destClipX2 = arriving ? 37 : 44;   // right boundary of dest area
+      const destAreaW  = destClipX2 - 13 + 1;
+      const destTextW  = tw(line.dest);
+
+      // Clear destination + time area
+      fr(fb, 13, ry+1, 51, 11, ...rowBg);
+
+      // Advance and draw destination scroll
+      destScroll[i] = advanceScroll(destScroll[i], destTextW, destAreaW);
+      const destDrawX = 13 - destScroll[i];
+      dtScrolled(fb, destDrawX, ry+3, line.dest, 180, 205, 240, 13, destClipX2);
+
+      // Time
+      const timeStr = curTimes[i];
+      const [tr,tg,tb] = timeStr === 'arr.' ? [255,130,0] : [255,200,50];
+      if (arriving) {
+        dtR(fb, 62, ry+3, 'arr.', tr, tg, tb);
+      } else {
+        dtR(fb, 62, ry+3, timeStr, tr, tg, tb);
+      }
+
+    }
+  }
+
+  // ── Separator + birthday + Jour J zones ──────────────────────────────────────
+  if (needFull || changed.has('ROWS_STATIC')) {
+    // Clear area below tram rows
+    const clearStart = layout.tramEnd + 1;
+    if (clearStart < 64) fr(fb, 0, clearStart, 64, 64 - clearStart, 6, 10, 20);
+
+    if (layout.sepY !== null) {
+      // Separator: blank + gray + blank
+      fr(fb, 0, layout.sepY - 1, 64, 1, 6, 10, 20);   // blank above
+      fr(fb, 0, layout.sepY,     64, 1, 38, 44, 55);   // gray line
+      fr(fb, 0, layout.sepY + 1, 64, 1, 6, 10, 20);   // blank below
+    }
+
+    // Birthday zone background
+    if (layout.bdayY !== null) {
+      fr(fb, 0, layout.bdayY, 64, 12, 8, 32, 38);
+    }
+
+    // Jour J zone background
+    if (layout.jourJY !== null) {
+      fr(fb, 0, layout.jourJY, 64, 12, 22, 18, 52);
+    }
+  }
+
+  // ── Birthday content (scrolling) ─────────────────────────────────────────────
+  if (layout.bdayY !== null) {
+    const zy  = layout.bdayY;
+    const ty  = zy + 3;   // text baseline (12px zone, 7px font → margin (12-7)/2=2.5→3)
+    const icy = zy + 4;   // icon y (7px tall icon, (12-7)/2=2.5→4 from zone top)
+
+    // Present icon (7px wide)
+    drawPresent(fb, 1, icy);
+
+    // Scrolling birthday text
+    const bTextW    = tw(BIRTHDAY_TEXT);
+    const bVisibleW = 63 - 9;  // x=9..63 = 54px
+    bdayScroll = advanceScroll(bdayScroll, bTextW, bVisibleW);
+    const bdrawX = 9 - bdayScroll;
+    fr(fb, 9, ty, 55, 7, 8, 32, 38); // clear text area
+    dtScrolled(fb, bdrawX, ty, BIRTHDAY_TEXT, 230, 215, 160, 9, 63);
+
+  }
+
+  // ── Jour J content ────────────────────────────────────────────────────────────
+  if (layout.jourJY !== null) {
+    const zy  = layout.jourJY;
+    const ty  = zy + 3;
+    const icy = zy + 4;
+
+    // Party icon
+    drawParty(fb, 1, icy);
+
+    // Fixed J-N label
+    const jnStr = 'J-' + JOUR_J_DAYS;
+    dt(fb, 9, ty, jnStr, 240, 200, 55);
+    const jnEndX = 9 + tw(jnStr) + 3;  // gap after J-N
+
+    // Scrolling event label
+    const jLabelW   = tw(JOUR_J_LABEL);
+    const jVisibleW = 63 - jnEndX;
+    if (jVisibleW > 0) {
+      jourJScroll = advanceScroll(jourJScroll, jLabelW, jVisibleW);
+      const jDrawX = jnEndX - jourJScroll;
+      fr(fb, jnEndX, ty, 64 - jnEndX, 7, 22, 18, 52); // clear label area
+      dtScrolled(fb, jDrawX, ty, JOUR_J_LABEL, 100, 200, 220, jnEndX, 63);
+    }
+  }
+
+  // ── Update prev state ─────────────────────────────────────────────────────────
+  prevA = { clockHHMM:hhmm, weatherKey:wxKey, times:curTimes, lineSet, nRows, bdayOn, jourJOn };
+
+  // ── Zone log ──────────────────────────────────────────────────────────────────
+  const names = [...changed];
+  const el = document.getElementById('zoneLog');
+  if (names.length || true) {
+    const scrollInfo = LINES.slice(0,nRows).map((l,i)=>`R${i}:+${destScroll[i]}`).join(' ');
+    const extras = [];
+    if (layout.bdayY !== null) extras.push('bday:+'+bdayScroll);
+    if (layout.jourJY !== null) extras.push('jourj:+'+jourJScroll);
+    el.innerHTML = names.length
+      ? 'Zones redessinées: ' + names.map(n=>`<span>${n}</span>`).join(', ') + '<br><em style="color:#336">Défilement: '+scrollInfo+(extras.length?' · '+extras.join(' '):'')+'</em>'
+      : '<span style="color:#333">Aucun changement — défilement: '+scrollInfo+(extras.length?' · '+extras.join(' '):'')+'</span>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DRAW CLOCK MODE  (offline — unchanged)
+// ══════════════════════════════════════════════════════════════════════════════
+let bgFrame = 0;
+function drawClock(fb) {
+  const wx      = document.getElementById('selWeather').value;
+  const isNight = document.getElementById('selPeriod').value === 'night';
+  const wxData  = WX_PRESETS[wx] || null;
+  const now     = new Date();
+  const hh      = now.getHours().toString().padStart(2,'0');
+  const mm      = now.getMinutes().toString().padStart(2,'0');
+  const ss      = now.getSeconds().toString().padStart(2,'0');
+
+  drawBg(fb, wx, isNight, bgFrame);
+
+  const clockStr = hh+':'+mm;
+  const cw = tw(clockStr, 2);
+  const cx = Math.round((64-cw)/2);
+  dt(fb, cx+1, 3, clockStr, 10, 20, 50, 2);
+  dt(fb, cx,   2, clockStr, 255, 255, 255, 2);
+
+  const ssStr = ':'+ss;
+  const sw = tw(ssStr, 1);
+  const scx = Math.round((64-sw)/2);
+  dt(fb, scx, 19, ssStr, 120, 130, 160, 1);
+
+  // Weather footer (y=53..63)
+  fr(fb, 0, 53, 64, 11, 10, 16, 34);
+  fr(fb, 0, 53, 64, 1,  18, 26, 50);
+  if (wxData) {
+    wicon_sm(fb, 1, 55, wx);
+    // Narrow minus (-) = 3 px wide, advance 4; reduce gap before '/' by 2 px
+    let tx = dtTmp(fb, 9, 55, wxData.min+'\u00B0', 100, 150, 255);
+    tx -= 2;
+    tx = dt(fb, tx, 55, '/', 50, 60, 80);
+    dtTmp(fb, tx, 55, wxData.max+'\u00B0', 255, 140, 60);
+    dtRTmp(fb, 62, 55, wxData.temp+'\u00B0', 200, 200, 180);
+  } else {
+    dtC(fb, 32, 55, 'HORS-LIGNE', 80, 90, 110);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// WEATHER PRESETS
+// ══════════════════════════════════════════════════════════════════════════════
+const WX_PRESETS = {
+  sunny:  {temp:19, min:12, max:19},
+  cloudy: {temp:14, min:7,  max:13},
+  rain:   {temp:10, min:6,  max:11},
+  snow:   {temp:-2, min:-4, max:2 },
+  thunder:{temp:11, min:8,  max:13},
+  fog:    {temp:8,  min:5,  max:10},
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ══════════════════════════════════════════════════════════════════════════════
+let paused = false;
+
+function tick() {
+  if (paused) return;
+  drawDepartures(fbA);
+  flush(document.getElementById('ca'), fbA);
+  drawClock(fbB);
+  flush(document.getElementById('cb'), fbB);
+  bgFrame++;
+}
+
+setInterval(tick, 1000);
+tick();
+
+document.getElementById('btnPause').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? '▶ Reprendre' : '⏸ Pause';
+  if (!paused) tick();
+});
+
+['selWeather','selPeriod','selRows','selArriving','selBirthday','selJourJ'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    prevA = {clockHHMM:null,weatherKey:null,times:[null,null,null,null],lineSet:null,nRows:null,bdayOn:null,jourJOn:null};
+    Object.keys(highlightFrames).forEach(k=>delete highlightFrames[k]);
+    for(let i=0;i<4;i++) destScroll[i]=0;
+    bdayScroll=0; jourJScroll=0;
+    tick();
+  });
+});
+</script>
+</body>
+</html>

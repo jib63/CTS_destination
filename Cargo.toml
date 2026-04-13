@@ -19,6 +19,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2"
 anyhow = "1"
 futures-util = "0.3"
+png = "0.17"
+base64 = "0.22"
 
 [profile.release]
 opt-level = "s"

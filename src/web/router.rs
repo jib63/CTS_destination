@@ -1,26 +1,4 @@
-// Copyright (c) 2026, Jean-Baptiste Meyer
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// SPDX-License-Identifier: MIT
 
 use std::sync::Arc;
 
@@ -35,10 +13,10 @@ use rust_embed::Embed;
 use serde::Deserialize;
 use tracing::info;
 
-use crate::api::client::{fetch_stop_details, fetch_stops};
-use crate::config::save_monitoring_ref;
-use crate::display::web::AppState;
-use crate::server::ws::ws_handler;
+use crate::cts::client::{fetch_stop_details, fetch_stops};
+use crate::config::{save_jour_j, save_monitoring_ref};
+use crate::web::AppState;
+use crate::web::ws::ws_handler;
 
 #[derive(Embed)]
 #[folder = "static/"]
@@ -50,7 +28,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/stops", get(stops_handler))
         .route("/api/stops/:code/details", get(stop_details_handler))
         .route("/api/config", post(config_handler))
+        .route("/api/jour-j", post(jour_j_handler))
         .route("/api/status", get(status_handler))
+        .route("/api/pixoo64/preview", get(pixoo_preview_handler))
         .fallback(static_handler)
         .with_state(state)
 }
@@ -110,6 +90,51 @@ async fn config_handler(
     StatusCode::OK.into_response()
 }
 
+// ── POST /api/jour-j ─────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct JourJUpdate {
+    date:  String,
+    label: String,
+}
+
+async fn jour_j_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<JourJUpdate>,
+) -> Response {
+    let date  = body.date.trim().to_owned();
+    let label = body.label.trim().to_owned();
+
+    if date.is_empty() || label.is_empty() {
+        return (StatusCode::BAD_REQUEST, "date and label are required").into_response();
+    }
+
+    // Basic DD/MM/YYYY format check
+    let parts: Vec<&str> = date.split('/').collect();
+    if parts.len() != 3 || parts[0].len() != 2 || parts[1].len() != 2 || parts[2].len() != 4 {
+        return (StatusCode::BAD_REQUEST, "date must be DD/MM/YYYY").into_response();
+    }
+
+    if let Err(e) = save_jour_j(&state.config_path, &date, &label) {
+        return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save config: {e}"))
+            .into_response();
+    }
+
+    {
+        let mut d = state.jour_j_date.write().await;
+        *d = Some(date.clone());
+    }
+    {
+        let mut l = state.jour_j_label.write().await;
+        *l = Some(label.clone());
+    }
+
+    info!(date = %date, label = %label, "Jour J updated via configuration UI");
+    state.poll_trigger.notify_one();
+
+    StatusCode::OK.into_response()
+}
+
 // ── Static file fallback ─────────────────────────────────────────────────────
 
 async fn static_handler(_state: State<Arc<AppState>>, uri: Uri) -> Response {
@@ -129,37 +154,55 @@ async fn static_handler(_state: State<Arc<AppState>>, uri: Uri) -> Response {
     }
 }
 
+// ── GET /api/pixoo64/preview ─────────────────────────────────────────────────
+
+async fn pixoo_preview_handler(State(state): State<Arc<AppState>>) -> Response {
+    if !state.pixoo64_enabled {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let guard = state.pixoo64_preview.read().await;
+    match guard.as_ref() {
+        Some(png) => (
+            [(header::CONTENT_TYPE, "image/png")],
+            png.clone(),
+        ).into_response(),
+        None => StatusCode::NO_CONTENT.into_response(),
+    }
+}
+
 // ── GET /api/status ──────────────────────────────────────────────────────────
 
 async fn status_handler(State(state): State<Arc<AppState>>) -> Response {
-    use chrono::{Local, Timelike};
+    use chrono::Local;
     use std::sync::atomic::Ordering;
 
     let monitoring_ref = state.monitoring_ref.read().await.clone();
     let now = Local::now();
-    let current_mins = (now.hour() * 60 + now.minute()) as u16;
 
-    let in_window = state.always_query
-        || state
-            .query_intervals
-            .iter()
-            .any(|(s, e)| current_mins >= *s && current_mins <= *e);
+    let in_window = state.cts_always_query
+        || state.cts_query_intervals.iter().any(|m| m.matches(&now));
 
-    let next_poll_at = state.next_poll_at.load(Ordering::Relaxed);
+    let next_poll_at = state.cts_next_poll_at.load(Ordering::Relaxed);
 
     // ── Meteoblue snapshot ───────────────────────────────────────────────────
-    let weather = state.latest_weather.read().await.clone();
-    let weather_coords = state.weather_coords.read().await.clone();
+    let weather = state.meteoblue_latest.read().await.clone();
+    let weather_coords = state.meteoblue_coords.read().await.clone();
+
+    let meteoblue_in_window = state.meteoblue_always_query
+        || state.meteoblue_query_intervals.iter().any(|m| m.matches(&now));
 
     let meteoblue = serde_json::json!({
-        "enabled": state.weather_enabled,
-        "simulation": state.weather_simulation,
-        "location_config": state.weather_location,
+        "enabled": state.meteoblue_enabled,
+        "simulation": state.meteoblue_simulation,
+        "always_query": state.meteoblue_always_query,
+        "in_window": meteoblue_in_window,
+        "query_intervals_raw": state.meteoblue_query_intervals_raw,
+        "location_config": state.meteoblue_location,
         "location_resolved": weather_coords.as_ref().map(|c| &c.name),
         "lat": weather_coords.as_ref().map(|c| c.lat),
         "lon": weather_coords.as_ref().map(|c| c.lon),
         "asl": weather_coords.as_ref().map(|c| c.asl),
-        "polling_interval_minutes": state.weather_polling_interval_minutes,
+        "polling_interval_minutes": state.meteoblue_polling_interval_minutes,
         "last_fetch": weather.as_ref().map(|w| w.fetched_at.to_rfc3339()),
         "pictocode": weather.as_ref().map(|w| w.pictocode),
         "temp_now": weather.as_ref().map(|w| w.temp_now),
@@ -169,17 +212,36 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> Response {
         "sunshine_hours": weather.as_ref().map(|w| w.sunshine_hours),
     });
 
+    // ── Birthday snapshot ────────────────────────────────────────────────────
+    let birthday = serde_json::json!({
+        "enabled": state.birthday_enabled,
+        "file": state.birthday_file,
+    });
+
+    // ── Jour J snapshot ──────────────────────────────────────────────────────
+    let jj_date  = state.jour_j_date.read().await.clone();
+    let jj_label = state.jour_j_label.read().await.clone();
+    let jj_days  = jj_date.as_deref().and_then(crate::departure::model::DepartureBoard::compute_jour_j);
+    let jour_j = serde_json::json!({
+        "enabled": state.jour_j_enabled,
+        "date":    jj_date,
+        "label":   jj_label,
+        "days_remaining": jj_days,
+    });
+
     Json(serde_json::json!({
         "cts": {
-            "simulation": state.simulation,
+            "simulation": state.cts_simulation,
             "monitoring_ref": monitoring_ref,
-            "polling_interval_minutes": state.polling_interval_minutes,
-            "always_query": state.always_query,
+            "polling_interval_minutes": state.cts_polling_interval_minutes,
+            "always_query": state.cts_always_query,
             "in_window": in_window,
-            "query_intervals_raw": state.query_intervals_raw,
+            "query_intervals_raw": state.cts_query_intervals_raw,
             "next_poll_at": next_poll_at,
         },
         "meteoblue": meteoblue,
+        "birthday": birthday,
+        "jour_j": jour_j,
         "server_local_time": now.to_rfc3339(),
     }))
     .into_response()

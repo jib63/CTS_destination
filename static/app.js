@@ -140,6 +140,123 @@
             '</div>';
     }
 
+    // ── Extras row visibility ──────────────────────────────────────────────
+
+    function updateExtrasRowVisibility() {
+        var bday = document.getElementById("birthday-row");
+        var jj   = document.getElementById("jour-j-row");
+        var row  = document.getElementById("extras-row");
+        var anyVisible = bday.style.display !== "none" || jj.style.display !== "none";
+        row.style.display = anyVisible ? "" : "none";
+    }
+
+    // ── Birthday row ───────────────────────────────────────────────────────
+
+    function renderBirthday(board) {
+        var el = document.getElementById("birthday-row");
+        var names = (board && board.birthdays_today) || [];
+
+        if (names.length === 0) {
+            el.style.display = "none";
+            updateExtrasRowVisibility();
+            return;
+        }
+        el.style.display = "";
+
+        var text = "\u00a0\u00a0\ud83c\udf81\u00a0Bon anniversaire\u00a0\u2022\u00a0" + names.join("\u00a0\u2022\u00a0") + "\u00a0\u00a0";
+
+        // Present icon (SVG)
+        var iconSvg =
+            '<svg class="birthday-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<rect x="3" y="10" width="18" height="12" rx="2" fill="#5b8dee" opacity="0.9"/>' +
+            '<rect x="9" y="10" width="6" height="12" fill="#e6dca8" opacity="0.5"/>' +
+            '<rect x="3" y="7" width="18" height="4" rx="1" fill="#7aaaf5"/>' +
+            '<rect x="10.5" y="7" width="3" height="4" fill="#e6dca8" opacity="0.5"/>' +
+            '<path d="M12 7 Q10 4 8 5 Q6 6 8 8 Q10 9 12 7Z" fill="#e87070"/>' +
+            '<path d="M12 7 Q14 4 16 5 Q18 6 16 8 Q14 9 12 7Z" fill="#e87070"/>' +
+            '</svg>';
+
+        var wrap = document.createElement("div");
+        wrap.className = "birthday-text-wrap";
+
+        var span = document.createElement("span");
+        span.textContent = text + text; // duplicate for seamless loop
+        wrap.appendChild(span);
+
+        el.innerHTML = iconSvg;
+        el.appendChild(wrap);
+        wrap.classList.add("scrolling");
+        updateExtrasRowVisibility();
+    }
+
+    // ── Jour J row ─────────────────────────────────────────────────────────
+
+    function isJourJPast(jourJDate) {
+        if (!jourJDate) return true;
+        var parts = jourJDate.split("/");
+        if (parts.length !== 3) return true;
+        var target = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        var today = new Date(); today.setHours(0,0,0,0);
+        return target < today;
+    }
+
+    var _jourJMidnightTimer = null;
+
+    function scheduleMidnightRefresh() {
+        if (_jourJMidnightTimer) clearTimeout(_jourJMidnightTimer);
+        var now = new Date();
+        var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+        var msUntil = midnight.getTime() - now.getTime();
+        _jourJMidnightTimer = setTimeout(function () {
+            renderJourJ(departureData);
+            scheduleMidnightRefresh();
+        }, msUntil);
+    }
+
+    function renderJourJ(board) {
+        var el = document.getElementById("jour-j-row");
+        if (!board || !board.jour_j) {
+            el.style.display = "none";
+            updateExtrasRowVisibility();
+            return;
+        }
+        var days  = board.jour_j[0];
+        var label = board.jour_j[1];
+
+        if (days === null || days === undefined || days < 0) {
+            el.style.display = "none";
+            updateExtrasRowVisibility();
+            return;
+        }
+
+        el.style.display = "";
+
+        var badgeText = "J\u2011" + days;
+
+        var iconSvg =
+            '<svg class="jour-j-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<path d="M12 2 L14 8 L20 8 L15 12 L17 18 L12 14 L7 18 L9 12 L4 8 L10 8 Z" fill="#f0c83c"/>' +
+            '</svg>';
+
+        var badge = document.createElement("span");
+        badge.className = "jour-j-badge";
+        badge.textContent = badgeText;
+
+        var wrap = document.createElement("div");
+        wrap.className = "jour-j-text-wrap";
+
+        var text = "\u00a0" + label + "\u00a0\u00a0\u00a0";
+        var span = document.createElement("span");
+        span.textContent = text + text; // duplicate for seamless loop
+        wrap.appendChild(span);
+
+        el.innerHTML = iconSvg;
+        el.appendChild(badge);
+        el.appendChild(wrap);
+        wrap.classList.add("scrolling");
+        updateExtrasRowVisibility();
+    }
+
     function renderBoard() {
         if (!departureData) return;
 
@@ -152,6 +269,9 @@
             msg.className = "offline-message";
             msg.textContent = departureData.offline_message;
             container.appendChild(msg);
+            renderBirthday(null);
+            renderJourJ(null);
+            renderWeather(null);
             return;
         }
 
@@ -190,6 +310,8 @@
         });
 
         updateTimers();
+        renderBirthday(departureData);
+        renderJourJ(departureData);
         renderWeather(departureData);
     }
 
@@ -294,7 +416,7 @@
 
         if (tab === "cts") {
             renderStatusCts(data.cts || {}, data.server_local_time, row);
-        } else {
+        } else if (tab === "meteoblue") {
             renderStatusMeteoblue(data.meteoblue || {}, row);
         }
     }
@@ -323,7 +445,7 @@
         if (!cts.always_query) {
             row("Fen\u00eatre active", cts.in_window ? "Oui" : "Non",
                 cts.in_window ? "" : "dim");
-            row("Plages horaires",
+            row("Expressions crontab",
                 escHtml(cts.query_intervals_raw || "—"),
                 cts.query_intervals_raw ? "" : "dim");
         }
@@ -362,6 +484,16 @@
         }
 
         row("Intervalle de relev\u00e9", (mb.polling_interval_minutes || "—") + "\u00a0min");
+
+        row("Interrogation permanente", mb.always_query ? "Oui" : "Non");
+
+        if (!mb.always_query) {
+            row("Fen\u00eatre active", mb.in_window ? "Oui" : "Non",
+                mb.in_window ? "" : "dim");
+            row("Expressions crontab",
+                escHtml(mb.query_intervals_raw || "—"),
+                mb.query_intervals_raw ? "" : "dim");
+        }
 
         if (mb.last_fetch) {
             var fetchTime = "—";
@@ -416,21 +548,131 @@
 
     // Currently selected stop info used while navigating level 2
     var pendingStop = null;   // { code, name } for the logical stop being drilled into
+    var activeConfigTab = "arret";
+
+    function activateConfigTab(tab) {
+        activeConfigTab = tab;
+        document.querySelectorAll("#config-tabs .config-tab").forEach(function (b) {
+            b.classList.toggle("active", b.dataset.tab === tab);
+        });
+        var arretEl = document.getElementById("config-tab-arret");
+        var jourjEl = document.getElementById("config-tab-jour-j");
+        if (tab === "arret") {
+            arretEl.classList.remove("hidden");
+            jourjEl.classList.add("hidden");
+            showLevel1();
+            if (allStops === null) {
+                loadStops();
+            } else {
+                renderStops(allStops);
+                document.getElementById("config-filter").focus();
+            }
+        } else if (tab === "jour-j") {
+            arretEl.classList.add("hidden");
+            jourjEl.classList.remove("hidden");
+            openConfigJourJ();
+        }
+    }
 
     function openConfig() {
         document.getElementById("config-overlay").classList.remove("hidden");
-        showLevel1();
-        if (allStops === null) {
-            loadStops();
-        } else {
-            renderStops(allStops);
-            document.getElementById("config-filter").focus();
-        }
+        activateConfigTab(activeConfigTab);
     }
 
     function closeConfig() {
         document.getElementById("config-overlay").classList.add("hidden");
     }
+
+    // ── Jour J config (in config overlay) ─────────────────────────────────
+
+    function openConfigJourJ() {
+        var content = document.getElementById("config-jour-j-content");
+        content.innerHTML = '<div class="config-loading-msg">Chargement\u2026</div>';
+        fetch("/api/status")
+            .then(function (r) {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                renderConfigJourJ(data.jour_j || {}, content);
+            })
+            .catch(function (err) {
+                content.innerHTML = '<div class="config-loading-msg">Erreur\u00a0: ' + err.message + '</div>';
+            });
+    }
+
+    function renderConfigJourJ(jj, container) {
+        container.innerHTML = "";
+
+        function row(label, value, cls) {
+            var el = document.createElement("div");
+            el.className = "status-row";
+            el.innerHTML =
+                '<div class="status-label">' + label + "</div>" +
+                '<div class="status-value' + (cls ? " " + cls : "") + '">' + value + "</div>";
+            container.appendChild(el);
+        }
+
+        row("Compteur Jour J",
+            jj.enabled ? "Activ\u00e9" : "D\u00e9sactiv\u00e9",
+            jj.enabled ? "" : "dim");
+
+        if (jj.days_remaining !== null && jj.days_remaining !== undefined) {
+            row("Jours restants", "J\u2011" + jj.days_remaining, "highlight");
+        } else if (jj.date) {
+            row("Jours restants", "Date pass\u00e9e", "dim");
+        }
+
+        // Form
+        var form = document.createElement("div");
+        form.className = "status-row";
+        form.style.flexDirection = "column";
+        form.style.gap = "0.6rem";
+        form.style.paddingTop = "0.5rem";
+        form.innerHTML =
+            '<div class="status-label">Configurer l\u2019\u00e9v\u00e9nement</div>' +
+            '<input id="jj-date-input" type="text" placeholder="JJ/MM/AAAA" maxlength="10"' +
+            ' value="' + escHtml(jj.date || "") + '"' +
+            ' style="background:#1a2744;color:#fff;border:1px solid rgba(255,255,255,0.2);' +
+            'border-radius:6px;padding:0.4em 0.7em;font-size:0.9rem;width:100%;">' +
+            '<input id="jj-label-input" type="text" placeholder="\u00c9v\u00e9nement (ex\u00a0: No\u00ebl)"' +
+            ' value="' + escHtml(jj.label || "") + '"' +
+            ' style="background:#1a2744;color:#fff;border:1px solid rgba(255,255,255,0.2);' +
+            'border-radius:6px;padding:0.4em 0.7em;font-size:0.9rem;width:100%;">' +
+            '<button id="jj-save-btn"' +
+            ' style="background:#2e8b3c;color:#fff;border:none;border-radius:6px;' +
+            'padding:0.45em 1.2em;font-size:0.9rem;cursor:pointer;align-self:flex-start;">' +
+            'Enregistrer</button>' +
+            '<div id="jj-toast" style="display:none;color:#6df083;font-size:0.85rem;">Enregistr\u00e9 !</div>';
+        container.appendChild(form);
+
+        document.getElementById("jj-save-btn").addEventListener("click", function () {
+            var date  = (document.getElementById("jj-date-input").value  || "").trim();
+            var label = (document.getElementById("jj-label-input").value || "").trim();
+            if (!date || !label) { alert("La date et le label sont requis."); return; }
+            fetch("/api/jour-j", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ date: date, label: label })
+            })
+            .then(function (r) {
+                if (!r.ok) return r.text().then(function (t) { throw new Error(t); });
+                var toast = document.getElementById("jj-toast");
+                if (toast) { toast.style.display = ""; setTimeout(function () { toast.style.display = "none"; }, 2000); }
+                openConfigJourJ();
+            })
+            .catch(function (err) { alert("Erreur\u00a0: " + err.message); });
+        });
+    }
+
+    // Config tab switching
+    document.getElementById("config-tabs").addEventListener("click", function (e) {
+        var btn = e.target.closest(".config-tab");
+        if (!btn) return;
+        var tab = btn.dataset.tab;
+        if (tab === activeConfigTab) return;
+        activateConfigTab(tab);
+    });
 
     // ── Level 1 helpers ────────────────────────────────────────────────────
 
@@ -681,5 +923,6 @@
     }, 1000);
 
     updateClock();
+    scheduleMidnightRefresh();
     connect();
 }());

@@ -1,26 +1,4 @@
-// Copyright (c) 2026, Jean-Baptiste Meyer
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// SPDX-License-Identifier: MIT
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,17 +6,17 @@ use std::time::Duration;
 use tracing::{error, info, warn};
 use url::Url;
 
-use crate::display::web::AppState;
-use crate::weather::model::{LocationSearchResponse, MeteoblueResponse, WeatherCoords, WeatherSnapshot};
-use crate::weather::simulation;
+use crate::web::AppState;
+use crate::meteoblue::model::{LocationSearchResponse, MeteoblueResponse, WeatherCoords, WeatherSnapshot};
+use crate::meteoblue::simulation;
 
 const RETRY_DELAY_SECS: u64 = 300; // 5 minutes on error
 
-/// Store `snap` in `state.latest_weather`, then patch the cached board JSON so
+/// Store `snap` in `state.meteoblue_latest`, then patch the cached board JSON so
 /// that already-connected clients and the next new-connection snapshot both
 /// show weather immediately — without waiting for the next CTS poll.
 async fn store_and_rebroadcast(state: &AppState, snap: WeatherSnapshot) {
-    *state.latest_weather.write().await = Some(snap.clone());
+    *state.meteoblue_latest.write().await = Some(snap.clone());
 
     // Patch the cached departure-board JSON with the fresh weather field
     let weather_val = match serde_json::to_value(&snap) {
@@ -61,8 +39,8 @@ async fn store_and_rebroadcast(state: &AppState, snap: WeatherSnapshot) {
 /// Resolve a city name to coordinates using the Meteoblue location search API.
 /// Called once on startup. Returns None (and logs an error) if resolution fails.
 pub async fn resolve_location(state: &AppState) -> Option<WeatherCoords> {
-    let key = state.weather_api_key.as_deref()?;
-    let location = state.weather_location.as_deref()?;
+    let key = state.meteoblue_api_key.as_deref()?;
+    let location = state.meteoblue_location.as_deref()?;
 
     let mut url = Url::parse("https://www.meteoblue.com/en/server/search/query3")
         .expect("static URL is valid");
@@ -125,8 +103,8 @@ pub async fn weather_poll_loop(state: Arc<AppState>, interval_mins: u64) {
     let interval = Duration::from_secs(interval_mins * 60);
 
     // ── Simulation mode ───────────────────────────────────────────────────────
-    if state.weather_simulation {
-        let location = state.weather_location.as_deref().unwrap_or("Simulation");
+    if state.meteoblue_simulation {
+        let location = state.meteoblue_location.as_deref().unwrap_or("Simulation");
         loop {
             let snap = simulation::simulate_weather(location);
             info!(location, "Weather simulation: generated fake snapshot");
@@ -139,7 +117,7 @@ pub async fn weather_poll_loop(state: Arc<AppState>, interval_mins: u64) {
     let coords = loop {
         match resolve_location(&state).await {
             Some(c) => {
-                *state.weather_coords.write().await = Some(c.clone());
+                *state.meteoblue_coords.write().await = Some(c.clone());
                 break c;
             }
             None => {
@@ -149,7 +127,7 @@ pub async fn weather_poll_loop(state: Arc<AppState>, interval_mins: u64) {
         }
     };
 
-    let key = match &state.weather_api_key {
+    let key = match &state.meteoblue_api_key {
         Some(k) => k.clone(),
         None => {
             error!("weather_api_key missing — weather poll loop exiting");
@@ -159,6 +137,20 @@ pub async fn weather_poll_loop(state: Arc<AppState>, interval_mins: u64) {
 
     // ── Poll loop ─────────────────────────────────────────────────────────────
     loop {
+        // ── Time-window gate ─────────────────────────────────────────────────
+        if !state.meteoblue_always_query {
+            let now = chrono::Local::now();
+            let in_window = state
+                .meteoblue_query_intervals
+                .iter()
+                .any(|m| m.matches(&now));
+            if !in_window {
+                tracing::info!("Weather: outside query window; sleeping 60 s before recheck");
+                tokio::time::sleep(Duration::from_secs(60)).await;
+                continue;
+            }
+        }
+
         match fetch_weather(&state, &coords, &key).await {
             Some(snap) => {
                 info!(

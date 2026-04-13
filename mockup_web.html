@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maquette Web — CTS</title>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ── CTS line colors ── */
+:root {
+  --line-A: #c8102e; --line-B: #7b2d8b; --line-C: #e07b10;
+  --line-D: #2e8b3c; --line-E: #6f2c91; --line-F: #c5145b; --line-G: #5c6bc0;
+  --line-default: #546e7a;
+  --header-bg: #1a2744;
+  --row-dark:  #1966b8;
+  --row-light: #2474cc;
+  --text:    #ffffff;
+  --subtext: rgba(255,255,255,0.75);
+}
+
+html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+/* ── Controls bar (mockup-only) ── */
+#ctrl-bar {
+  height: 46px;
+  background: #060d1e;
+  border-bottom: 1px solid #1a2744;
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 0 1rem;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+#ctrl-bar label { font-size: 11px; color: #556; letter-spacing: 0.08em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; cursor: pointer; }
+#ctrl-bar select, #ctrl-bar button {
+  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
+  transition: background 0.12s;
+}
+#ctrl-bar select:hover, #ctrl-bar button:hover { background: #162038; border-color: #3a5070; }
+#ctrl-bar input[type=checkbox] { accent-color: #ffc107; width: 14px; height: 14px; cursor: pointer; }
+.ctrl-sep { width: 1px; height: 22px; background: #1a2744; flex-shrink: 0; }
+#ctrl-bar .ctrl-title { font-size: 12px; font-weight: 700; color: #ffc107; white-space: nowrap;
+  letter-spacing: 0.05em; margin-right: 0.4rem; }
+
+/* ── Board container ── */
+#board {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 46px);
+}
+
+/* ── Header ── */
+#header {
+  background: var(--header-bg);
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 2vw, 2rem);
+  padding: clamp(0.4rem, 1.2vh, 1rem) clamp(0.5rem, 1.5vw, 1.5rem);
+  flex-shrink: 0;
+  border-bottom: 2px solid rgba(255,255,255,0.12);
+}
+#clock { font-size: clamp(1.4rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; }
+#date  { font-size: clamp(0.9rem, 2.5vw, 1.6rem); font-weight: 500; white-space: nowrap; }
+#branding { font-size: clamp(0.75rem, 2vw, 1.3rem); font-weight: 700; white-space: nowrap; margin-left: auto; }
+.brand-bus, .brand-tram { color: var(--text); }
+.brand-euro { font-size: 0.6em; font-weight: 400; vertical-align: super; color: var(--subtext); }
+#logo { background: white; border-radius: 4px; padding: 0.1em 0.3em; font-size: clamp(1rem, 2.5vw, 1.8rem);
+  font-weight: 900; line-height: 1; white-space: nowrap; letter-spacing: -0.02em; }
+.logo-c { color: #e2001a; } .logo-t { color: #003f8a; } .logo-s { color: #e2001a; }
+#col-headers { display: flex; gap: clamp(0.5rem, 3vw, 3rem); font-size: clamp(0.6rem, 1.5vw, 1rem);
+  font-weight: 700; letter-spacing: 0.08em; color: var(--subtext); white-space: nowrap; }
+.col-label { min-width: clamp(100px, 20vw, 220px); text-align: center; }
+
+/* ── Departure rows ── */
+#departures { display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.departure-row {
+  display: grid;
+  grid-template-columns: auto 1fr clamp(100px, 20vw, 220px) clamp(100px, 20vw, 220px);
+  align-items: center;
+  column-gap: 0; row-gap: 0;
+  padding: 0 0 0 clamp(0.75rem, 2vw, 2rem);
+  height: clamp(100px, 15vh, 150px);
+  flex-shrink: 0;
+}
+.departure-row:nth-child(odd)  { background: var(--row-light); }
+.departure-row:nth-child(even) { background: var(--row-dark); }
+.line-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: clamp(2.8rem, 7vw, 5.5rem); height: clamp(2.8rem, 7vw, 5.5rem);
+  border-radius: 8px; font-weight: 900; font-size: clamp(1.6rem, 5vw, 3.8rem);
+  color: white; flex-shrink: 0; text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  margin-right: clamp(0.6rem, 2vw, 2rem);
+}
+.destination { font-size: clamp(1.3rem, 3.8vw, 3rem); font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.time-cell {
+  text-align: center; font-size: clamp(1.8rem, 5.5vw, 4.2rem); font-weight: 900;
+  white-space: nowrap; display: flex; align-items: center; justify-content: center;
+  gap: 0.15em; border-left: 3px solid var(--header-bg);
+  padding: 0 clamp(1.5rem, 4.5vw, 5rem); align-self: stretch;
+}
+.time-cell .unit { font-size: 0.42em; font-weight: 600; letter-spacing: 0.02em; color: var(--subtext); }
+.time-cell .arriving { font-size: 0.55em; font-weight: 700; color: #ffc107; }
+
+/* ── Birthday row ── */
+/* flex-shrink 200: collapses before weather (50) but after Jour J (400) */
+#birthday-row {
+  flex: 0 200 auto;
+  background: #2a3d7a;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: clamp(0.45rem, 1.4vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+#birthday-row.hidden { display: none !important; }
+
+/* ── Jour J row ── */
+/* flex-shrink 400: collapses first when vertical space is tight */
+#jour-j-row {
+  flex: 0 400 auto;
+  background: #1a5060;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: clamp(0.45rem, 1.4vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+#jour-j-row.hidden { display: none !important; }
+
+/* ── Shared row icon ── */
+.board-row-icon {
+  width: clamp(1.8rem, 4.5vw, 3rem);
+  height: clamp(1.8rem, 4.5vw, 3rem);
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
+
+/* ── Jour J badge ── */
+.jourj-badge {
+  font-size: clamp(1.15rem, 3vw, 2rem);
+  font-weight: 900;
+  color: #ffc107;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+/* ── Scrolling text container ── */
+.board-scroll-outer {
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 95%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 2%, black 95%, transparent);
+}
+.board-scroll-inner {
+  display: inline-block;
+  white-space: nowrap;
+}
+.board-scroll-inner.running {
+  animation: board-marquee var(--dur, 18s) linear infinite;
+}
+@keyframes board-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.bday-text {
+  font-size: clamp(0.95rem, 2.4vw, 1.65rem);
+  font-weight: 600;
+  color: #e8d88a;
+}
+.jourj-label-text {
+  font-size: clamp(0.95rem, 2.4vw, 1.65rem);
+  font-weight: 600;
+  color: #64c8dc;
+}
+
+/* ── Board footer (weather) ── */
+/* flex-grow 1: expands to fill remaining space; flex-shrink 50: collapses before birthday/Jour J */
+#board-footer {
+  flex: 1 50 auto;
+  background: var(--header-bg);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+#board-footer.hidden { display: none !important; }
+
+/* ── Weather row ── */
+#weather-row {
+  display: flex; align-items: center; gap: clamp(0.8rem, 2.5vw, 2.5rem);
+  padding: clamp(0.5rem, 1.8vh, 1.4rem) clamp(0.75rem, 2vw, 2rem);
+  width: 100%;
+  font-size: clamp(0.9rem, 2.5vw, 1.7rem); color: var(--text);
+}
+#weather-icon { width: clamp(2.8rem, 6.5vw, 5rem); height: clamp(2.8rem, 6.5vw, 5rem);
+  flex-shrink: 0; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4)); }
+.wx-sep-bar { width: 1px; align-self: stretch; background: rgba(255,255,255,0.15);
+  margin: 0.35em 0; flex-shrink: 0; }
+.wx-group { display: flex; flex-direction: column; gap: 0.06em; }
+.wx-label { font-size: 0.52em; font-weight: 700; letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.42); text-transform: uppercase; }
+.wx-temps { display: flex; align-items: center; gap: 0.35em; }
+.wx-temp-min { background: #1565c0; color: #fff; border-radius: 4px; padding: 0.1em 0.42em;
+  font-weight: 800; white-space: nowrap; }
+.wx-temp-max { background: #2e7d32; color: #fff; border-radius: 4px; padding: 0.1em 0.42em;
+  font-weight: 800; white-space: nowrap; }
+.wx-temp-sep { color: rgba(255,255,255,0.3); font-weight: 300; }
+.wx-item { display: flex; align-items: center; gap: 0.3em; }
+.wx-value { font-size: 0.95em; font-weight: 700; white-space: nowrap; }
+.wx-unit { font-size: 0.7em; font-weight: 500; color: var(--subtext); }
+.wx-location { margin-left: auto; font-size: 0.62em; font-weight: 500;
+  color: rgba(255,255,255,0.32); letter-spacing: 0.04em; white-space: nowrap; padding-right: 0.4em; }
+.wx-item svg { width: 1em; height: 1em; flex-shrink: 0; }
+
+/* ── Status overlay ── */
+#status-overlay {
+  position: fixed; inset: 0; z-index: 100; background: #0d1b3e;
+  display: flex; flex-direction: column;
+}
+#status-overlay.hidden { display: none; }
+.config-topbar {
+  background: var(--header-bg); display: flex; align-items: center; gap: 1rem;
+  padding: clamp(0.5rem, 1.5vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
+  border-bottom: 2px solid rgba(255,255,255,0.12); flex-shrink: 0;
+}
+#status-back {
+  background: none; border: 1.5px solid rgba(255,255,255,0.4); border-radius: 6px;
+  color: white; padding: 0.35em 0.8em; font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+  font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.15s;
+}
+#status-back:hover { background: rgba(255,255,255,0.1); }
+.config-heading { font-size: clamp(1rem, 2.5vw, 1.5rem); font-weight: 700; color: white; }
+#status-tabs {
+  display: flex; gap: 0; background: rgba(0,0,0,0.25);
+  border-bottom: 2px solid rgba(255,255,255,0.1); flex-shrink: 0;
+}
+.status-tab {
+  background: none; border: none; border-bottom: 3px solid transparent;
+  color: rgba(255,255,255,0.5); padding: 0.7em 1.4em;
+  font-size: clamp(0.8rem, 1.8vw, 1rem); font-weight: 600; letter-spacing: 0.04em;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -2px;
+}
+.status-tab:hover { color: rgba(255,255,255,0.8); }
+.status-tab.active { color: #fff; border-bottom-color: #ffc107; }
+#status-content {
+  flex: 1; overflow-y: auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+#status-content::-webkit-scrollbar { width: 6px; }
+#status-content::-webkit-scrollbar-track { background: transparent; }
+#status-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.status-row {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 0.85rem 1.1rem; display: flex; flex-direction: column; gap: 0.3rem;
+}
+.status-label { font-size: clamp(0.62rem, 1.2vw, 0.75rem); font-weight: 700;
+  letter-spacing: 0.08em; color: rgba(255,255,255,0.42); text-transform: uppercase; }
+.status-value { font-size: clamp(0.92rem, 2vw, 1.15rem); font-weight: 600; color: white; word-break: break-all; }
+.status-value.highlight { color: #ffc107; }
+.status-value.dim { color: rgba(255,255,255,0.55); font-style: italic; font-weight: 400; }
+
+/* ── Jour J config form ── */
+.jourj-form { display: flex; flex-direction: column; gap: 1rem; }
+.jourj-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.jourj-field label { font-size: clamp(0.72rem, 1.4vw, 0.85rem); font-weight: 700;
+  letter-spacing: 0.06em; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+.jourj-field input {
+  background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 8px; color: white; padding: 0.6em 1em;
+  font-size: clamp(0.95rem, 2vw, 1.1rem); outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.jourj-field input::placeholder { color: rgba(255,255,255,0.3); }
+.jourj-field input:focus { border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.12); }
+.jourj-save-btn {
+  background: #2e7d32; border: none; border-radius: 8px; color: white;
+  padding: 0.7em 1.5em; font-size: clamp(0.9rem, 2vw, 1.05rem); font-weight: 700;
+  cursor: pointer; letter-spacing: 0.03em; align-self: flex-start;
+  transition: background 0.15s, transform 0.08s;
+}
+.jourj-save-btn:hover { background: #388e3c; }
+.jourj-save-btn:active { transform: translateY(1px); }
+.jourj-save-btn.saved { background: #1565c0; }
+.jourj-current-box {
+  background: rgba(100,200,220,0.08); border: 1px solid rgba(100,200,220,0.2);
+  border-radius: 8px; padding: 0.85rem 1.1rem;
+  display: flex; align-items: center; gap: 1rem;
+}
+.jourj-current-badge {
+  font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 900; color: #ffc107;
+  white-space: nowrap; flex-shrink: 0;
+}
+.jourj-current-info { display: flex; flex-direction: column; gap: 0.2rem; }
+.jourj-current-label { font-size: clamp(0.65rem, 1.3vw, 0.78rem); font-weight: 700;
+  letter-spacing: 0.08em; color: rgba(255,255,255,0.42); text-transform: uppercase; }
+.jourj-current-event { font-size: clamp(1rem, 2.5vw, 1.4rem); font-weight: 600; color: #64c8dc; }
+.jourj-section-title {
+  font-size: clamp(0.85rem, 1.8vw, 1rem); font-weight: 700; color: rgba(255,255,255,0.6);
+  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 0.5rem;
+}
+#jourj-toast {
+  display: none; background: rgba(46,125,50,0.85); border: 1px solid rgba(46,125,50,0.6);
+  border-radius: 8px; padding: 0.7rem 1.2rem; font-size: 0.95rem; font-weight: 600;
+  color: #a5d6a7; margin-top: 0.5rem;
+}
+
+/* ── Offline message ── */
+.offline-message {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(1.2rem, 3.5vw, 2.2rem); font-weight: 700;
+  color: rgba(255,255,255,0.55); letter-spacing: 0.04em; text-align: center; padding: 2rem;
+}
+
+/* ── Status / config buttons in header ── */
+#config-btn {
+  background: none; border: 1.5px solid rgba(255,255,255,0.35); border-radius: 6px;
+  color: rgba(255,255,255,0.85); padding: 0.3em 0.7em;
+  font-size: clamp(0.7rem, 1.5vw, 0.95rem); font-weight: 600; cursor: pointer;
+  white-space: nowrap; letter-spacing: 0.03em; transition: background 0.15s;
+}
+#config-btn:hover { background: rgba(255,255,255,0.12); }
+#status-btn { background: none; border: none; padding: 0.3em 0.4em; cursor: pointer;
+  display: flex; align-items: center; flex-shrink: 0; }
+#status-dot { display: block; width: clamp(0.7rem, 1.6vw, 1rem); height: clamp(0.7rem, 1.6vw, 1rem);
+  border-radius: 50%; background: #4caf50; }
+</style>
+</head>
+<body>
+
+<!-- ── Mockup controls bar ── -->
+<div id="ctrl-bar">
+  <span class="ctrl-title">Maquette Web</span>
+  <div class="ctrl-sep"></div>
+
+  <label>
+    Lignes&nbsp;
+    <select id="sel-rows">
+      <option value="4">4</option>
+      <option value="3" selected>3</option>
+      <option value="2">2</option>
+      <option value="1">1</option>
+    </select>
+  </label>
+
+  <label>
+    <input type="checkbox" id="chk-bday" checked>
+    Anniversaires
+  </label>
+
+  <label>
+    <input type="checkbox" id="chk-jourj" checked>
+    Jour J
+  </label>
+
+  <label>
+    <input type="checkbox" id="chk-weather" checked>
+    Météo
+  </label>
+
+  <div class="ctrl-sep"></div>
+
+  <button id="btn-status">État du système…</button>
+</div>
+
+<!-- ── Main board ── -->
+<div id="board">
+
+  <header id="header">
+    <div id="clock">--:--</div>
+    <div id="date">--</div>
+    <button id="config-btn" title="Choisir un arrêt">Configuration</button>
+    <button id="status-btn" title="État du système"><span id="status-dot"></span></button>
+    <div id="branding">
+      <span class="brand-bus">bus</span><span class="brand-tram">tram</span>
+      <sup class="brand-euro">eurométropole</sup>
+    </div>
+    <div id="logo">
+      <span class="logo-c">c</span><span class="logo-t">T</span><span class="logo-s">s</span>
+    </div>
+    <div id="col-headers">
+      <span class="col-label">PROCHAIN</span>
+      <span class="col-label">SUIVANT</span>
+    </div>
+  </header>
+
+  <div id="departures"><!-- Populated by JS --></div>
+
+  <!-- ── Birthday row ── -->
+  <div id="birthday-row" class="hidden">
+    <svg class="board-row-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <!-- Present / gift -->
+      <rect x="3" y="11" width="18" height="11" rx="1.5" fill="#e8d88a" opacity="0.9"/>
+      <rect x="2" y="7" width="20" height="5" rx="1.5" fill="#ffc107"/>
+      <rect x="11" y="7" width="2" height="15" fill="#c8102e"/>
+      <rect x="2" y="9.2" width="20" height="1.6" fill="#c8102e" opacity="0.55"/>
+      <path d="M12 7.5 C10 4 6 4.5 6 7 C6 9 10 8.5 12 7.5Z" fill="#c8102e"/>
+      <path d="M12 7.5 C14 4 18 4.5 18 7 C18 9 14 8.5 12 7.5Z" fill="#c8102e"/>
+    </svg>
+    <div class="board-scroll-outer">
+      <div class="board-scroll-inner" id="bday-inner">
+        <span class="bday-text" id="bday-text-a"></span><span class="bday-text" id="bday-text-b" aria-hidden="true"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Jour J row ── -->
+  <div id="jour-j-row" class="hidden">
+    <svg class="board-row-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <!-- Party popper -->
+      <path d="M3 21 L16 8 L19.5 11.5 Z" fill="#e07b10"/>
+      <path d="M3 21 L8 16 L16 8 L11 13 Z" fill="#ffc107" opacity="0.55"/>
+      <circle cx="20" cy="5" r="2" fill="#ffc107"/>
+      <circle cx="17" cy="3" r="1.2" fill="#64c8dc"/>
+      <circle cx="22" cy="9" r="1.2" fill="#e8d88a"/>
+      <path d="M14 4.5 L15 2.5 L16 4.5 L14 4.5Z" fill="#ffc107"/>
+      <rect x="18" y="14" width="2.2" height="2.2" rx="0.5" fill="#c8102e" transform="rotate(25 19 15)"/>
+      <rect x="13" y="3.5" width="2" height="2" rx="0.5" fill="#7b2d8b" transform="rotate(-15 14 4.5)"/>
+    </svg>
+    <div class="jourj-badge" id="jourj-badge">J-42</div>
+    <div class="board-scroll-outer">
+      <div class="board-scroll-inner" id="jourj-inner">
+        <span class="jourj-label-text" id="jourj-text-a"></span><span class="jourj-label-text" id="jourj-text-b" aria-hidden="true"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="board-footer">
+    <div id="weather-row">
+      <svg id="weather-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="#w-mostly-sunny"/></svg>
+      <div class="wx-group">
+        <span class="wx-label">Température</span>
+        <div class="wx-temps">
+          <span class="wx-temp-min">8&nbsp;°C</span>
+          <span class="wx-temp-sep">/</span>
+          <span class="wx-temp-max">17&nbsp;°C</span>
+        </div>
+      </div>
+      <div class="wx-sep-bar"></div>
+      <div class="wx-group">
+        <span class="wx-label">Maintenant</span>
+        <div class="wx-item"><span class="wx-value">13<span class="wx-unit">&nbsp;°C</span></span></div>
+      </div>
+      <div class="wx-sep-bar"></div>
+      <div class="wx-group">
+        <span class="wx-label">Précipitations</span>
+        <div class="wx-item">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3C12 3 5 10 5 15C5 18.87 8.13 22 12 22C15.87 22 19 18.87 19 15C19 10 12 3 12 3Z" fill="#5ba3d8"/>
+          </svg>
+          <span class="wx-value">1.2<span class="wx-unit">&nbsp;mm</span></span>
+        </div>
+      </div>
+      <div class="wx-sep-bar"></div>
+      <div class="wx-group">
+        <span class="wx-label">Ensoleillement</span>
+        <div class="wx-item">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="5" fill="#FFD600"/>
+            <g stroke="#FFD600" stroke-width="2" stroke-linecap="round">
+              <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+              <line x1="4.9" y1="4.9" x2="7.1" y2="7.1"/><line x1="16.9" y1="16.9" x2="19.1" y2="19.1"/>
+              <line x1="19.1" y1="4.9" x2="16.9" y2="7.1"/><line x1="7.1" y1="16.9" x2="4.9" y2="19.1"/>
+            </g>
+          </svg>
+          <span class="wx-value">5<span class="wx-unit">&nbsp;h</span></span>
+        </div>
+      </div>
+      <div class="wx-location">Strasbourg</div>
+    </div>
+  </div>
+
+</div><!-- #board -->
+
+<!-- ── Status overlay ── -->
+<div id="status-overlay" class="hidden">
+  <div class="config-topbar">
+    <button id="status-back">← Retour</button>
+    <h1 class="config-heading">État du système</h1>
+  </div>
+  <div id="status-tabs">
+    <button class="status-tab" data-tab="cts">CTS</button>
+    <button class="status-tab" data-tab="meteoblue">Météoblue</button>
+    <button class="status-tab active" data-tab="jourj">Compteur Jour J</button>
+  </div>
+  <div id="status-content"><!-- rendered by JS --></div>
+</div>
+
+<!-- ── Weather SVG sprite ── -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="w-sunny" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="13" fill="#FFD600"/>
+      <g stroke="#FFD600" stroke-width="3.5" stroke-linecap="round">
+        <line x1="32" y1="6"  x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="58"/>
+        <line x1="6"  y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="58" y2="32"/>
+        <line x1="13.9" y1="13.9" x2="18.1" y2="18.1"/><line x1="45.9" y1="45.9" x2="50.1" y2="50.1"/>
+        <line x1="50.1" y1="13.9" x2="45.9" y2="18.1"/><line x1="18.1" y1="45.9" x2="13.9" y2="50.1"/>
+      </g>
+    </symbol>
+    <symbol id="w-mostly-sunny" viewBox="0 0 64 64">
+      <circle cx="24" cy="22" r="10" fill="#FFD600"/>
+      <g stroke="#FFD600" stroke-width="3" stroke-linecap="round">
+        <line x1="24" y1="6"  x2="24" y2="10"/><line x1="24" y1="34" x2="24" y2="38"/>
+        <line x1="8"  y1="22" x2="12" y2="22"/><line x1="36" y1="22" x2="40" y2="22"/>
+        <line x1="12.7" y1="10.7" x2="15.5" y2="13.5"/><line x1="32.5" y1="30.5" x2="35.3" y2="33.3"/>
+        <line x1="35.3" y1="10.7" x2="32.5" y2="13.5"/><line x1="15.5" y1="30.5" x2="12.7" y2="33.3"/>
+      </g>
+      <path d="M52 44 Q52 36 44 36 Q41 30 34 32 Q28 28 26 34 Q20 34 20 41 Q20 48 28 48 L52 48 Q58 48 58 42 Q58 36 52 36 Z" fill="#e0e8f0"/>
+    </symbol>
+    <symbol id="w-partly-cloudy" viewBox="0 0 64 64">
+      <circle cx="22" cy="24" r="10" fill="#FFD600" opacity="0.9"/>
+      <path d="M54 43 Q54 34 45 34 Q42 27 34 29 Q27 24 24 31 Q17 31 17 38 Q17 46 26 46 L54 46 Q61 46 61 40 Q61 34 54 34 Z" fill="#c8d8e8"/>
+    </symbol>
+    <symbol id="w-cloudy" viewBox="0 0 64 64">
+      <path d="M52 46 Q52 36 42 36 Q39 28 30 30 Q22 26 20 33 Q12 33 12 41 Q12 50 22 50 L52 50 Q60 50 60 43 Q60 36 52 36 Z" fill="#9ab0c8"/>
+    </symbol>
+    <symbol id="w-rain" viewBox="0 0 64 64">
+      <path d="M50 34 Q50 24 40 24 Q37 17 28 19 Q21 15 18 22 Q11 22 11 30 Q11 38 20 38 L50 38 Q57 38 57 32 Q57 26 50 26 Z" fill="#7090b0"/>
+      <g stroke="#5ba3d8" stroke-width="2.8" stroke-linecap="round">
+        <line x1="20" y1="44" x2="18" y2="52"/><line x1="28" y1="44" x2="26" y2="52"/>
+        <line x1="36" y1="44" x2="34" y2="52"/><line x1="44" y1="44" x2="42" y2="52"/>
+      </g>
+    </symbol>
+    <symbol id="w-snow" viewBox="0 0 64 64">
+      <path d="M50 34 Q50 24 40 24 Q37 17 28 19 Q21 15 18 22 Q11 22 11 30 Q11 38 20 38 L50 38 Q57 38 57 32 Q57 26 50 26 Z" fill="#8898b0"/>
+      <g stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.9">
+        <line x1="32" y1="42" x2="32" y2="58"/><line x1="24" y1="50" x2="40" y2="50"/>
+        <line x1="26.3" y1="44.3" x2="37.7" y2="55.7"/><line x1="37.7" y1="44.3" x2="26.3" y2="55.7"/>
+      </g>
+    </symbol>
+    <symbol id="w-night-clear" viewBox="0 0 64 64">
+      <path d="M38 10 Q20 14 20 32 Q20 50 38 54 Q18 54 12 40 Q8 28 16 18 Q22 10 38 10 Z" fill="#c8d4e8"/>
+      <circle cx="48" cy="14" r="2" fill="#FFD600" opacity="0.9"/>
+      <circle cx="54" cy="26" r="1.5" fill="#FFD600" opacity="0.7"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script>
+(function () {
+"use strict";
+
+// ── Demo data ────────────────────────────────────────────────────────────
+
+var DEMO_ROWS = [
+    { line: "A", color: "#c8102e", dest: "Illkirch-Lixenbuhl",  t1: 3,  t2: 12 },
+    { line: "B", color: "#7b2d8b", dest: "Hoenheim Gare",       t1: 1,  t2:  8 },
+    { line: "C", color: "#e07b10", dest: "Gare Centrale",       t1: 5,  t2: 14 },
+    { line: "D", color: "#2e8b3c", dest: "Poteries",            t1: 2,  t2:  9 }
+];
+
+var DEMO_BIRTHDAYS = ["Jean Martin", "Claire Dupont"];
+var DEMO_JOURJ_LABEL = "Grandes Vacances";
+
+// Approximate departure time offsets (refreshed at init)
+var rowTimes = [];
+(function initTimes() {
+    var now = Date.now();
+    DEMO_ROWS.forEach(function (r) {
+        rowTimes.push({
+            t1: now + r.t1 * 60000,
+            t2: now + r.t2 * 60000
+        });
+    });
+}());
+
+// ── State ────────────────────────────────────────────────────────────────
+
+var nRows       = 3;
+var bdayOn      = true;
+var jourJOn     = true;
+var weatherOn   = true;
+var activeTab   = "jourj";
+
+// Jour J live config (from demo) — date must be today or future to display
+var jourJConfig = { date: "25/06/2026", label: DEMO_JOURJ_LABEL };
+
+// ── Jour J helpers ───────────────────────────────────────────────────────────
+
+/** Returns true when the Jour J date is strictly before today (event is past). */
+function isJourJPast() {
+    if (!jourJConfig.date) return true;
+    var parts = jourJConfig.date.split('/');
+    if (parts.length !== 3) return true;
+    var d = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, y = parseInt(parts[2], 10);
+    if (isNaN(d) || isNaN(m) || isNaN(y)) return true;
+    var target = new Date(y, m, d, 0, 0, 0, 0);
+    var today  = new Date(); today.setHours(0, 0, 0, 0);
+    return target < today;
+}
+
+/** Returns days remaining until the Jour J event (0 on event day, <0 if past). */
+function getJourJDays() {
+    if (!jourJConfig.date) return 0;
+    var parts = jourJConfig.date.split('/');
+    if (parts.length !== 3) return 0;
+    var target = new Date(+parts[2], +parts[1]-1, +parts[0]);
+    var today  = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.ceil((target - today) / 86400000);
+}
+
+/** Schedule a re-evaluation of the Jour J banner at midnight. */
+function scheduleMidnightRefresh() {
+    var now       = new Date();
+    var midnight  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    var msUntil   = midnight - now;
+    setTimeout(function () { renderJourJ(); scheduleMidnightRefresh(); }, msUntil);
+}
+
+// ── Render loop ──────────────────────────────────────────────────────────
+
+function renderBoard() {
+    renderDepartures();
+    renderBirthday();
+    renderJourJ();
+    renderWeather();
+}
+
+function renderDepartures() {
+    var container = document.getElementById("departures");
+    container.innerHTML = "";
+    for (var i = 0; i < nRows; i++) {
+        var r = DEMO_ROWS[i];
+        var row = document.createElement("div");
+        row.className = "departure-row";
+
+        var badge = document.createElement("div");
+        badge.className = "line-badge";
+        badge.textContent = r.line;
+        badge.style.background = r.color;
+
+        var dest = document.createElement("div");
+        dest.className = "destination";
+        dest.textContent = r.dest;
+
+        var c1 = makeTimeCell(rowTimes[i].t1);
+        var c2 = makeTimeCell(rowTimes[i].t2);
+
+        row.appendChild(badge);
+        row.appendChild(dest);
+        row.appendChild(c1);
+        row.appendChild(c2);
+        container.appendChild(row);
+    }
+}
+
+function makeTimeCell(targetMs) {
+    var cell = document.createElement("div");
+    cell.className = "time-cell";
+    cell.dataset.target = targetMs;
+    refreshTimeCell(cell);
+    return cell;
+}
+
+function refreshTimeCell(cell) {
+    var diffMs = cell.dataset.target - Date.now();
+    if (diffMs < 0) {
+        cell.innerHTML = '<span class="arriving">arr.</span>';
+    } else {
+        var diffMin = Math.floor(diffMs / 60000);
+        if (diffMin === 0) {
+            cell.innerHTML = '<span class="arriving">&lt;&nbsp;1</span><span class="unit">min</span>';
+        } else {
+            cell.innerHTML = diffMin + '<span class="unit">min</span>';
+        }
+    }
+}
+
+function renderBirthday() {
+    var row = document.getElementById("birthday-row");
+    var show = bdayOn;
+    if (!show) { row.classList.add("hidden"); return; }
+    row.classList.remove("hidden");
+
+    var text = "🎁 Bon anniversaire \u00b7 " + DEMO_BIRTHDAYS.join(" \u00b7 ") + " \u00b7\u2002";
+    setScrollText("bday-inner", "bday-text-a", "bday-text-b", text);
+}
+
+function renderJourJ() {
+    var row = document.getElementById("jour-j-row");
+    var show = jourJOn && !isJourJPast();
+    if (!show) { row.classList.add("hidden"); return; }
+    row.classList.remove("hidden");
+
+    document.getElementById("jourj-badge").textContent = "J-" + getJourJDays();
+    var text = jourJConfig.label + "\u2002\u00b7\u2002";
+    setScrollText("jourj-inner", "jourj-text-a", "jourj-text-b", text);
+}
+
+function renderWeather() {
+    var footer = document.getElementById("board-footer");
+    footer.classList.toggle("hidden", !weatherOn);
+}
+
+// ── Scrolling text helper ────────────────────────────────────────────────
+
+function setScrollText(innerId, aId, bId, text) {
+    var inner = document.getElementById(innerId);
+    var a = document.getElementById(aId);
+    var b = document.getElementById(bId);
+
+    a.textContent = text;
+    b.textContent = text;
+
+    // Compute animation duration proportional to text length (~14px/char assumed)
+    var charCount = text.length;
+    var dur = Math.max(8, Math.min(30, charCount * 0.55)) + "s";
+    inner.style.setProperty("--dur", dur);
+
+    // Briefly remove class to restart animation
+    inner.classList.remove("running");
+    void inner.offsetWidth; // reflow
+    inner.classList.add("running");
+}
+
+// ── Clock ────────────────────────────────────────────────────────────────
+
+function updateClock() {
+    var now = new Date();
+    document.getElementById("clock").textContent = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    document.getElementById("date").textContent = now.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// ── Time counters ────────────────────────────────────────────────────────
+
+function updateTimers() {
+    document.querySelectorAll(".time-cell[data-target]").forEach(refreshTimeCell);
+}
+
+// ── Status overlay ───────────────────────────────────────────────────────
+
+function openStatus() {
+    document.getElementById("status-overlay").classList.remove("hidden");
+    document.querySelectorAll(".status-tab").forEach(function (t) {
+        t.classList.toggle("active", t.dataset.tab === activeTab);
+    });
+    renderStatusTab(activeTab);
+}
+
+function closeStatus() {
+    document.getElementById("status-overlay").classList.add("hidden");
+}
+
+function renderStatusTab(tab) {
+    var content = document.getElementById("status-content");
+    content.innerHTML = "";
+
+    if (tab === "cts") {
+        renderTabCts(content);
+    } else if (tab === "meteoblue") {
+        renderTabMeteoblue(content);
+    } else {
+        renderTabJourJ(content);
+    }
+}
+
+function statusRow(parent, label, value, cls) {
+    var el = document.createElement("div");
+    el.className = "status-row";
+    el.innerHTML = '<div class="status-label">' + label + '</div>' +
+        '<div class="status-value' + (cls ? " " + cls : "") + '">' + value + '</div>';
+    parent.appendChild(el);
+}
+
+function renderTabCts(c) {
+    statusRow(c, "Arrêt surveillé", "StrasbourgTramA_Gare", "highlight");
+    statusRow(c, "Mode", "Simulation (pas d\u2019appel API)", "highlight");
+    statusRow(c, "Intervalle de scrutation", "5\u00a0min");
+    statusRow(c, "Prochain appel API", "dans\u00a045\u00a0s");
+    statusRow(c, "Interrogation permanente", "Non");
+    statusRow(c, "Fenêtre active", "Oui");
+    statusRow(c, "Plages horaires", "06:00-23:00", "dim");
+    statusRow(c, "Heure serveur", "12 apr. 2026, 14:32:07 CET", "dim");
+}
+
+function renderTabMeteoblue(c) {
+    statusRow(c, "Widget météo", "Activé");
+    statusRow(c, "Mode", "Simulation (pas d\u2019appel API)", "highlight");
+    statusRow(c, "Localisation configurée", "Strasbourg");
+    statusRow(c, "Localisation résolue", "Strasbourg, France");
+    statusRow(c, "Coordonnées", "48.5734°N, 7.7521°E — 142\u00a0m", "dim");
+    statusRow(c, "Intervalle de relevé", "30\u00a0min");
+    statusRow(c, "Dernier relevé", "14:31:02");
+    statusRow(c, "Température actuelle", "13\u00a0°C");
+    statusRow(c, "Min\u00a0/ Max du jour", "8\u00a0°C\u00a0/\u00a017\u00a0°C");
+    statusRow(c, "Précipitations", "1.2\u00a0mm");
+    statusRow(c, "Ensoleillement", "5\u00a0h");
+    statusRow(c, "Pictocode", "2", "dim");
+}
+
+function renderTabJourJ(c) {
+    // Current config display
+    var days = getJourJDays();
+    var curBox = document.createElement("div");
+    curBox.className = "jourj-current-box";
+    curBox.innerHTML =
+        '<div class="jourj-current-badge">J-' + days + '</div>' +
+        '<div class="jourj-current-info">' +
+        '<span class="jourj-current-label">Événement configuré</span>' +
+        '<span class="jourj-current-event" id="cur-event-label">' + escHtml(jourJConfig.label) + '</span>' +
+        '</div>' +
+        '<svg style="width:2rem;height:2rem;flex-shrink:0;margin-left:auto" viewBox="0 0 24 24" fill="none">' +
+        '<path d="M3 21 L16 8 L19.5 11.5 Z" fill="#e07b10"/>' +
+        '<circle cx="20" cy="5" r="2" fill="#ffc107"/>' +
+        '<path d="M14 4.5 L15 2.5 L16 4.5 L14 4.5Z" fill="#ffc107"/>' +
+        '</svg>';
+    c.appendChild(curBox);
+
+    // Section title
+    var title = document.createElement("div");
+    title.className = "jourj-section-title";
+    title.textContent = "Modifier le compteur";
+    c.appendChild(title);
+
+    // Form
+    var form = document.createElement("div");
+    form.className = "jourj-form";
+    form.innerHTML =
+        '<div class="jourj-field">' +
+        '<label for="jourj-date-input">Date de l\u2019événement (JJ/MM/AAAA)</label>' +
+        '<input id="jourj-date-input" type="text" placeholder="25/06/2026" value="' + escHtml(jourJConfig.date) + '" maxlength="10">' +
+        '</div>' +
+        '<div class="jourj-field">' +
+        '<label for="jourj-label-input">Nom de l\u2019événement</label>' +
+        '<input id="jourj-label-input" type="text" placeholder="ex. Grandes Vacances" value="' + escHtml(jourJConfig.label) + '" maxlength="60">' +
+        '</div>' +
+        '<button class="jourj-save-btn" id="jourj-save-btn">Enregistrer</button>' +
+        '<div id="jourj-toast">✓\u00a0Configuration enregistrée</div>';
+    c.appendChild(form);
+
+    // Save handler
+    document.getElementById("jourj-save-btn").addEventListener("click", function () {
+        var dateVal  = document.getElementById("jourj-date-input").value.trim();
+        var labelVal = document.getElementById("jourj-label-input").value.trim();
+        if (!dateVal || !labelVal) { return; }
+
+        jourJConfig.date  = dateVal;
+        jourJConfig.label = labelVal;
+
+        // Update live badge and scroll text
+        document.getElementById("jourj-badge").textContent = "J-" + getJourJDays();
+        var el = document.getElementById("cur-event-label");
+        if (el) el.textContent = labelVal;
+        renderJourJ();
+
+        // Toast
+        var btn   = document.getElementById("jourj-save-btn");
+        var toast = document.getElementById("jourj-toast");
+        btn.textContent = "Enregistré ✓";
+        btn.classList.add("saved");
+        toast.style.display = "block";
+        setTimeout(function () {
+            btn.textContent = "Enregistrer";
+            btn.classList.remove("saved");
+            toast.style.display = "none";
+        }, 2500);
+    });
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────
+
+document.getElementById("sel-rows").addEventListener("change", function () {
+    nRows = parseInt(this.value, 10);
+    renderBoard();
+});
+
+document.getElementById("chk-bday").addEventListener("change", function () {
+    bdayOn = this.checked;
+    renderBoard();
+});
+
+document.getElementById("chk-jourj").addEventListener("change", function () {
+    jourJOn = this.checked;
+    renderBoard();
+});
+
+document.getElementById("chk-weather").addEventListener("change", function () {
+    weatherOn = this.checked;
+    renderBoard();
+});
+
+document.getElementById("btn-status").addEventListener("click", openStatus);
+document.getElementById("status-back").addEventListener("click", closeStatus);
+document.getElementById("status-btn").addEventListener("click", openStatus);
+
+document.getElementById("status-tabs").addEventListener("click", function (e) {
+    var btn = e.target.closest(".status-tab");
+    if (!btn) return;
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll(".status-tab").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.tab === activeTab);
+    });
+    renderStatusTab(activeTab);
+});
+
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !document.getElementById("status-overlay").classList.contains("hidden")) {
+        closeStatus();
+    }
+});
+
+// ── Tick ─────────────────────────────────────────────────────────────────
+
+setInterval(function () {
+    updateClock();
+    updateTimers();
+}, 1000);
+
+// ── Init ─────────────────────────────────────────────────────────────────
+
+updateClock();
+renderBoard();
+scheduleMidnightRefresh();
+
+}());
+</script>
+</body>
+</html>

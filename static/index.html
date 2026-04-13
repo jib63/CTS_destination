@@ -27,6 +27,10 @@
             </div>
         </header>
         <div id="departures"><!-- Populated by app.js --></div>
+        <div id="extras-row" style="display:none">
+            <div id="birthday-row"><!-- Populated by app.js --></div>
+            <div id="jour-j-row"><!-- Populated by app.js --></div>
+        </div>
         <div id="board-footer"><!-- Reserved for weather / info panel --></div>
     </div>
 
@@ -46,32 +50,48 @@
     <!-- ── Configuration overlay ── -->
     <div id="config-overlay" class="hidden">
 
-        <!-- Level 1 : stop name picker -->
-        <div id="config-level1">
-            <div class="config-topbar">
-                <button id="config-back">← Retour</button>
-                <h1 class="config-heading">Choisir un arrêt</h1>
-            </div>
-            <div id="config-search-bar">
-                <input id="config-filter" type="text"
-                       placeholder="Filtrer par nom d'arrêt…"
-                       autocomplete="off" spellcheck="false">
-            </div>
-            <div id="config-loading">Chargement des arrêts…</div>
-            <div id="stops-grid"></div>
+        <!-- Shared top bar -->
+        <div class="config-topbar">
+            <button id="config-back">← Retour</button>
+            <h1 class="config-heading">Configuration</h1>
         </div>
 
-        <!-- Level 2 : transport type + direction picker -->
-        <div id="config-level2" class="hidden">
-            <div class="config-topbar">
-                <button id="config-back2">← Arrêts</button>
-                <div class="config-heading-group">
-                    <h1 class="config-heading" id="config-stop-title">—</h1>
-                    <span class="config-subheading">Choisir le type et le sens</span>
+        <!-- Tabs -->
+        <div id="config-tabs">
+            <button class="config-tab active" data-tab="arret">Arrêt</button>
+            <button class="config-tab" data-tab="jour-j">Jour J</button>
+        </div>
+
+        <!-- Tab: Arrêt -->
+        <div id="config-tab-arret">
+            <!-- Level 1 : stop name picker -->
+            <div id="config-level1">
+                <div id="config-search-bar">
+                    <input id="config-filter" type="text"
+                           placeholder="Filtrer par nom d'arrêt…"
+                           autocomplete="off" spellcheck="false">
                 </div>
+                <div id="config-loading">Chargement des arrêts…</div>
+                <div id="stops-grid"></div>
             </div>
-            <div id="config-loading2" class="hidden">Chargement des directions…</div>
-            <div id="directions-grid"></div>
+
+            <!-- Level 2 : transport type + direction picker -->
+            <div id="config-level2" class="hidden">
+                <div class="config-topbar config-level2-bar">
+                    <button id="config-back2">← Arrêts</button>
+                    <div class="config-heading-group">
+                        <h1 class="config-heading" id="config-stop-title">—</h1>
+                        <span class="config-subheading">Choisir le type et le sens</span>
+                    </div>
+                </div>
+                <div id="config-loading2" class="hidden">Chargement des directions…</div>
+                <div id="directions-grid"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Jour J -->
+        <div id="config-tab-jour-j" class="hidden">
+            <div id="config-jour-j-content"></div>
         </div>
 
     </div>

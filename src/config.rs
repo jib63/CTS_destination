@@ -1,26 +1,4 @@
-// Copyright (c) 2026, Jean-Baptiste Meyer
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// SPDX-License-Identifier: MIT
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
@@ -50,15 +28,31 @@ pub struct AppConfig {
     /// windows defined in cts_query_intervals.
     #[serde(default = "default_always_query")]
     pub cts_always_query: bool,
-    /// Semicolon-separated list of active time windows, each as "HH:MM-HH:MM".
-    /// Example: "6:00-9:58;14:03-18:09;22:02-23:00"
+    /// 5-field crontab expression ("min hour dom month dow") matched against the
+    /// current local time. The CTS API is queried only when the expression matches.
     /// Only used when cts_always_query = false.
+    /// Example — weekdays 6 h–23 h: "* 6-23 * * 1-5"
+    /// Example — every day 6 h–9 h and 14 h–18 h: "* 6-9,14-18 * * *"
     pub cts_query_intervals: Option<String>,
 
     // ── Server ────────────────────────────────────────────────────────────────
     /// Web server bind address
     #[serde(default = "default_listen_addr")]
     pub listen_addr: String,
+
+    // ── Divoom Pixoo64 LED display (optional) ─────────────────────────────────
+    /// When true, render the departure board on a Pixoo64 device.
+    #[serde(default)]
+    pub pixoo64_enabled: bool,
+    /// IP address (and optional port) of the Pixoo64 device, e.g. "192.168.1.42".
+    /// When pixoo64_simulation = true this is ignored.
+    pub pixoo64_address: Option<String>,
+    /// When true, no requests are sent to the device; a PNG preview is stored
+    /// at /api/pixoo64/preview instead.
+    #[serde(default)]
+    pub pixoo64_simulation: bool,
+    /// How often to refresh the Pixoo64 display (seconds, default: 1).
+    pub pixoo64_refresh_interval_seconds: Option<u64>,
 
     // ── Meteoblue weather widget ──────────────────────────────────────────────
     /// When true, show the weather widget in the board footer.
@@ -72,9 +66,37 @@ pub struct AppConfig {
     pub meteoblue_location: Option<String>,
     /// How often to refresh weather data (minutes, default: 60)
     pub meteoblue_polling_interval_minutes: Option<u64>,
+    /// If true, poll Meteoblue at all times. If false, polling is restricted to
+    /// the windows defined in meteoblue_query_intervals (default: true).
+    #[serde(default = "default_always_query")]
+    pub meteoblue_always_query: bool,
+    /// 5-field crontab expression ("min hour dom month dow") matched against the
+    /// current local time. Meteoblue is queried only when the expression matches.
+    /// Only used when meteoblue_always_query = false.
+    pub meteoblue_query_intervals: Option<String>,
     /// When true, simulated weather data is used instead of calling the Meteoblue API.
     #[serde(default)]
     pub meteoblue_simulation: bool,
+
+    // ── Birthday feature ──────────────────────────────────────────────────────
+    /// When true, show today's birthdays on the departure board.
+    #[serde(default)]
+    pub birthday_enabled: bool,
+    /// Path to the birthday JSON file (default: "data/birthdays.json")
+    pub birthday_file: Option<String>,
+
+    // ── Jour J countdown ──────────────────────────────────────────────────────
+    /// When true, show a countdown to the configured event date.
+    #[serde(default)]
+    pub jour_j_enabled: bool,
+    /// Target date in DD/MM/YYYY format.
+    pub jour_j_date: Option<String>,
+    /// Event label displayed next to the countdown.
+    pub jour_j_label: Option<String>,
+
+    // ── Demo controls ─────────────────────────────────────────────────────────
+    /// Number of simulated departure lines to show (1–4); default 4.
+    pub cts_demo_lines: Option<u8>,
 }
 
 fn default_max_visits() -> u32 {
@@ -164,6 +186,47 @@ pub fn save_monitoring_ref(path: &str, new_ref: &str) -> Result<()> {
 
     if !found {
         bail!("cts_monitoring_ref key not found in config file '{path}'");
+    }
+
+    let mut updated = lines_out.join("\n");
+    if content.ends_with('\n') {
+        updated.push('\n');
+    }
+
+    fs::write(path, updated).with_context(|| format!("Cannot write config file: {path}"))?;
+    Ok(())
+}
+
+/// Update (or append) `jour_j_date` and `jour_j_label` in the config file in-place,
+/// preserving all other content (including comments).
+pub fn save_jour_j(path: &str, date: &str, label: &str) -> Result<()> {
+    let content =
+        fs::read_to_string(path).with_context(|| format!("Cannot read config file: {path}"))?;
+
+    let mut found_date  = false;
+    let mut found_label = false;
+
+    let mut lines_out: Vec<String> = content
+        .lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if !trimmed.starts_with('#') && trimmed.starts_with("jour_j_date") && trimmed.contains('=') {
+                found_date = true;
+                format!("jour_j_date = \"{}\"", date)
+            } else if !trimmed.starts_with('#') && trimmed.starts_with("jour_j_label") && trimmed.contains('=') {
+                found_label = true;
+                format!("jour_j_label = \"{}\"", label)
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect();
+
+    if !found_date {
+        lines_out.push(format!("jour_j_date = \"{}\"", date));
+    }
+    if !found_label {
+        lines_out.push(format!("jour_j_label = \"{}\"", label));
     }
 
     let mut updated = lines_out.join("\n");
