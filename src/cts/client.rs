@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use chrono::{Local, Utc};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::Ordering::{self, Relaxed};
 use tracing::{error, info, warn};
 use url::Url;
 
@@ -14,7 +14,7 @@ use crate::cts::model::{
     parse_iso_duration_secs, LineDirection, PhysicalStopInfo, SiriResponse,
     StopDiscoveryResponse, StopInfo,
 };
-use crate::departure::model::{DepartureBoard};
+use crate::departure::model::{BoardPayload, DepartureBoard, JourJEventDisplay};
 use crate::web::AppState;
 use crate::display::DisplayRenderer;
 
@@ -38,7 +38,15 @@ pub async fn poll_loop(
             }
         }
 
-        let monitoring_ref = state.monitoring_ref.read().await.clone();
+        let monitoring_refs = state.monitoring_refs.read().await.clone();
+        // Ensure there is at least one ref; fall back gracefully
+        let monitoring_refs = if monitoring_refs.is_empty() {
+            warn!("monitoring_refs is empty — nothing to poll");
+            next_poll = tokio::time::Instant::now() + Duration::from_secs(60);
+            continue;
+        } else {
+            monitoring_refs
+        };
 
         // ── Time-window gate ────────────────────────────────────────────────
         if !state.cts_always_query {
@@ -50,12 +58,25 @@ pub async fn poll_loop(
 
             if !in_window {
                 info!("Outside query window; sleeping 60 s before recheck");
-                let mut board = DepartureBoard::offline(monitoring_ref, "Pas de service".to_string());
+                let first_ref = monitoring_refs[0].clone();
+                let mut board = DepartureBoard::offline(first_ref, "Pas de service".to_string());
                 if state.meteoblue_enabled {
+                    // Keep last known weather value; None if never fetched (panel hidden)
                     board.weather = state.meteoblue_latest.read().await.clone();
                 }
+                if state.birthday_enabled {
+                    let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
+                    board.birthdays_today = DepartureBoard::load_birthdays(path);
+                }
+                if state.jour_j_enabled {
+                    board.jour_j_events = build_jour_j_display(&state).await;
+                }
+                let payload = BoardPayload {
+                    boards: vec![board],
+                    stop_rotation_secs: None,
+                };
                 for renderer in &renderers {
-                    if let Err(e) = renderer.update(&board) {
+                    if let Err(e) = renderer.update(&payload) {
                         error!(renderer = renderer.name(), error = %e, "Renderer update failed (offline)");
                     }
                 }
@@ -67,73 +88,122 @@ pub async fn poll_loop(
 
         if state.cts_simulation {
             // ── Simulation mode — no network call ───────────────────────────
-            let (jj_date, jj_label) = {
-                let d = state.jour_j_date.read().await.clone();
-                let l = state.jour_j_label.read().await.clone();
-                (d, l)
-            };
-            let mut board = crate::cts::simulation::simulate_board(
-                &monitoring_ref,
-                state.cts_demo_lines,
-                state.birthday_enabled,
-                state.birthday_file.as_deref(),
-                state.jour_j_enabled,
-                jj_date.as_deref(),
-                jj_label.as_deref(),
-            );
-            if state.meteoblue_enabled {
-                board.weather = state.meteoblue_latest.read().await.clone();
+            // Compute the combined Jour J + upcoming-birthday display list
+            let jour_j_display = build_jour_j_display(&state).await;
+
+            let mut boards: Vec<DepartureBoard> = monitoring_refs
+                .iter()
+                .map(|r| crate::cts::simulation::simulate_board(
+                    r,
+                    state.cts_demo_lines,
+                    &[],  // extras only on boards[0] below
+                ))
+                .collect();
+
+            // Birthday + Jour J + weather only on boards[0]
+            if let Some(first) = boards.first_mut() {
+                if state.birthday_enabled {
+                    let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
+                    first.birthdays_today = DepartureBoard::load_birthdays(path);
+                }
+                if state.jour_j_enabled {
+                    first.jour_j_events = jour_j_display;
+                }
+                if state.meteoblue_enabled {
+                    first.weather = state.meteoblue_latest.read().await.clone();
+                }
             }
-            info!(stop = %board.stop_name, lines = board.lines.len(), "Simulation: generated fake board");
+
+            info!(
+                stops = monitoring_refs.len(),
+                lines = boards.first().map(|b| b.lines.len()).unwrap_or(0),
+                "Simulation: generated fake boards"
+            );
+
+            let stop_rotation_secs = if monitoring_refs.len() > 1 { state.stop_rotation_secs } else { None };
+            let payload = BoardPayload { boards, stop_rotation_secs };
             for renderer in &renderers {
-                if let Err(e) = renderer.update(&board) {
+                if let Err(e) = renderer.update(&payload) {
                     error!(renderer = renderer.name(), error = %e, "Renderer update failed");
                 }
             }
             next_poll = tokio::time::Instant::now() + base_interval;
             state.cts_next_poll_at.store(Utc::now().timestamp() + base_interval.as_secs() as i64, Ordering::Relaxed);
         } else {
-            // ── Live mode — query CTS API ────────────────────────────────────
-            match fetch_departures(&state, &monitoring_ref).await {
-                Ok((mut board, min_cycle_secs)) => {
+            // ── Live mode — query CTS API for each stop ──────────────────────
+            let mut boards: Vec<DepartureBoard> = Vec::with_capacity(monitoring_refs.len());
+            let mut min_cycle_secs_global: Option<u64> = None;
+            let mut fetch_error = false;
+
+            for monitoring_ref in &monitoring_refs {
+                match fetch_departures(&state, monitoring_ref).await {
+                    Ok((board, min_cycle)) => {
+                        info!(
+                            stop = %board.stop_name,
+                            monitoring_ref = %monitoring_ref,
+                            lines = board.lines.len(),
+                            "Fetched departure data"
+                        );
+                        // Track the most restrictive minimum cycle across all stops
+                        if let Some(secs) = min_cycle {
+                            min_cycle_secs_global = Some(match min_cycle_secs_global {
+                                Some(prev) => prev.max(secs),
+                                None => secs,
+                            });
+                        }
+                        boards.push(board);
+                    }
+                    Err(e) => {
+                        error!(monitoring_ref = %monitoring_ref, error = %e, "Failed to fetch departures");
+                        fetch_error = true;
+                        // Push an offline board for this stop so the others still show
+                        boards.push(DepartureBoard::offline(monitoring_ref.clone(), "Erreur API".to_owned()));
+                    }
+                }
+            }
+
+            if fetch_error && boards.iter().all(|b| b.offline_message.is_some()) {
+                // All stops failed — retry soon
+                next_poll = tokio::time::Instant::now() + Duration::from_secs(30);
+                state.cts_next_poll_at.store(Utc::now().timestamp() + 30, Ordering::Relaxed);
+            } else {
+                // Birthday + Jour J + weather only on boards[0]
+                if let Some(first) = boards.first_mut() {
                     if state.meteoblue_enabled {
-                        board.weather = state.meteoblue_latest.read().await.clone();
+                        first.weather = state.meteoblue_latest.read().await.clone();
                     }
-                    info!(
-                        stop = %board.stop_name,
-                        monitoring_ref = %monitoring_ref,
-                        lines = board.lines.len(),
-                        "Fetched departure data"
-                    );
+                    if state.birthday_enabled {
+                        let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
+                        first.birthdays_today = DepartureBoard::load_birthdays(path);
+                    }
+                    if state.jour_j_enabled {
+                        first.jour_j_events = build_jour_j_display(&state).await;
+                    }
+                }
 
-                    for renderer in &renderers {
-                        if let Err(e) = renderer.update(&board) {
-                            error!(renderer = renderer.name(), error = %e, "Renderer update failed");
+                let effective_interval = match min_cycle_secs_global {
+                    Some(min_secs) => {
+                        let min_dur = Duration::from_secs(min_secs);
+                        if base_interval < min_dur {
+                            warn!(min_secs, "Configured interval < API minimum; clamping up");
+                            min_dur
+                        } else {
+                            base_interval
                         }
                     }
+                    None => base_interval,
+                };
 
-                    // Respect API's ShortestPossibleCycle as a lower bound
-                    let effective_interval = match min_cycle_secs {
-                        Some(min_secs) => {
-                            let min_dur = Duration::from_secs(min_secs);
-                            if base_interval < min_dur {
-                                warn!(min_secs, "Configured interval < API minimum; clamping up");
-                                min_dur
-                            } else {
-                                base_interval
-                            }
-                        }
-                        None => base_interval,
-                    };
+                let stop_rotation_secs = if monitoring_refs.len() > 1 { state.stop_rotation_secs } else { None };
+                let payload = BoardPayload { boards, stop_rotation_secs };
+                for renderer in &renderers {
+                    if let Err(e) = renderer.update(&payload) {
+                        error!(renderer = renderer.name(), error = %e, "Renderer update failed");
+                    }
+                }
 
-                    next_poll = tokio::time::Instant::now() + effective_interval;
-                    state.cts_next_poll_at.store(Utc::now().timestamp() + effective_interval.as_secs() as i64, Ordering::Relaxed);
-                }
-                Err(e) => {
-                    error!(error = %e, "Failed to fetch departures; will retry in 30s");
-                    next_poll = tokio::time::Instant::now() + Duration::from_secs(30);
-                    state.cts_next_poll_at.store(Utc::now().timestamp() + 30, Ordering::Relaxed);
-                }
+                next_poll = tokio::time::Instant::now() + effective_interval;
+                state.cts_next_poll_at.store(Utc::now().timestamp() + effective_interval.as_secs() as i64, Ordering::Relaxed);
             }
         }
     }
@@ -179,21 +249,7 @@ async fn fetch_departures(
         .context("API response contained no StopMonitoringDelivery")?;
 
     let min_cycle_secs = parse_iso_duration_secs(&delivery.shortest_possible_cycle);
-    let mut board = DepartureBoard::from_delivery(&delivery, Utc::now(), monitoring_ref.to_owned());
-
-    if state.birthday_enabled {
-        let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
-        board.birthdays_today = DepartureBoard::load_birthdays(path);
-    }
-
-    if state.jour_j_enabled {
-        let date  = state.jour_j_date.read().await.clone();
-        let label = state.jour_j_label.read().await.clone();
-        if let (Some(d), Some(l)) = (date, label) {
-            board.jour_j = DepartureBoard::compute_jour_j(&d).map(|days| (days, l));
-        }
-    }
-
+    let board = DepartureBoard::from_delivery(&delivery, Utc::now(), monitoring_ref.to_owned());
     Ok((board, min_cycle_secs))
 }
 
@@ -233,6 +289,19 @@ pub async fn fetch_stops(state: &AppState) -> Result<Vec<StopInfo>> {
 
     stops.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(stops)
+}
+
+/// Build the combined Jour J + upcoming-birthday display list for boards[0].
+async fn build_jour_j_display(state: &AppState) -> Vec<JourJEventDisplay> {
+    let events = state.jour_j_events.read().await.clone();
+    let mut display = DepartureBoard::compute_jour_j_events(&events);
+    if state.birthday_enabled {
+        let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
+        let mut bday = DepartureBoard::load_upcoming_birthdays(path, state.birthday_days_ahead.load(Relaxed));
+        display.append(&mut bday);
+        display.sort_by_key(|e| e.days);
+    }
+    display
 }
 
 /// Query live departures for a logical stop code and return one entry per

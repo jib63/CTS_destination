@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{info, warn};
 
-use crate::departure::model::DepartureBoard;
+use crate::departure::model::{BoardPayload, DepartureBoard};
 use crate::display::DisplayRenderer;
 use crate::web::AppState;
 use crate::pixoo64::draw::{fb_to_png, render_frames, Fb, ZoneState};
@@ -23,8 +23,11 @@ impl Pixoo64Renderer {
 }
 
 impl DisplayRenderer for Pixoo64Renderer {
-    fn update(&self, board: &DepartureBoard) -> Result<(), Box<dyn std::error::Error>> {
-        let _ = self.sender.send(Box::new(board.clone()));
+    fn update(&self, payload: &BoardPayload) -> Result<(), Box<dyn std::error::Error>> {
+        // Always display the first stop only — rotation is a web-only feature for now.
+        if let Some(board) = payload.boards.first() {
+            let _ = self.sender.send(Box::new(board.clone()));
+        }
         Ok(())
     }
 

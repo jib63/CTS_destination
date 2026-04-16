@@ -12,6 +12,7 @@ use anyhow::Result;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+use crate::config::prune_past_events;
 use crate::display::DisplayRenderer;
 use crate::pixoo64::renderer::{pixoo_worker, Pixoo64Renderer};
 use crate::web::{AppState, WebRenderer};
@@ -44,7 +45,8 @@ async fn main() -> Result<()> {
     let weather_interval = config.meteoblue_polling_interval_minutes.unwrap_or(60);
 
     info!(
-        stop            = %config.cts_monitoring_ref,
+        stops           = ?config.cts_monitoring_ref,
+        rotation_secs   = ?config.cts_stop_rotation_in_second,
         interval_min    = config.cts_polling_interval_minutes,
         addr            = %config.listen_addr,
         cts_simulation  = config.cts_simulation,
@@ -55,8 +57,12 @@ async fn main() -> Result<()> {
         "CTS departure board starting"
     );
 
+    // Prune past events on startup before building state
+    let jour_j_events = prune_past_events(config.jour_j_events.clone());
+
     let app_state = AppState::new(
         config.cts_monitoring_ref.clone(),
+        config.cts_stop_rotation_in_second,
         config_path,
         token,
         config.cts_max_stop_visits,
@@ -76,8 +82,8 @@ async fn main() -> Result<()> {
         config.birthday_enabled,
         config.birthday_file.clone(),
         config.jour_j_enabled,
-        config.jour_j_date.clone(),
-        config.jour_j_label.clone(),
+        jour_j_events,
+        config.birthday_days_ahead,
         config.cts_demo_lines.unwrap_or(4),
     );
 

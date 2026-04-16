@@ -25,22 +25,15 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 
 /* ── Controls bar (mockup-only) ── */
 #ctrl-bar {
-  height: 46px;
-  background: #060d1e;
-  border-bottom: 1px solid #1a2744;
-  display: flex;
-  align-items: center;
-  gap: 1.4rem;
-  padding: 0 1rem;
-  flex-shrink: 0;
-  overflow-x: auto;
+  height: 46px; background: #060d1e; border-bottom: 1px solid #1a2744;
+  display: flex; align-items: center; gap: 1.4rem; padding: 0 1rem;
+  flex-shrink: 0; overflow-x: auto;
 }
 #ctrl-bar label { font-size: 11px; color: #556; letter-spacing: 0.08em; text-transform: uppercase;
   display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; cursor: pointer; }
 #ctrl-bar select, #ctrl-bar button {
   background: #0e1628; border: 1px solid #1e2e48; color: #aab;
-  padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
-  transition: background 0.12s;
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: background 0.12s;
 }
 #ctrl-bar select:hover, #ctrl-bar button:hover { background: #162038; border-color: #3a5070; }
 #ctrl-bar input[type=checkbox] { accent-color: #ffc107; width: 14px; height: 14px; cursor: pointer; }
@@ -50,21 +43,34 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 
 /* ── Board container ── */
 #board {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: calc(100vh - 46px);
+  display: flex; flex-direction: column; width: 100%;
+  height: calc(100vh - 46px); overflow-x: hidden;
 }
+
+/* ── Stop rotation wipe animation ── */
+@keyframes departures-wipe-out { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes departures-wipe-in  { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.departures-wipe-out { animation: departures-wipe-out 0.35s ease-in forwards; pointer-events: none; }
+.departures-wipe-in  { animation: departures-wipe-in  0.35s ease-out forwards; }
+
+#departures-inner { display: flex; flex-direction: column; width: 100%; }
+
+/* ── Stop indicator pill ── */
+#stop-indicator {
+  display: none; position: absolute; bottom: 0.5rem; right: 0.75rem;
+  background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px; padding: 0.18em 0.75em;
+  font-size: clamp(0.65rem, 1.4vw, 0.85rem); font-weight: 700;
+  color: rgba(255,255,255,0.6); letter-spacing: 0.04em; pointer-events: none; z-index: 2;
+}
+#departures { position: relative; }
 
 /* ── Header ── */
 #header {
-  background: var(--header-bg);
-  display: flex;
-  align-items: center;
+  background: var(--header-bg); display: flex; align-items: center;
   gap: clamp(0.5rem, 2vw, 2rem);
   padding: clamp(0.4rem, 1.2vh, 1rem) clamp(0.5rem, 1.5vw, 1.5rem);
-  flex-shrink: 0;
-  border-bottom: 2px solid rgba(255,255,255,0.12);
+  flex-shrink: 0; border-bottom: 2px solid rgba(255,255,255,0.12);
 }
 #clock { font-size: clamp(1.4rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: 0.05em; white-space: nowrap; }
 #date  { font-size: clamp(0.9rem, 2.5vw, 1.6rem); font-weight: 500; white-space: nowrap; }
@@ -83,11 +89,9 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 .departure-row {
   display: grid;
   grid-template-columns: auto 1fr clamp(100px, 20vw, 220px) clamp(100px, 20vw, 220px);
-  align-items: center;
-  column-gap: 0; row-gap: 0;
+  align-items: center; column-gap: 0; row-gap: 0;
   padding: 0 0 0 clamp(0.75rem, 2vw, 2rem);
-  height: clamp(100px, 15vh, 150px);
-  flex-shrink: 0;
+  height: clamp(100px, 15vh, 150px); flex-shrink: 0;
 }
 .departure-row:nth-child(odd)  { background: var(--row-light); }
 .departure-row:nth-child(even) { background: var(--row-dark); }
@@ -109,117 +113,134 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 .time-cell .unit { font-size: 0.42em; font-weight: 600; letter-spacing: 0.02em; color: var(--subtext); }
 .time-cell .arriving { font-size: 0.55em; font-weight: 700; color: #ffc107; }
 
-/* ── Birthday row ── */
-/* flex-shrink 200: collapses before weather (50) but after Jour J (400) */
+/* ── Extras row: birthday + Jour J side by side ── */
+#extras-row {
+  height: clamp(100px, 15vh, 150px); flex-shrink: 0;
+  display: flex; flex-direction: row; overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
 #birthday-row {
-  flex: 0 200 auto;
-  background: #2a3d7a;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: clamp(0.45rem, 1.4vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  flex: 1; background: #2a3d7a; min-width: 0; overflow: hidden;
+  display: flex; align-items: center;
+  gap: clamp(0.6rem, 2vw, 2rem); padding: 0 clamp(0.75rem, 2vw, 2rem);
 }
-#birthday-row.hidden { display: none !important; }
-
-/* ── Jour J row ── */
-/* flex-shrink 400: collapses first when vertical space is tight */
 #jour-j-row {
-  flex: 0 400 auto;
-  background: #1a5060;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: clamp(0.45rem, 1.4vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  flex: 1; background: #1a5060; border-left: 3px solid #0d1b3e;
+  min-width: 0; overflow: hidden; display: flex; align-items: center;
+  gap: clamp(0.6rem, 2vw, 2rem); padding: 0 clamp(0.75rem, 2vw, 2rem);
 }
-#jour-j-row.hidden { display: none !important; }
-
-/* ── Shared row icon ── */
-.board-row-icon {
-  width: clamp(1.8rem, 4.5vw, 3rem);
-  height: clamp(1.8rem, 4.5vw, 3rem);
-  flex-shrink: 0;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+.birthday-icon { flex-shrink: 0; width: clamp(2.4rem, 6vw, 4.8rem); height: clamp(2.4rem, 6vw, 4.8rem); }
+.birthday-text-wrap {
+  flex: 1; overflow: hidden; white-space: nowrap;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+  font-size: clamp(1.3rem, 3.8vw, 3rem); color: #e6dca8; font-weight: 700;
 }
+.birthday-text-wrap.scrolling span { display: inline-block; animation: board-marquee 32s linear infinite; }
 
-/* ── Jour J badge ── */
-.jourj-badge {
-  font-size: clamp(1.15rem, 3vw, 2rem);
-  font-weight: 900;
-  color: #ffc107;
-  white-space: nowrap;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-/* ── Scrolling text container ── */
-.board-scroll-outer {
-  overflow: hidden;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
+/* ── Jour J multi-event marquee ── */
+.jour-j-marquee-wrap {
+  flex: 1; overflow: hidden; white-space: nowrap;
   -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 95%, transparent);
   mask-image: linear-gradient(to right, transparent, black 2%, black 95%, transparent);
+  font-size: clamp(1.1rem, 3.2vw, 2.6rem);
 }
-.board-scroll-inner {
-  display: inline-block;
-  white-space: nowrap;
+.jour-j-marquee-wrap .jj-scroll {
+  display: inline-flex; align-items: center;
+  animation: board-marquee 45s linear infinite;
 }
-.board-scroll-inner.running {
-  animation: board-marquee var(--dur, 18s) linear infinite;
+.jj-entry {
+  display: inline-flex; align-items: center; gap: 0.35em; padding-right: 2em;
+  font-weight: 700; color: #7ec8dc; white-space: nowrap;
 }
-@keyframes board-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+.jj-entry-icon { width: 1.2em; height: 1.2em; flex-shrink: 0; vertical-align: middle; }
+.jj-entry-badge {
+  font-weight: 900; color: #f0c83c; letter-spacing: 0.02em;
+  background: rgba(240,200,60,0.12); border-radius: 4px; padding: 0 0.3em;
 }
-.bday-text {
-  font-size: clamp(0.95rem, 2.4vw, 1.65rem);
-  font-weight: 600;
-  color: #e8d88a;
+.jj-entry-label { color: #90d8ec; }
+.jj-entry-sep { color: rgba(255,255,255,0.2); padding: 0 0.8em; }
+
+@keyframes board-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* ── J-0 (today!) special marquee entry ── */
+.jj-entry--today {
+  position: relative;
 }
-.jourj-label-text {
-  font-size: clamp(0.95rem, 2.4vw, 1.65rem);
-  font-weight: 600;
-  color: #64c8dc;
+.jj-entry--today .jj-entry-badge {
+  color: #fff;
+  background: rgba(240,200,60,0.45);
+  border-radius: 5px;
+  padding: 0 0.35em;
+  animation: jj-badge-pulse 0.9s ease-in-out infinite;
+}
+@keyframes jj-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,200,60,0.75);  background: rgba(240,200,60,0.55); }
+  50%       { box-shadow: 0 0 14px 5px rgba(240,200,60,0.2); background: rgba(240,200,60,0.15); }
+}
+.jj-entry--today .jj-entry-icon {
+  animation: jj-icon-party 0.55s ease-in-out infinite alternate;
+  transform-origin: center bottom;
+}
+@keyframes jj-icon-party {
+  from { transform: rotate(-14deg) scale(1.0); }
+  to   { transform: rotate(14deg)  scale(1.18); }
+}
+.jj-entry--today .jj-entry-label {
+  color: #fff;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(240,200,60,0.5);
+}
+/* Confetti sparks — floated dots that fly upward */
+.jj-spark {
+  display: inline-block; width: 0.28em; height: 0.28em;
+  border-radius: 50%; vertical-align: middle; margin: 0 0.08em;
+  animation: jj-spark-fly 1.0s ease-out infinite; opacity: 0;
+}
+.jj-spark--1 { background: #e2001a; animation-delay: 0s;    animation-duration: 1.05s; }
+.jj-spark--2 { background: #f0c83c; animation-delay: 0.22s; animation-duration: 0.88s; }
+.jj-spark--3 { background: #2e8b3c; animation-delay: 0.44s; animation-duration: 1.15s; }
+.jj-spark--4 { background: #7b2d8b; animation-delay: 0.11s; animation-duration: 0.95s; }
+@keyframes jj-spark-fly {
+  0%   { transform: translateY(0)      rotate(0deg);   opacity: 1; }
+  80%  { transform: translateY(-1.1em) rotate(200deg); opacity: 0.6; }
+  100% { transform: translateY(-1.4em) rotate(360deg); opacity: 0; }
+}
+
+/* ── J-0 config row highlight ── */
+.jourj-event-row--today {
+  border-color: rgba(240,200,60,0.5);
+  background: rgba(240,200,60,0.08);
+}
+.jourj-event-days--today {
+  color: #fff;
+  background: rgba(240,200,60,0.45);
+  border-radius: 5px;
+  padding: 0.1em 0.5em;
+  animation: jj-badge-pulse 0.9s ease-in-out infinite;
 }
 
 /* ── Board footer (weather) ── */
-/* flex-grow 1: expands to fill remaining space; flex-shrink 50: collapses before birthday/Jour J */
 #board-footer {
-  flex: 1 50 auto;
-  background: var(--header-bg);
-  border-top: 1px solid rgba(255,255,255,0.08);
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
+  flex: 0 50 auto; background: var(--header-bg);
+  border-top: 1px solid rgba(255,255,255,0.08); min-height: 0; overflow: hidden;
+  display: flex; align-items: center;
 }
 #board-footer.hidden { display: none !important; }
-
-/* ── Weather row ── */
 #weather-row {
   display: flex; align-items: center; gap: clamp(0.8rem, 2.5vw, 2.5rem);
   padding: clamp(0.5rem, 1.8vh, 1.4rem) clamp(0.75rem, 2vw, 2rem);
-  width: 100%;
-  font-size: clamp(0.9rem, 2.5vw, 1.7rem); color: var(--text);
+  width: 100%; font-size: clamp(0.9rem, 2.5vw, 1.7rem); color: var(--text);
 }
 #weather-icon { width: clamp(2.8rem, 6.5vw, 5rem); height: clamp(2.8rem, 6.5vw, 5rem);
   flex-shrink: 0; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4)); }
-.wx-sep-bar { width: 1px; align-self: stretch; background: rgba(255,255,255,0.15);
-  margin: 0.35em 0; flex-shrink: 0; }
+.wx-sep-bar { width: 1px; align-self: stretch; background: rgba(255,255,255,0.15); margin: 0.35em 0; flex-shrink: 0; }
 .wx-group { display: flex; flex-direction: column; gap: 0.06em; }
 .wx-label { font-size: 0.52em; font-weight: 700; letter-spacing: 0.08em;
   color: rgba(255,255,255,0.42); text-transform: uppercase; }
 .wx-temps { display: flex; align-items: center; gap: 0.35em; }
-.wx-temp-min { background: #1565c0; color: #fff; border-radius: 4px; padding: 0.1em 0.42em;
-  font-weight: 800; white-space: nowrap; }
-.wx-temp-max { background: #2e7d32; color: #fff; border-radius: 4px; padding: 0.1em 0.42em;
-  font-weight: 800; white-space: nowrap; }
+.wx-temp-min { background: #1565c0; color: #fff; border-radius: 4px; padding: 0.1em 0.42em; font-weight: 800; white-space: nowrap; }
+.wx-temp-max { background: #2e7d32; color: #fff; border-radius: 4px; padding: 0.1em 0.42em; font-weight: 800; white-space: nowrap; }
 .wx-temp-sep { color: rgba(255,255,255,0.3); font-weight: 300; }
 .wx-item { display: flex; align-items: center; gap: 0.3em; }
 .wx-value { font-size: 0.95em; font-weight: 700; white-space: nowrap; }
@@ -228,44 +249,48 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
   color: rgba(255,255,255,0.32); letter-spacing: 0.04em; white-space: nowrap; padding-right: 0.4em; }
 .wx-item svg { width: 1em; height: 1em; flex-shrink: 0; }
 
-/* ── Status overlay ── */
-#status-overlay {
+/* ── Overlay base ── */
+.overlay {
   position: fixed; inset: 0; z-index: 100; background: #0d1b3e;
   display: flex; flex-direction: column;
 }
-#status-overlay.hidden { display: none; }
+.overlay.hidden { display: none; }
 .config-topbar {
   background: var(--header-bg); display: flex; align-items: center; gap: 1rem;
   padding: clamp(0.5rem, 1.5vh, 1rem) clamp(0.75rem, 2vw, 1.5rem);
   border-bottom: 2px solid rgba(255,255,255,0.12); flex-shrink: 0;
 }
-#status-back {
+.overlay-back-btn {
   background: none; border: 1.5px solid rgba(255,255,255,0.4); border-radius: 6px;
   color: white; padding: 0.35em 0.8em; font-size: clamp(0.85rem, 1.8vw, 1.05rem);
   font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.15s;
 }
-#status-back:hover { background: rgba(255,255,255,0.1); }
+.overlay-back-btn:hover { background: rgba(255,255,255,0.1); }
 .config-heading { font-size: clamp(1rem, 2.5vw, 1.5rem); font-weight: 700; color: white; }
-#status-tabs {
+
+.overlay-tabs {
   display: flex; gap: 0; background: rgba(0,0,0,0.25);
   border-bottom: 2px solid rgba(255,255,255,0.1); flex-shrink: 0;
 }
-.status-tab {
+.overlay-tab {
   background: none; border: none; border-bottom: 3px solid transparent;
   color: rgba(255,255,255,0.5); padding: 0.7em 1.4em;
   font-size: clamp(0.8rem, 1.8vw, 1rem); font-weight: 600; letter-spacing: 0.04em;
   cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -2px;
 }
-.status-tab:hover { color: rgba(255,255,255,0.8); }
-.status-tab.active { color: #fff; border-bottom-color: #ffc107; }
-#status-content {
+.overlay-tab:hover { color: rgba(255,255,255,0.8); }
+.overlay-tab.active { color: #fff; border-bottom-color: #ffc107; }
+
+.overlay-content {
   flex: 1; overflow-y: auto;
   padding: clamp(1rem, 3vw, 2rem);
   display: flex; flex-direction: column; gap: 0.75rem;
 }
-#status-content::-webkit-scrollbar { width: 6px; }
-#status-content::-webkit-scrollbar-track { background: transparent; }
-#status-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.overlay-content::-webkit-scrollbar { width: 6px; }
+.overlay-content::-webkit-scrollbar-track { background: transparent; }
+.overlay-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+/* ── Status rows ── */
 .status-row {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px; padding: 0.85rem 1.1rem; display: flex; flex-direction: column; gap: 0.3rem;
@@ -276,59 +301,132 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 .status-value.highlight { color: #ffc107; }
 .status-value.dim { color: rgba(255,255,255,0.55); font-style: italic; font-weight: 400; }
 
-/* ── Jour J config form ── */
-.jourj-form { display: flex; flex-direction: column; gap: 1rem; }
-.jourj-field { display: flex; flex-direction: column; gap: 0.4rem; }
-.jourj-field label { font-size: clamp(0.72rem, 1.4vw, 0.85rem); font-weight: 700;
+/* ── Config — Arrêt tab ── */
+#current-refs-bar {
+  display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 0.5rem 0;
+}
+.ref-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: rgba(255,193,7,0.15); border: 1.5px solid rgba(255,193,7,0.4);
+  border-radius: 20px; padding: 0.3em 0.75em;
+  font-size: clamp(0.85rem, 1.8vw, 1rem); font-weight: 700; color: #ffc107;
+}
+.ref-chip-remove {
+  background: none; border: none; color: rgba(255,193,7,0.6); cursor: pointer;
+  font-size: 1.1em; line-height: 1; padding: 0 0 0 0.1em; transition: color 0.15s;
+}
+.ref-chip-remove:hover { color: #ff5252; }
+
+/* ── Config — Jour J tab ── */
+.jourj-section-title {
+  font-size: clamp(0.85rem, 1.8vw, 1rem); font-weight: 700; color: rgba(255,255,255,0.55);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-top: 0.5rem; padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Event list */
+.jourj-event-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.jourj-event-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 0.65rem 0.9rem;
+}
+.jourj-event-row.past { opacity: 0.45; }
+.jourj-event-icon-badge {
+  width: 2rem; height: 2rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.jourj-event-icon-badge svg { width: 100%; height: 100%; }
+.jourj-event-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.jourj-event-label { font-size: clamp(0.95rem, 2vw, 1.1rem); font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jourj-event-date { font-size: 0.82em; color: rgba(255,255,255,0.45); font-weight: 500; }
+.jourj-event-days {
+  font-size: clamp(0.85rem, 1.8vw, 1rem); font-weight: 900; color: #f0c83c;
+  white-space: nowrap; flex-shrink: 0; margin-right: 0.4rem;
+}
+.jourj-event-days.past { color: #ff6b6b; }
+.jourj-trash-btn {
+  background: none; border: 1.5px solid rgba(255,255,255,0.15); border-radius: 6px;
+  color: rgba(255,255,255,0.45); width: 2rem; height: 2rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.jourj-trash-btn:hover { background: rgba(255,80,80,0.15); color: #ff6b6b; border-color: rgba(255,80,80,0.4); }
+.jourj-trash-btn svg { width: 1rem; height: 1rem; }
+
+/* Add button */
+.jourj-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: rgba(46,139,60,0.15); border: 1.5px dashed rgba(46,139,60,0.5);
+  border-radius: 8px; color: #6df083; padding: 0.7em 1em;
+  font-size: clamp(0.9rem, 2vw, 1rem); font-weight: 600; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s; width: 100%;
+}
+.jourj-add-btn:hover { background: rgba(46,139,60,0.28); border-color: rgba(46,139,60,0.8); }
+
+/* Add / edit form */
+.jourj-add-form {
+  background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.85rem;
+}
+.jourj-add-form.hidden { display: none; }
+.jourj-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.jourj-field label { font-size: clamp(0.72rem, 1.4vw, 0.82rem); font-weight: 700;
   letter-spacing: 0.06em; color: rgba(255,255,255,0.5); text-transform: uppercase; }
-.jourj-field input {
+.jourj-field input, .jourj-field select {
   background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.2);
   border-radius: 8px; color: white; padding: 0.6em 1em;
-  font-size: clamp(0.95rem, 2vw, 1.1rem); outline: none;
+  font-size: clamp(0.95rem, 2vw, 1.05rem); outline: none;
   transition: border-color 0.15s, background 0.15s;
 }
 .jourj-field input::placeholder { color: rgba(255,255,255,0.3); }
-.jourj-field input:focus { border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.12); }
+.jourj-field input:focus, .jourj-field select:focus {
+  border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.12);
+}
+.jourj-field select option { background: #1a2744; color: white; }
+.jourj-form-btns { display: flex; gap: 0.6rem; }
 .jourj-save-btn {
   background: #2e7d32; border: none; border-radius: 8px; color: white;
-  padding: 0.7em 1.5em; font-size: clamp(0.9rem, 2vw, 1.05rem); font-weight: 700;
-  cursor: pointer; letter-spacing: 0.03em; align-self: flex-start;
-  transition: background 0.15s, transform 0.08s;
+  padding: 0.6em 1.4em; font-size: clamp(0.9rem, 2vw, 1rem); font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
 }
 .jourj-save-btn:hover { background: #388e3c; }
-.jourj-save-btn:active { transform: translateY(1px); }
-.jourj-save-btn.saved { background: #1565c0; }
-.jourj-current-box {
-  background: rgba(100,200,220,0.08); border: 1px solid rgba(100,200,220,0.2);
-  border-radius: 8px; padding: 0.85rem 1.1rem;
-  display: flex; align-items: center; gap: 1rem;
+.jourj-cancel-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; color: rgba(255,255,255,0.7);
+  padding: 0.6em 1.2em; font-size: clamp(0.9rem, 2vw, 1rem); font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
 }
-.jourj-current-badge {
-  font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 900; color: #ffc107;
-  white-space: nowrap; flex-shrink: 0;
+.jourj-cancel-btn:hover { background: rgba(255,255,255,0.12); }
+
+/* Icon picker option labels */
+.icon-option-label { display: flex; align-items: center; gap: 0.5rem; }
+
+/* Birthday days ahead setting */
+.jourj-days-ahead-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 0.65rem 0.9rem;
 }
-.jourj-current-info { display: flex; flex-direction: column; gap: 0.2rem; }
-.jourj-current-label { font-size: clamp(0.65rem, 1.3vw, 0.78rem); font-weight: 700;
-  letter-spacing: 0.08em; color: rgba(255,255,255,0.42); text-transform: uppercase; }
-.jourj-current-event { font-size: clamp(1rem, 2.5vw, 1.4rem); font-weight: 600; color: #64c8dc; }
-.jourj-section-title {
-  font-size: clamp(0.85rem, 1.8vw, 1rem); font-weight: 700; color: rgba(255,255,255,0.6);
-  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 0.5rem;
-}
-#jourj-toast {
-  display: none; background: rgba(46,125,50,0.85); border: 1px solid rgba(46,125,50,0.6);
-  border-radius: 8px; padding: 0.7rem 1.2rem; font-size: 0.95rem; font-weight: 600;
-  color: #a5d6a7; margin-top: 0.5rem;
+.jourj-days-ahead-label { flex: 1; font-size: clamp(0.9rem, 1.8vw, 1rem); color: rgba(255,255,255,0.7); }
+.jourj-days-ahead-input {
+  width: 4rem; background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 6px; color: white; padding: 0.35em 0.6em; text-align: center;
+  font-size: clamp(0.95rem, 2vw, 1.1rem); font-weight: 700; outline: none;
 }
 
-/* ── Offline message ── */
-.offline-message {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  font-size: clamp(1.2rem, 3.5vw, 2.2rem); font-weight: 700;
-  color: rgba(255,255,255,0.55); letter-spacing: 0.04em; text-align: center; padding: 2rem;
+/* Upcoming birthdays (read-only list) */
+.jourj-bday-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: rgba(91,141,238,0.08); border: 1px solid rgba(91,141,238,0.2);
+  border-radius: 8px; padding: 0.55rem 0.85rem;
 }
+.jourj-bday-icon { width: 1.4rem; height: 1.4rem; flex-shrink: 0; }
+.jourj-bday-name { flex: 1; font-size: clamp(0.92rem, 2vw, 1.05rem); color: #c8d8f8; font-weight: 600; }
+.jourj-bday-days { font-size: 0.88em; font-weight: 700; color: #f0c83c; white-space: nowrap; }
 
-/* ── Status / config buttons in header ── */
+/* ── Config btn / status btn ── */
 #config-btn {
   background: none; border: 1.5px solid rgba(255,255,255,0.35); border-radius: 6px;
   color: rgba(255,255,255,0.85); padding: 0.3em 0.7em;
@@ -340,6 +438,11 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
   display: flex; align-items: center; flex-shrink: 0; }
 #status-dot { display: block; width: clamp(0.7rem, 1.6vw, 1rem); height: clamp(0.7rem, 1.6vw, 1rem);
   border-radius: 50%; background: #4caf50; }
+.offline-message {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(1.2rem, 3.5vw, 2.2rem); font-weight: 700;
+  color: rgba(255,255,255,0.55); letter-spacing: 0.04em; text-align: center; padding: 2rem;
+}
 </style>
 </head>
 <body>
@@ -348,40 +451,25 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 <div id="ctrl-bar">
   <span class="ctrl-title">Maquette Web</span>
   <div class="ctrl-sep"></div>
-
-  <label>
-    Lignes&nbsp;
-    <select id="sel-rows">
-      <option value="4">4</option>
-      <option value="3" selected>3</option>
-      <option value="2">2</option>
-      <option value="1">1</option>
-    </select>
-  </label>
-
-  <label>
-    <input type="checkbox" id="chk-bday" checked>
-    Anniversaires
-  </label>
-
-  <label>
-    <input type="checkbox" id="chk-jourj" checked>
-    Jour J
-  </label>
-
-  <label>
-    <input type="checkbox" id="chk-weather" checked>
-    Météo
-  </label>
-
+  <label><input type="checkbox" id="chk-rotation" checked> Rotation arrêts</label>
+  <label>Délai&nbsp;<select id="sel-rotation-secs">
+    <option value="5" selected>5 s</option><option value="10">10 s</option><option value="15">15 s</option>
+  </select></label>
   <div class="ctrl-sep"></div>
-
+  <label>Lignes&nbsp;<select id="sel-rows">
+    <option value="4">4</option><option value="3" selected>3</option>
+    <option value="2">2</option><option value="1">1</option>
+  </select></label>
+  <label><input type="checkbox" id="chk-bday" checked> Anniversaires</label>
+  <label><input type="checkbox" id="chk-jourj" checked> Jour J</label>
+  <label><input type="checkbox" id="chk-weather" checked> Météo</label>
+  <div class="ctrl-sep"></div>
+  <button id="btn-config">Configuration…</button>
   <button id="btn-status">État du système…</button>
 </div>
 
 <!-- ── Main board ── -->
 <div id="board">
-
   <header id="header">
     <div id="clock">--:--</div>
     <div id="date">--</div>
@@ -400,45 +488,14 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
     </div>
   </header>
 
-  <div id="departures"><!-- Populated by JS --></div>
-
-  <!-- ── Birthday row ── -->
-  <div id="birthday-row" class="hidden">
-    <svg class="board-row-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <!-- Present / gift -->
-      <rect x="3" y="11" width="18" height="11" rx="1.5" fill="#e8d88a" opacity="0.9"/>
-      <rect x="2" y="7" width="20" height="5" rx="1.5" fill="#ffc107"/>
-      <rect x="11" y="7" width="2" height="15" fill="#c8102e"/>
-      <rect x="2" y="9.2" width="20" height="1.6" fill="#c8102e" opacity="0.55"/>
-      <path d="M12 7.5 C10 4 6 4.5 6 7 C6 9 10 8.5 12 7.5Z" fill="#c8102e"/>
-      <path d="M12 7.5 C14 4 18 4.5 18 7 C18 9 14 8.5 12 7.5Z" fill="#c8102e"/>
-    </svg>
-    <div class="board-scroll-outer">
-      <div class="board-scroll-inner" id="bday-inner">
-        <span class="bday-text" id="bday-text-a"></span><span class="bday-text" id="bday-text-b" aria-hidden="true"></span>
-      </div>
-    </div>
+  <div id="departures">
+    <div id="departures-inner"></div>
+    <div id="stop-indicator"></div>
   </div>
 
-  <!-- ── Jour J row ── -->
-  <div id="jour-j-row" class="hidden">
-    <svg class="board-row-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <!-- Party popper -->
-      <path d="M3 21 L16 8 L19.5 11.5 Z" fill="#e07b10"/>
-      <path d="M3 21 L8 16 L16 8 L11 13 Z" fill="#ffc107" opacity="0.55"/>
-      <circle cx="20" cy="5" r="2" fill="#ffc107"/>
-      <circle cx="17" cy="3" r="1.2" fill="#64c8dc"/>
-      <circle cx="22" cy="9" r="1.2" fill="#e8d88a"/>
-      <path d="M14 4.5 L15 2.5 L16 4.5 L14 4.5Z" fill="#ffc107"/>
-      <rect x="18" y="14" width="2.2" height="2.2" rx="0.5" fill="#c8102e" transform="rotate(25 19 15)"/>
-      <rect x="13" y="3.5" width="2" height="2" rx="0.5" fill="#7b2d8b" transform="rotate(-15 14 4.5)"/>
-    </svg>
-    <div class="jourj-badge" id="jourj-badge">J-42</div>
-    <div class="board-scroll-outer">
-      <div class="board-scroll-inner" id="jourj-inner">
-        <span class="jourj-label-text" id="jourj-text-a"></span><span class="jourj-label-text" id="jourj-text-b" aria-hidden="true"></span>
-      </div>
-    </div>
+  <div id="extras-row" style="display:none">
+    <div id="birthday-row"></div>
+    <div id="jour-j-row"></div>
   </div>
 
   <div id="board-footer">
@@ -476,8 +533,6 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
             <g stroke="#FFD600" stroke-width="2" stroke-linecap="round">
               <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
               <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
-              <line x1="4.9" y1="4.9" x2="7.1" y2="7.1"/><line x1="16.9" y1="16.9" x2="19.1" y2="19.1"/>
-              <line x1="19.1" y1="4.9" x2="16.9" y2="7.1"/><line x1="7.1" y1="16.9" x2="4.9" y2="19.1"/>
             </g>
           </svg>
           <span class="wx-value">5<span class="wx-unit">&nbsp;h</span></span>
@@ -486,21 +541,32 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
       <div class="wx-location">Strasbourg</div>
     </div>
   </div>
-
 </div><!-- #board -->
 
 <!-- ── Status overlay ── -->
-<div id="status-overlay" class="hidden">
+<div id="status-overlay" class="overlay hidden">
   <div class="config-topbar">
-    <button id="status-back">← Retour</button>
+    <button class="overlay-back-btn" id="status-back">← Retour</button>
     <h1 class="config-heading">État du système</h1>
   </div>
-  <div id="status-tabs">
-    <button class="status-tab" data-tab="cts">CTS</button>
-    <button class="status-tab" data-tab="meteoblue">Météoblue</button>
-    <button class="status-tab active" data-tab="jourj">Compteur Jour J</button>
+  <div class="overlay-tabs" id="status-tabs">
+    <button class="overlay-tab active" data-tab="cts">CTS</button>
+    <button class="overlay-tab" data-tab="meteoblue">Météoblue</button>
   </div>
-  <div id="status-content"><!-- rendered by JS --></div>
+  <div class="overlay-content" id="status-content"></div>
+</div>
+
+<!-- ── Configuration overlay ── -->
+<div id="config-overlay" class="overlay hidden">
+  <div class="config-topbar">
+    <button class="overlay-back-btn" id="config-back">← Retour</button>
+    <h1 class="config-heading">Configuration</h1>
+  </div>
+  <div class="overlay-tabs" id="config-tabs">
+    <button class="overlay-tab active" data-tab="arret">Arrêt</button>
+    <button class="overlay-tab" data-tab="jourj">Jour J</button>
+  </div>
+  <div class="overlay-content" id="config-content"></div>
 </div>
 
 <!-- ── Weather SVG sprite ── -->
@@ -511,26 +577,16 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
       <g stroke="#FFD600" stroke-width="3.5" stroke-linecap="round">
         <line x1="32" y1="6"  x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="58"/>
         <line x1="6"  y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="58" y2="32"/>
-        <line x1="13.9" y1="13.9" x2="18.1" y2="18.1"/><line x1="45.9" y1="45.9" x2="50.1" y2="50.1"/>
-        <line x1="50.1" y1="13.9" x2="45.9" y2="18.1"/><line x1="18.1" y1="45.9" x2="13.9" y2="50.1"/>
+        <line x1="13.9" y1="13.9" x2="18.1" y2="18.1"/><line x1="50.1" y1="13.9" x2="45.9" y2="18.1"/>
       </g>
     </symbol>
     <symbol id="w-mostly-sunny" viewBox="0 0 64 64">
       <circle cx="24" cy="22" r="10" fill="#FFD600"/>
       <g stroke="#FFD600" stroke-width="3" stroke-linecap="round">
-        <line x1="24" y1="6"  x2="24" y2="10"/><line x1="24" y1="34" x2="24" y2="38"/>
-        <line x1="8"  y1="22" x2="12" y2="22"/><line x1="36" y1="22" x2="40" y2="22"/>
-        <line x1="12.7" y1="10.7" x2="15.5" y2="13.5"/><line x1="32.5" y1="30.5" x2="35.3" y2="33.3"/>
-        <line x1="35.3" y1="10.7" x2="32.5" y2="13.5"/><line x1="15.5" y1="30.5" x2="12.7" y2="33.3"/>
+        <line x1="24" y1="6" x2="24" y2="10"/><line x1="24" y1="34" x2="24" y2="38"/>
+        <line x1="8" y1="22" x2="12" y2="22"/><line x1="36" y1="22" x2="40" y2="22"/>
       </g>
       <path d="M52 44 Q52 36 44 36 Q41 30 34 32 Q28 28 26 34 Q20 34 20 41 Q20 48 28 48 L52 48 Q58 48 58 42 Q58 36 52 36 Z" fill="#e0e8f0"/>
-    </symbol>
-    <symbol id="w-partly-cloudy" viewBox="0 0 64 64">
-      <circle cx="22" cy="24" r="10" fill="#FFD600" opacity="0.9"/>
-      <path d="M54 43 Q54 34 45 34 Q42 27 34 29 Q27 24 24 31 Q17 31 17 38 Q17 46 26 46 L54 46 Q61 46 61 40 Q61 34 54 34 Z" fill="#c8d8e8"/>
-    </symbol>
-    <symbol id="w-cloudy" viewBox="0 0 64 64">
-      <path d="M52 46 Q52 36 42 36 Q39 28 30 30 Q22 26 20 33 Q12 33 12 41 Q12 50 22 50 L52 50 Q60 50 60 43 Q60 36 52 36 Z" fill="#9ab0c8"/>
     </symbol>
     <symbol id="w-rain" viewBox="0 0 64 64">
       <path d="M50 34 Q50 24 40 24 Q37 17 28 19 Q21 15 18 22 Q11 22 11 30 Q11 38 20 38 L50 38 Q57 38 57 32 Q57 26 50 26 Z" fill="#7090b0"/>
@@ -539,17 +595,9 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
         <line x1="36" y1="44" x2="34" y2="52"/><line x1="44" y1="44" x2="42" y2="52"/>
       </g>
     </symbol>
-    <symbol id="w-snow" viewBox="0 0 64 64">
-      <path d="M50 34 Q50 24 40 24 Q37 17 28 19 Q21 15 18 22 Q11 22 11 30 Q11 38 20 38 L50 38 Q57 38 57 32 Q57 26 50 26 Z" fill="#8898b0"/>
-      <g stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.9">
-        <line x1="32" y1="42" x2="32" y2="58"/><line x1="24" y1="50" x2="40" y2="50"/>
-        <line x1="26.3" y1="44.3" x2="37.7" y2="55.7"/><line x1="37.7" y1="44.3" x2="26.3" y2="55.7"/>
-      </g>
-    </symbol>
     <symbol id="w-night-clear" viewBox="0 0 64 64">
       <path d="M38 10 Q20 14 20 32 Q20 50 38 54 Q18 54 12 40 Q8 28 16 18 Q22 10 38 10 Z" fill="#c8d4e8"/>
       <circle cx="48" cy="14" r="2" fill="#FFD600" opacity="0.9"/>
-      <circle cx="54" cy="26" r="1.5" fill="#FFD600" opacity="0.7"/>
     </symbol>
   </defs>
 </svg>
@@ -558,74 +606,150 @@ html, body { height: 100%; overflow: hidden; background: #0d1b3e; color: var(--t
 (function () {
 "use strict";
 
-// ── Demo data ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── Icon SVGs ─────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
-var DEMO_ROWS = [
-    { line: "A", color: "#c8102e", dest: "Illkirch-Lixenbuhl",  t1: 3,  t2: 12 },
-    { line: "B", color: "#7b2d8b", dest: "Hoenheim Gare",       t1: 1,  t2:  8 },
-    { line: "C", color: "#e07b10", dest: "Gare Centrale",       t1: 5,  t2: 14 },
-    { line: "D", color: "#2e8b3c", dest: "Poteries",            t1: 2,  t2:  9 }
-];
+var ICONS = {
+    star: '<path d="M12 2 L14 8 L20 8 L15 12 L17 18 L12 14 L7 18 L9 12 L4 8 L10 8 Z" fill="#f0c83c"/>',
+    party: '<path d="M4 20 L10 8 L16 14 Z" fill="#e07b10"/>' +
+           '<circle cx="17" cy="5"  r="1.5" fill="#e2001a"/>' +
+           '<circle cx="20" cy="10" r="1.2" fill="#f0c83c"/>' +
+           '<circle cx="13" cy="4"  r="1"   fill="#2e8b3c"/>' +
+           '<circle cx="20" cy="14" r="1"   fill="#7b2d8b"/>' +
+           '<path d="M10 8 Q12 5 15 6 Q13 9 10 8Z" fill="#ffc107"/>',
+    heart: '<path d="M12 20.5 C12 20.5 3 14 3 8 C3 5.2 5.2 3 8 3 C9.8 3 11.4 4 12 5.4 C12.6 4 14.2 3 16 3 C18.8 3 21 5.2 21 8 C21 14 12 20.5 12 20.5Z" fill="#e2001a"/>',
+    present: '<rect x="3" y="10" width="18" height="12" rx="2" fill="#5b8dee" opacity="0.9"/>' +
+             '<rect x="9" y="10" width="6"  height="12" fill="#e6dca8" opacity="0.5"/>' +
+             '<rect x="3" y="7"  width="18" height="4"  rx="1" fill="#7aaaf5"/>' +
+             '<rect x="10.5" y="7" width="3" height="4" fill="#e6dca8" opacity="0.5"/>' +
+             '<path d="M12 7 Q10 4 8 5 Q6 6 8 8 Q10 9 12 7Z" fill="#e87070"/>' +
+             '<path d="M12 7 Q14 4 16 5 Q18 6 16 8 Q14 9 12 7Z" fill="#e87070"/>',
+    skull: '<ellipse cx="12" cy="10" rx="7" ry="7" fill="#c8d4e0"/>' +
+           '<rect x="7" y="15" width="10" height="6" rx="1" fill="#c8d4e0"/>' +
+           '<circle cx="9"  cy="10" r="2" fill="#0d1b3e"/>' +
+           '<circle cx="15" cy="10" r="2" fill="#0d1b3e"/>' +
+           '<rect x="9"  y="17" width="2" height="4" rx="1" fill="#0d1b3e"/>' +
+           '<rect x="13" y="17" width="2" height="4" rx="1" fill="#0d1b3e"/>'
+};
 
-var DEMO_BIRTHDAYS = ["Jean Martin", "Claire Dupont"];
-var DEMO_JOURJ_LABEL = "Grandes Vacances";
+var ICON_LABELS = {
+    star:    "★ Étoile",
+    party:   "🎉 Fête",
+    heart:   "♥ Cœur",
+    present: "🎁 Cadeau",
+    skull:   "💀 Tête de mort"
+};
 
-// Approximate departure time offsets (refreshed at init)
-var rowTimes = [];
-(function initTimes() {
-    var now = Date.now();
-    DEMO_ROWS.forEach(function (r) {
-        rowTimes.push({
-            t1: now + r.t1 * 60000,
-            t2: now + r.t2 * 60000
-        });
-    });
-}());
-
-// ── State ────────────────────────────────────────────────────────────────
-
-var nRows       = 3;
-var bdayOn      = true;
-var jourJOn     = true;
-var weatherOn   = true;
-var activeTab   = "jourj";
-
-// Jour J live config (from demo) — date must be today or future to display
-var jourJConfig = { date: "25/06/2026", label: DEMO_JOURJ_LABEL };
-
-// ── Jour J helpers ───────────────────────────────────────────────────────────
-
-/** Returns true when the Jour J date is strictly before today (event is past). */
-function isJourJPast() {
-    if (!jourJConfig.date) return true;
-    var parts = jourJConfig.date.split('/');
-    if (parts.length !== 3) return true;
-    var d = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, y = parseInt(parts[2], 10);
-    if (isNaN(d) || isNaN(m) || isNaN(y)) return true;
-    var target = new Date(y, m, d, 0, 0, 0, 0);
-    var today  = new Date(); today.setHours(0, 0, 0, 0);
-    return target < today;
+function iconSvgHtml(type, cls, sizeStr) {
+    var paths = ICONS[type] || ICONS.star;
+    cls = cls || "";
+    sizeStr = sizeStr || "1em";
+    return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" aria-hidden="true"' +
+           ' style="width:' + sizeStr + ';height:' + sizeStr + ';vertical-align:middle;flex-shrink:0">' +
+           paths + '</svg>';
 }
 
-/** Returns days remaining until the Jour J event (0 on event day, <0 if past). */
-function getJourJDays() {
-    if (!jourJConfig.date) return 0;
-    var parts = jourJConfig.date.split('/');
-    if (parts.length !== 3) return 0;
-    var target = new Date(+parts[2], +parts[1]-1, +parts[0]);
-    var today  = new Date(); today.setHours(0, 0, 0, 0);
+// ────────────────────────────────────────────────────────────────────────────
+// ── Demo data ─────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+
+var DEMO_STOPS = [
+    {
+        ref: "298A", name: "Jean Jaurès",
+        rows: [
+            { line:"C", color:"#e07b10", dest:"Neuhof Rodolphe Reuss",   t1:3,  t2:11 },
+            { line:"D", color:"#2e8b3c", dest:"Kehl Rathaus",             t1:1,  t2:8  },
+            { line:"A", color:"#c8102e", dest:"Illkirch-Lixenbuhl",       t1:6,  t2:15 },
+            { line:"B", color:"#7b2d8b", dest:"Hoenheim Gare",            t1:4,  t2:13 }
+        ]
+    },
+    {
+        ref: "298B", name: "Jean Jaurès",
+        rows: [
+            { line:"C", color:"#e07b10", dest:"Gare Centrale",            t1:5,  t2:14 },
+            { line:"D", color:"#2e8b3c", dest:"Poteries",                 t1:2,  t2:9  },
+            { line:"A", color:"#c8102e", dest:"Baggersee",                t1:7,  t2:16 },
+            { line:"B", color:"#7b2d8b", dest:"Lingolsheim Tiergässel",   t1:3,  t2:10 }
+        ]
+    }
+];
+
+var DEMO_BIRTHDAYS = ["Jean Martin (44)", "Claire Dupont"];
+
+// Jour J events (dates relative to today for demo purposes)
+function makeDemoDate(daysFromNow) {
+    var d = new Date();
+    d.setDate(d.getDate() + daysFromNow);
+    return pad2(d.getDate()) + "/" + pad2(d.getMonth()+1) + "/" + d.getFullYear();
+}
+function pad2(n) { return n < 10 ? "0" + n : String(n); }
+
+// Live events state (editable in demo)
+var jourJEvents = [
+    { date: makeDemoDate(0),   label: "Fête de la Musique", icon: "party"   },
+    { date: makeDemoDate(72),  label: "Fête Nationale",     icon: "star"    },
+    { date: makeDemoDate(253), label: "Noël",                icon: "present" },
+    { date: makeDemoDate(437), label: "♥ Mariage Perlin",   icon: "heart"   }
+];
+
+// Upcoming birthdays (1–N days away, not today)
+var DEMO_UPCOMING_BDAYS = [
+    { name: "Nicolas Petit (38)",  days: 3  },
+    { name: "Emma Leroy",          days: 5  }
+];
+
+var birthdayDaysAhead = 7;
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+
+var nRows = 3;
+var bdayOn = true;
+var jourJOn = true;
+var weatherOn = true;
+var activeStatusTab = "cts";
+var activeConfigTab  = "arret";
+
+var currentStopIdx = 0;
+var rotationOn = true;
+var rotationSecs = 5;
+var rotationTimer = null;
+var isAnimating = false;
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+
+function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    var p = dateStr.split('/');
+    if (p.length < 3) return null;
+    var target = new Date(+p[2], +p[1]-1, +p[0]);
+    var today  = new Date(); today.setHours(0,0,0,0);
     return Math.ceil((target - today) / 86400000);
 }
 
-/** Schedule a re-evaluation of the Jour J banner at midnight. */
-function scheduleMidnightRefresh() {
-    var now       = new Date();
-    var midnight  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    var msUntil   = midnight - now;
-    setTimeout(function () { renderJourJ(); scheduleMidnightRefresh(); }, msUntil);
+function isPast(dateStr) {
+    var d = daysUntil(dateStr);
+    return d === null || d < 0;
 }
 
-// ── Render loop ──────────────────────────────────────────────────────────
+function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function updateExtrasRowVisibility() {
+    var bday = document.getElementById("birthday-row");
+    var jj   = document.getElementById("jour-j-row");
+    var row  = document.getElementById("extras-row");
+    row.style.display = (bday.style.display !== "none" || jj.style.display !== "none") ? "" : "none";
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Rendering ─────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
 function renderBoard() {
     renderDepartures();
@@ -635,39 +759,136 @@ function renderBoard() {
 }
 
 function renderDepartures() {
-    var container = document.getElementById("departures");
-    container.innerHTML = "";
-    for (var i = 0; i < nRows; i++) {
-        var r = DEMO_ROWS[i];
-        var row = document.createElement("div");
-        row.className = "departure-row";
-
-        var badge = document.createElement("div");
-        badge.className = "line-badge";
-        badge.textContent = r.line;
-        badge.style.background = r.color;
-
-        var dest = document.createElement("div");
-        dest.className = "destination";
-        dest.textContent = r.dest;
-
-        var c1 = makeTimeCell(rowTimes[i].t1);
-        var c2 = makeTimeCell(rowTimes[i].t2);
-
-        row.appendChild(badge);
-        row.appendChild(dest);
-        row.appendChild(c1);
-        row.appendChild(c2);
-        container.appendChild(row);
+    var stop  = DEMO_STOPS[currentStopIdx];
+    var inner = document.getElementById("departures-inner");
+    inner.innerHTML = "";
+    var rowCount = Math.min(nRows, stop.rows.length);
+    var now = Date.now();
+    for (var i = 0; i < rowCount; i++) {
+        var r = stop.rows[i];
+        var row   = document.createElement("div"); row.className = "departure-row";
+        var badge = document.createElement("div"); badge.className = "line-badge";
+        badge.textContent = r.line; badge.style.background = r.color;
+        var dest  = document.createElement("div"); dest.className = "destination"; dest.textContent = r.dest;
+        var c1 = makeTimeCell(now + r.t1 * 60000);
+        var c2 = makeTimeCell(now + r.t2 * 60000);
+        row.appendChild(badge); row.appendChild(dest); row.appendChild(c1); row.appendChild(c2);
+        inner.appendChild(row);
+    }
+    var pill = document.getElementById("stop-indicator");
+    if (DEMO_STOPS.length > 1 && rotationOn) {
+        pill.textContent = stop.ref + "\u2002" + (currentStopIdx+1) + "/" + DEMO_STOPS.length;
+        pill.style.display = "block";
+    } else {
+        pill.style.display = "none";
     }
 }
 
+function renderBirthday() {
+    var el = document.getElementById("birthday-row");
+    if (!bdayOn || DEMO_BIRTHDAYS.length === 0) {
+        el.style.display = "none"; updateExtrasRowVisibility(); return;
+    }
+    el.style.display = "";
+    var text = "\u00a0\u00a0\ud83c\udf81\u00a0Bon anniversaire\u00a0\u2022\u00a0" +
+               DEMO_BIRTHDAYS.join("\u00a0\u2022\u00a0") + "\u00a0\u00a0";
+    var iconSvg =
+        '<svg class="birthday-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        ICONS.present + '</svg>';
+    var wrap = document.createElement("div"); wrap.className = "birthday-text-wrap";
+    var span = document.createElement("span"); span.textContent = text + text;
+    wrap.appendChild(span);
+    el.innerHTML = iconSvg; el.appendChild(wrap); wrap.classList.add("scrolling");
+    updateExtrasRowVisibility();
+}
+
+function renderJourJ() {
+    var el = document.getElementById("jour-j-row");
+    if (!jourJOn) { el.style.display = "none"; updateExtrasRowVisibility(); return; }
+
+    // Combine Jour J events + upcoming birthdays, filtered to ≥ 0 days, sorted ascending
+    var allItems = [];
+    jourJEvents.forEach(function (ev) {
+        var d = daysUntil(ev.date);
+        if (d !== null && d >= 0) allItems.push({ days: d, label: ev.label, icon: ev.icon });
+    });
+    DEMO_UPCOMING_BDAYS.forEach(function (b) {
+        if (b.days >= 1 && b.days <= birthdayDaysAhead)
+            allItems.push({ days: b.days, label: b.name, icon: "present" });
+    });
+    allItems.sort(function (a, b) { return a.days - b.days; });
+
+    if (allItems.length === 0) { el.style.display = "none"; updateExtrasRowVisibility(); return; }
+    el.style.display = "";
+
+    // Build one half of the seamless loop (will be doubled)
+    var halfHtml = allItems.map(function (item) {
+        var isToday = item.days === 0;
+        var entryClass = "jj-entry" + (isToday ? " jj-entry--today" : "");
+        var badgeText = "J\u2011" + item.days;
+        var sparks = isToday
+            ? '<span class="jj-spark jj-spark--1"></span>' +
+              '<span class="jj-spark jj-spark--2"></span>' +
+              '<span class="jj-spark jj-spark--3"></span>' +
+              '<span class="jj-spark jj-spark--4"></span>'
+            : '';
+        return '<span class="' + entryClass + '">' +
+            sparks +
+            iconSvgHtml(item.icon, "jj-entry-icon", "1.3em") +
+            '<span class="jj-entry-badge">' + badgeText + '</span>' +
+            '<span class="jj-entry-label">' + escHtml(item.label) + '</span>' +
+            '</span><span class="jj-entry-sep">\u00a0\u00a0\u00a0\u2022\u00a0\u00a0\u00a0</span>';
+    }).join('');
+
+    var wrap = document.createElement("div"); wrap.className = "jour-j-marquee-wrap";
+    var scroll = document.createElement("span"); scroll.className = "jj-scroll";
+    scroll.innerHTML = halfHtml + halfHtml; // doubled for seamless loop
+    wrap.appendChild(scroll);
+
+    el.innerHTML = "";
+    el.appendChild(wrap);
+    updateExtrasRowVisibility();
+}
+
+function renderWeather() {
+    document.getElementById("board-footer").classList.toggle("hidden", !weatherOn);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Rotation ──────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+
+function startRotation() {
+    clearInterval(rotationTimer); rotationTimer = null;
+    if (DEMO_STOPS.length > 1 && rotationOn) {
+        rotationTimer = setInterval(function () {
+            rotateTo((currentStopIdx + 1) % DEMO_STOPS.length);
+        }, rotationSecs * 1000);
+    }
+}
+
+function rotateTo(newIdx) {
+    if (isAnimating || newIdx === currentStopIdx) return;
+    isAnimating = true;
+    var inner = document.getElementById("departures-inner");
+    inner.classList.add("departures-wipe-out");
+    setTimeout(function () {
+        inner.classList.remove("departures-wipe-out");
+        currentStopIdx = newIdx;
+        renderDepartures();
+        void inner.offsetWidth;
+        inner.classList.add("departures-wipe-in");
+        inner.addEventListener("animationend", function h() {
+            inner.removeEventListener("animationend", h);
+            inner.classList.remove("departures-wipe-in");
+            isAnimating = false;
+        });
+    }, 360);
+}
+
 function makeTimeCell(targetMs) {
-    var cell = document.createElement("div");
-    cell.className = "time-cell";
-    cell.dataset.target = targetMs;
-    refreshTimeCell(cell);
-    return cell;
+    var cell = document.createElement("div"); cell.className = "time-cell";
+    cell.dataset.target = String(targetMs); refreshTimeCell(cell); return cell;
 }
 
 function refreshTimeCell(cell) {
@@ -675,264 +896,404 @@ function refreshTimeCell(cell) {
     if (diffMs < 0) {
         cell.innerHTML = '<span class="arriving">arr.</span>';
     } else {
-        var diffMin = Math.floor(diffMs / 60000);
-        if (diffMin === 0) {
-            cell.innerHTML = '<span class="arriving">&lt;&nbsp;1</span><span class="unit">min</span>';
-        } else {
-            cell.innerHTML = diffMin + '<span class="unit">min</span>';
-        }
+        var m = Math.floor(diffMs / 60000);
+        cell.innerHTML = m === 0
+            ? '<span class="arriving">&lt;&nbsp;1</span><span class="unit">min</span>'
+            : m + '<span class="unit">min</span>';
     }
 }
 
-function renderBirthday() {
-    var row = document.getElementById("birthday-row");
-    var show = bdayOn;
-    if (!show) { row.classList.add("hidden"); return; }
-    row.classList.remove("hidden");
-
-    var text = "🎁 Bon anniversaire \u00b7 " + DEMO_BIRTHDAYS.join(" \u00b7 ") + " \u00b7\u2002";
-    setScrollText("bday-inner", "bday-text-a", "bday-text-b", text);
-}
-
-function renderJourJ() {
-    var row = document.getElementById("jour-j-row");
-    var show = jourJOn && !isJourJPast();
-    if (!show) { row.classList.add("hidden"); return; }
-    row.classList.remove("hidden");
-
-    document.getElementById("jourj-badge").textContent = "J-" + getJourJDays();
-    var text = jourJConfig.label + "\u2002\u00b7\u2002";
-    setScrollText("jourj-inner", "jourj-text-a", "jourj-text-b", text);
-}
-
-function renderWeather() {
-    var footer = document.getElementById("board-footer");
-    footer.classList.toggle("hidden", !weatherOn);
-}
-
-// ── Scrolling text helper ────────────────────────────────────────────────
-
-function setScrollText(innerId, aId, bId, text) {
-    var inner = document.getElementById(innerId);
-    var a = document.getElementById(aId);
-    var b = document.getElementById(bId);
-
-    a.textContent = text;
-    b.textContent = text;
-
-    // Compute animation duration proportional to text length (~14px/char assumed)
-    var charCount = text.length;
-    var dur = Math.max(8, Math.min(30, charCount * 0.55)) + "s";
-    inner.style.setProperty("--dur", dur);
-
-    // Briefly remove class to restart animation
-    inner.classList.remove("running");
-    void inner.offsetWidth; // reflow
-    inner.classList.add("running");
-}
-
-// ── Clock ────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── Clock ─────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
 function updateClock() {
     var now = new Date();
-    document.getElementById("clock").textContent = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-    document.getElementById("date").textContent = now.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    document.getElementById("clock").textContent =
+        now.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+    document.getElementById("date").textContent =
+        now.toLocaleDateString("fr-FR", { day:"numeric", month:"long", year:"numeric" });
 }
 
-// ── Time counters ────────────────────────────────────────────────────────
-
-function updateTimers() {
-    document.querySelectorAll(".time-cell[data-target]").forEach(refreshTimeCell);
-}
-
-// ── Status overlay ───────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── Status overlay ────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
 function openStatus() {
     document.getElementById("status-overlay").classList.remove("hidden");
-    document.querySelectorAll(".status-tab").forEach(function (t) {
-        t.classList.toggle("active", t.dataset.tab === activeTab);
+    activateStatusTab(activeStatusTab);
+}
+function closeStatus() { document.getElementById("status-overlay").classList.add("hidden"); }
+
+function activateStatusTab(tab) {
+    activeStatusTab = tab;
+    document.querySelectorAll("#status-tabs .overlay-tab").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.tab === tab);
     });
-    renderStatusTab(activeTab);
+    var c = document.getElementById("status-content");
+    c.innerHTML = "";
+    if (tab === "cts") renderTabCts(c);
+    else renderTabMeteoblue(c);
 }
 
-function closeStatus() {
-    document.getElementById("status-overlay").classList.add("hidden");
-}
-
-function renderStatusTab(tab) {
-    var content = document.getElementById("status-content");
-    content.innerHTML = "";
-
-    if (tab === "cts") {
-        renderTabCts(content);
-    } else if (tab === "meteoblue") {
-        renderTabMeteoblue(content);
-    } else {
-        renderTabJourJ(content);
-    }
-}
-
-function statusRow(parent, label, value, cls) {
-    var el = document.createElement("div");
-    el.className = "status-row";
+function srow(parent, label, value, cls) {
+    var el = document.createElement("div"); el.className = "status-row";
     el.innerHTML = '<div class="status-label">' + label + '</div>' +
-        '<div class="status-value' + (cls ? " " + cls : "") + '">' + value + '</div>';
+        '<div class="status-value' + (cls ? " "+cls : "") + '">' + value + '</div>';
     parent.appendChild(el);
 }
 
 function renderTabCts(c) {
-    statusRow(c, "Arrêt surveillé", "StrasbourgTramA_Gare", "highlight");
-    statusRow(c, "Mode", "Simulation (pas d\u2019appel API)", "highlight");
-    statusRow(c, "Intervalle de scrutation", "5\u00a0min");
-    statusRow(c, "Prochain appel API", "dans\u00a045\u00a0s");
-    statusRow(c, "Interrogation permanente", "Non");
-    statusRow(c, "Fenêtre active", "Oui");
-    statusRow(c, "Plages horaires", "06:00-23:00", "dim");
-    statusRow(c, "Heure serveur", "12 apr. 2026, 14:32:07 CET", "dim");
+    srow(c, "Arrêts surveillés", "298A, 298B", "highlight");
+    srow(c, "Rotation des arrêts", "15\u00a0s");
+    srow(c, "Mode", "Simulation (pas d\u2019appel API)", "highlight");
+    srow(c, "Intervalle de scrutation", "5\u00a0min");
+    srow(c, "Prochain appel API", "dans\u00a045\u00a0s");
+    srow(c, "Interrogation permanente", "Non");
+    srow(c, "Fenêtre active", "Oui");
+    srow(c, "Heure serveur", new Date().toLocaleTimeString("fr-FR",
+        {hour:"2-digit",minute:"2-digit",second:"2-digit",timeZoneName:"short"}), "dim");
 }
 
 function renderTabMeteoblue(c) {
-    statusRow(c, "Widget météo", "Activé");
-    statusRow(c, "Mode", "Simulation (pas d\u2019appel API)", "highlight");
-    statusRow(c, "Localisation configurée", "Strasbourg");
-    statusRow(c, "Localisation résolue", "Strasbourg, France");
-    statusRow(c, "Coordonnées", "48.5734°N, 7.7521°E — 142\u00a0m", "dim");
-    statusRow(c, "Intervalle de relevé", "30\u00a0min");
-    statusRow(c, "Dernier relevé", "14:31:02");
-    statusRow(c, "Température actuelle", "13\u00a0°C");
-    statusRow(c, "Min\u00a0/ Max du jour", "8\u00a0°C\u00a0/\u00a017\u00a0°C");
-    statusRow(c, "Précipitations", "1.2\u00a0mm");
-    statusRow(c, "Ensoleillement", "5\u00a0h");
-    statusRow(c, "Pictocode", "2", "dim");
+    srow(c, "Widget météo", "Activé");
+    srow(c, "Mode", "Simulation (pas d\u2019appel API)", "highlight");
+    srow(c, "Localisation configurée", "Strasbourg");
+    srow(c, "Localisation résolue", "Strasbourg, France");
+    srow(c, "Coordonnées", "48.5734°N, 7.7521°E — 142\u00a0m", "dim");
+    srow(c, "Intervalle de relevé", "30\u00a0min");
+    srow(c, "Dernier relevé", "dans la minute", "dim");
+    srow(c, "Température actuelle", "13\u00a0°C");
+    srow(c, "Min\u00a0/ Max du jour", "8\u00a0°C\u00a0/\u00a017\u00a0°C");
+    srow(c, "Précipitations", "1.2\u00a0mm");
+    srow(c, "Ensoleillement", "5\u00a0h");
 }
-
-function renderTabJourJ(c) {
-    // Current config display
-    var days = getJourJDays();
-    var curBox = document.createElement("div");
-    curBox.className = "jourj-current-box";
-    curBox.innerHTML =
-        '<div class="jourj-current-badge">J-' + days + '</div>' +
-        '<div class="jourj-current-info">' +
-        '<span class="jourj-current-label">Événement configuré</span>' +
-        '<span class="jourj-current-event" id="cur-event-label">' + escHtml(jourJConfig.label) + '</span>' +
-        '</div>' +
-        '<svg style="width:2rem;height:2rem;flex-shrink:0;margin-left:auto" viewBox="0 0 24 24" fill="none">' +
-        '<path d="M3 21 L16 8 L19.5 11.5 Z" fill="#e07b10"/>' +
-        '<circle cx="20" cy="5" r="2" fill="#ffc107"/>' +
-        '<path d="M14 4.5 L15 2.5 L16 4.5 L14 4.5Z" fill="#ffc107"/>' +
-        '</svg>';
-    c.appendChild(curBox);
-
-    // Section title
-    var title = document.createElement("div");
-    title.className = "jourj-section-title";
-    title.textContent = "Modifier le compteur";
-    c.appendChild(title);
-
-    // Form
-    var form = document.createElement("div");
-    form.className = "jourj-form";
-    form.innerHTML =
-        '<div class="jourj-field">' +
-        '<label for="jourj-date-input">Date de l\u2019événement (JJ/MM/AAAA)</label>' +
-        '<input id="jourj-date-input" type="text" placeholder="25/06/2026" value="' + escHtml(jourJConfig.date) + '" maxlength="10">' +
-        '</div>' +
-        '<div class="jourj-field">' +
-        '<label for="jourj-label-input">Nom de l\u2019événement</label>' +
-        '<input id="jourj-label-input" type="text" placeholder="ex. Grandes Vacances" value="' + escHtml(jourJConfig.label) + '" maxlength="60">' +
-        '</div>' +
-        '<button class="jourj-save-btn" id="jourj-save-btn">Enregistrer</button>' +
-        '<div id="jourj-toast">✓\u00a0Configuration enregistrée</div>';
-    c.appendChild(form);
-
-    // Save handler
-    document.getElementById("jourj-save-btn").addEventListener("click", function () {
-        var dateVal  = document.getElementById("jourj-date-input").value.trim();
-        var labelVal = document.getElementById("jourj-label-input").value.trim();
-        if (!dateVal || !labelVal) { return; }
-
-        jourJConfig.date  = dateVal;
-        jourJConfig.label = labelVal;
-
-        // Update live badge and scroll text
-        document.getElementById("jourj-badge").textContent = "J-" + getJourJDays();
-        var el = document.getElementById("cur-event-label");
-        if (el) el.textContent = labelVal;
-        renderJourJ();
-
-        // Toast
-        var btn   = document.getElementById("jourj-save-btn");
-        var toast = document.getElementById("jourj-toast");
-        btn.textContent = "Enregistré ✓";
-        btn.classList.add("saved");
-        toast.style.display = "block";
-        setTimeout(function () {
-            btn.textContent = "Enregistrer";
-            btn.classList.remove("saved");
-            toast.style.display = "none";
-        }, 2500);
-    });
-}
-
-function escHtml(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-// ── Controls ─────────────────────────────────────────────────────────────
-
-document.getElementById("sel-rows").addEventListener("change", function () {
-    nRows = parseInt(this.value, 10);
-    renderBoard();
-});
-
-document.getElementById("chk-bday").addEventListener("change", function () {
-    bdayOn = this.checked;
-    renderBoard();
-});
-
-document.getElementById("chk-jourj").addEventListener("change", function () {
-    jourJOn = this.checked;
-    renderBoard();
-});
-
-document.getElementById("chk-weather").addEventListener("change", function () {
-    weatherOn = this.checked;
-    renderBoard();
-});
-
-document.getElementById("btn-status").addEventListener("click", openStatus);
-document.getElementById("status-back").addEventListener("click", closeStatus);
-document.getElementById("status-btn").addEventListener("click", openStatus);
 
 document.getElementById("status-tabs").addEventListener("click", function (e) {
-    var btn = e.target.closest(".status-tab");
-    if (!btn) return;
-    activeTab = btn.dataset.tab;
-    document.querySelectorAll(".status-tab").forEach(function (b) {
-        b.classList.toggle("active", b.dataset.tab === activeTab);
-    });
-    renderStatusTab(activeTab);
+    var btn = e.target.closest(".overlay-tab"); if (!btn) return;
+    activateStatusTab(btn.dataset.tab);
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Configuration overlay ─────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+
+function openConfig() {
+    document.getElementById("config-overlay").classList.remove("hidden");
+    activateConfigTab(activeConfigTab);
+}
+function closeConfig() { document.getElementById("config-overlay").classList.add("hidden"); }
+
+function activateConfigTab(tab) {
+    activeConfigTab = tab;
+    document.querySelectorAll("#config-tabs .overlay-tab").forEach(function (b) {
+        b.classList.toggle("active", b.dataset.tab === tab);
+    });
+    var c = document.getElementById("config-content");
+    c.innerHTML = "";
+    if (tab === "arret") renderConfigArret(c);
+    else renderConfigJourJ(c);
+}
+
+document.getElementById("config-tabs").addEventListener("click", function (e) {
+    var btn = e.target.closest(".overlay-tab"); if (!btn) return;
+    activateConfigTab(btn.dataset.tab);
+});
+
+// ── Arrêt tab ────────────────────────────────────────────────────────────────
+
+function renderConfigArret(c) {
+    // Current refs bar
+    var label = document.createElement("div"); label.className = "jourj-section-title";
+    label.textContent = "Arrêts surveillés"; c.appendChild(label);
+
+    var bar = document.createElement("div"); bar.id = "current-refs-bar"; c.appendChild(bar);
+    renderRefsBar(bar);
+
+    var hint = document.createElement("div");
+    hint.style.cssText = "color:rgba(255,255,255,0.35);font-size:0.88em;padding:0.5rem 0.2rem;";
+    hint.textContent = "Tapez un nom pour filtrer, cliquez pour ajouter ou retirer un arrêt.";
+    c.appendChild(hint);
+
+    // Search bar
+    var searchWrap = document.createElement("div");
+    searchWrap.style.cssText = "padding:0.5rem 0 0.25rem;";
+    var input = document.createElement("input"); input.type = "text";
+    input.placeholder = "Filtrer par nom d\u2019arrêt\u2026";
+    input.style.cssText = "width:100%;background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.18);" +
+        "border-radius:8px;color:white;padding:0.6em 1em;font-size:1rem;outline:none;";
+    searchWrap.appendChild(input); c.appendChild(searchWrap);
+
+    // Demo stops grid
+    var grid = document.createElement("div");
+    grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.6rem;padding-top:0.5rem;";
+    var demoStops = [
+        { code:"298A", name:"Jean Jaurès" }, { code:"298B", name:"Jean Jaurès" },
+        { code:"233A", name:"Homme de Fer" }, { code:"233B", name:"Homme de Fer" },
+        { code:"1A",   name:"Gare Centrale" }, { code:"42A", name:"Esplanade" }
+    ];
+    var currentRefs = DEMO_STOPS.map(function (s) { return s.ref; });
+    demoStops.forEach(function (stop) {
+        var card = document.createElement("div");
+        var sel = currentRefs.indexOf(stop.code) !== -1;
+        card.style.cssText = "background:" + (sel ? "rgba(255,193,7,0.15)" : "rgba(255,255,255,0.05)") +
+            ";border:1.5px solid " + (sel ? "rgba(255,193,7,0.45)" : "rgba(255,255,255,0.1)") +
+            ";border-radius:8px;padding:0.65rem 0.9rem;cursor:pointer;transition:background 0.15s;";
+        card.innerHTML = '<div style="font-weight:700;font-size:0.95rem;color:' + (sel ? '#ffc107' : '#fff') + '">' +
+            escHtml(stop.name) + '</div>' +
+            '<div style="font-size:0.78rem;color:rgba(255,255,255,0.4);margin-top:0.15rem">' + escHtml(stop.code) + '</div>';
+        grid.appendChild(card);
+    });
+    c.appendChild(grid);
+}
+
+function renderRefsBar(bar) {
+    bar.innerHTML = "";
+    var currentRefs = DEMO_STOPS.map(function (s) { return s.ref; });
+    currentRefs.forEach(function (ref) {
+        var chip = document.createElement("span"); chip.className = "ref-chip";
+        chip.textContent = ref;
+        if (currentRefs.length > 1) {
+            var btn = document.createElement("button"); btn.className = "ref-chip-remove"; btn.textContent = "\u00d7";
+            chip.appendChild(btn);
+        }
+        bar.appendChild(chip);
+    });
+}
+
+// ── Jour J tab ───────────────────────────────────────────────────────────────
+
+var addFormOpen = false;
+
+function renderConfigJourJ(c) {
+    // ── Section: Events ────────────────────────────────────────────────────
+    var secTitle = document.createElement("div"); secTitle.className = "jourj-section-title";
+    secTitle.textContent = "Événements programmés"; c.appendChild(secTitle);
+
+    var list = document.createElement("div"); list.className = "jourj-event-list"; c.appendChild(list);
+    renderEventList(list);
+
+    // ── Add button ─────────────────────────────────────────────────────────
+    var addBtn = document.createElement("button"); addBtn.className = "jourj-add-btn";
+    addBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:1.1em;height:1.1em" fill="none">' +
+        '<circle cx="12" cy="12" r="10" stroke="#6df083" stroke-width="1.8"/>' +
+        '<line x1="12" y1="7" x2="12" y2="17" stroke="#6df083" stroke-width="2" stroke-linecap="round"/>' +
+        '<line x1="7" y1="12" x2="17" y2="12" stroke="#6df083" stroke-width="2" stroke-linecap="round"/>' +
+        '</svg> Ajouter un événement';
+    c.appendChild(addBtn);
+
+    // ── Add form (hidden by default) ──────────────────────────────────────
+    var form = document.createElement("div");
+    form.className = "jourj-add-form" + (addFormOpen ? "" : " hidden");
+    form.id = "jourj-add-form";
+
+    form.innerHTML =
+        '<div class="jourj-field">' +
+        '<label for="add-date">Date de l\u2019événement (JJ/MM/AAAA)</label>' +
+        '<input id="add-date" type="text" placeholder="25/06/2027" maxlength="10">' +
+        '</div>' +
+        '<div class="jourj-field">' +
+        '<label for="add-label">Nom de l\u2019événement</label>' +
+        '<input id="add-label" type="text" placeholder="ex.\u00a0Grandes Vacances" maxlength="60">' +
+        '</div>' +
+        '<div class="jourj-field">' +
+        '<label for="add-icon">Icône</label>' +
+        '<select id="add-icon">' +
+        Object.keys(ICON_LABELS).map(function (k) {
+            return '<option value="' + k + '">' + ICON_LABELS[k] + '</option>';
+        }).join('') +
+        '</select>' +
+        '</div>' +
+        '<div class="jourj-form-btns">' +
+        '<button class="jourj-save-btn"   id="add-save-btn">Enregistrer</button>' +
+        '<button class="jourj-cancel-btn" id="add-cancel-btn">Annuler</button>' +
+        '</div>';
+    c.appendChild(form);
+
+    // Toggle add form
+    addBtn.addEventListener("click", function () {
+        addFormOpen = !addFormOpen;
+        form.classList.toggle("hidden", !addFormOpen);
+        if (addFormOpen) {
+            setTimeout(function () { document.getElementById("add-date") && document.getElementById("add-date").focus(); }, 50);
+        }
+    });
+
+    document.getElementById("add-cancel-btn").addEventListener("click", function () {
+        addFormOpen = false; form.classList.add("hidden");
+    });
+
+    document.getElementById("add-save-btn").addEventListener("click", function () {
+        var date  = (document.getElementById("add-date").value  || "").trim();
+        var label = (document.getElementById("add-label").value || "").trim();
+        var icon  =  document.getElementById("add-icon").value  || "star";
+        if (!date || !label) { alert("La date et le label sont requis."); return; }
+        var parts = date.split('/');
+        if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+            alert("Format de date invalide. Utilisez JJ/MM/AAAA."); return;
+        }
+        jourJEvents.push({ date: date, label: label, icon: icon });
+        jourJEvents.sort(function (a, b) { return daysUntil(a.date) - daysUntil(b.date); });
+        addFormOpen = false;
+        renderConfigJourJ(c);   // re-render the whole tab
+        renderJourJ();           // update live board
+    });
+
+    // ── Section: Birthday days ahead ──────────────────────────────────────
+    var bdaySec = document.createElement("div"); bdaySec.className = "jourj-section-title";
+    bdaySec.style.marginTop = "1rem";
+    bdaySec.textContent = "Anniversaires à venir"; c.appendChild(bdaySec);
+
+    var daysRow = document.createElement("div"); daysRow.className = "jourj-days-ahead-row"; c.appendChild(daysRow);
+    var daysLabel = document.createElement("span"); daysLabel.className = "jourj-days-ahead-label";
+    daysLabel.textContent = "Afficher les anniversaires dans les prochains\u00a0:";
+    var daysInput = document.createElement("input"); daysInput.type = "number";
+    daysInput.className = "jourj-days-ahead-input";
+    daysInput.min = "1"; daysInput.max = "30"; daysInput.value = String(birthdayDaysAhead);
+    var daysUnit = document.createElement("span");
+    daysUnit.style.cssText = "color:rgba(255,255,255,0.5);font-size:0.9em;";
+    daysUnit.textContent = " jours";
+    daysInput.addEventListener("change", function () {
+        birthdayDaysAhead = Math.max(1, Math.min(30, parseInt(this.value, 10) || 7));
+        this.value = String(birthdayDaysAhead);
+        renderJourJ();
+        renderUpcomingBdays(upcomingList);
+    });
+    daysRow.appendChild(daysLabel); daysRow.appendChild(daysInput); daysRow.appendChild(daysUnit);
+
+    var upcomingList = document.createElement("div");
+    upcomingList.style.cssText = "display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem;";
+    c.appendChild(upcomingList);
+    renderUpcomingBdays(upcomingList);
+}
+
+function renderEventList(list) {
+    list.innerHTML = "";
+    var futureEvents = jourJEvents.filter(function (ev) { return !isPast(ev.date); });
+    var pastEvents   = jourJEvents.filter(function (ev) { return  isPast(ev.date); });
+
+    if (futureEvents.length === 0 && pastEvents.length === 0) {
+        var empty = document.createElement("div");
+        empty.style.cssText = "color:rgba(255,255,255,0.35);font-size:0.92em;padding:0.75rem 0.5rem;text-align:center;";
+        empty.textContent = "Aucun événement configuré";
+        list.appendChild(empty);
+        return;
+    }
+
+    // Future events first
+    futureEvents.forEach(function (ev) {
+        list.appendChild(makeEventRow(ev, false));
+    });
+    // Past events shown greyed out with warning
+    if (pastEvents.length > 0) {
+        var pastNote = document.createElement("div");
+        pastNote.style.cssText = "color:#ff8a65;font-size:0.82em;padding:0.4rem 0.2rem;";
+        pastNote.innerHTML = "⚠\u00a0Les événements passés seront supprimés automatiquement à la prochaine sauvegarde.";
+        list.appendChild(pastNote);
+        pastEvents.forEach(function (ev) { list.appendChild(makeEventRow(ev, true)); });
+    }
+}
+
+function makeEventRow(ev, past) {
+    var days = daysUntil(ev.date);
+    var isToday = !past && days === 0;
+    var row = document.createElement("div");
+    row.className = "jourj-event-row" + (past ? " past" : "") + (isToday ? " jourj-event-row--today" : "");
+
+    var iconBadge = document.createElement("div"); iconBadge.className = "jourj-event-icon-badge";
+    iconBadge.innerHTML = iconSvgHtml(ev.icon, "", "1.8rem");
+
+    var meta = document.createElement("div"); meta.className = "jourj-event-meta";
+    meta.innerHTML = '<div class="jourj-event-label">' + escHtml(ev.label) + '</div>' +
+        '<div class="jourj-event-date">' + escHtml(ev.date) + '</div>';
+
+    var daysEl = document.createElement("div");
+    daysEl.className = "jourj-event-days" + (past ? " past" : "") + (isToday ? " jourj-event-days--today" : "");
+    daysEl.textContent = past ? "Passé" : (isToday ? "Aujourd\u2019hui\u00a0!" : ("J\u2011" + days));
+
+    var trash = document.createElement("button"); trash.className = "jourj-trash-btn";
+    trash.title = "Supprimer cet événement";
+    trash.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    trash.addEventListener("click", function () {
+        jourJEvents = jourJEvents.filter(function (e) { return e !== ev; });
+        var c = document.getElementById("config-content");
+        c.innerHTML = "";
+        renderConfigJourJ(c);
+        renderJourJ();
+    });
+
+    row.appendChild(iconBadge); row.appendChild(meta); row.appendChild(daysEl); row.appendChild(trash);
+    return row;
+}
+
+function renderUpcomingBdays(container) {
+    container.innerHTML = "";
+    var visible = DEMO_UPCOMING_BDAYS.filter(function (b) {
+        return b.days >= 1 && b.days <= birthdayDaysAhead;
+    });
+    if (visible.length === 0) {
+        var none = document.createElement("div");
+        none.style.cssText = "color:rgba(255,255,255,0.3);font-size:0.88em;padding:0.4rem 0.2rem;";
+        none.textContent = "Aucun anniversaire à venir dans cette période.";
+        container.appendChild(none);
+        return;
+    }
+    visible.sort(function (a, b) { return a.days - b.days; });
+    visible.forEach(function (b) {
+        var row = document.createElement("div"); row.className = "jourj-bday-row";
+        row.innerHTML =
+            iconSvgHtml("present", "jourj-bday-icon", "1.3rem") +
+            '<span class="jourj-bday-name">' + escHtml(b.name) + '</span>' +
+            '<span class="jourj-bday-days">J\u2011' + b.days + '</span>';
+        container.appendChild(row);
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// ── Controls ──────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+
+document.getElementById("chk-rotation").addEventListener("change", function () {
+    rotationOn = this.checked; currentStopIdx = 0; renderDepartures(); startRotation();
+});
+document.getElementById("sel-rotation-secs").addEventListener("change", function () {
+    rotationSecs = parseInt(this.value, 10); startRotation();
+});
+document.getElementById("sel-rows").addEventListener("change", function () {
+    nRows = parseInt(this.value, 10); renderBoard();
+});
+document.getElementById("chk-bday").addEventListener("change", function () {
+    bdayOn = this.checked; renderBoard();
+});
+document.getElementById("chk-jourj").addEventListener("change", function () {
+    jourJOn = this.checked; renderBoard();
+});
+document.getElementById("chk-weather").addEventListener("change", function () {
+    weatherOn = this.checked; renderBoard();
+});
+
+document.getElementById("btn-status").addEventListener("click",  openStatus);
+document.getElementById("btn-config").addEventListener("click",  openConfig);
+document.getElementById("status-btn").addEventListener("click",  openStatus);
+document.getElementById("config-btn").addEventListener("click",  openConfig);
+document.getElementById("status-back").addEventListener("click", closeStatus);
+document.getElementById("config-back").addEventListener("click", closeConfig);
 
 document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !document.getElementById("status-overlay").classList.contains("hidden")) {
-        closeStatus();
-    }
+    if (e.key !== "Escape") return;
+    if (!document.getElementById("status-overlay").classList.contains("hidden")) { closeStatus(); return; }
+    if (!document.getElementById("config-overlay").classList.contains("hidden")) { closeConfig(); }
 });
 
-// ── Tick ─────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// ── Tick + Init ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
-setInterval(function () {
-    updateClock();
-    updateTimers();
-}, 1000);
-
-// ── Init ─────────────────────────────────────────────────────────────────
+setInterval(function () { updateClock(); document.querySelectorAll(".time-cell[data-target]").forEach(refreshTimeCell); }, 1000);
 
 updateClock();
 renderBoard();
-scheduleMidnightRefresh();
+startRotation();
 
 }());
 </script>

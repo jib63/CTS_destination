@@ -268,8 +268,8 @@ impl ZoneState {
         if !board.birthdays_today.is_empty() {
             line_set_parts.push(board.birthdays_today.join(","));
         }
-        if let Some((days, ref label)) = board.jour_j {
-            line_set_parts.push(format!("J-{}:{}", days, label));
+        if let Some(ev) = board.jour_j_events.first() {
+            line_set_parts.push(format!("J-{}:{}", ev.days, ev.label));
         }
 
         ZoneState {
@@ -515,7 +515,7 @@ pub fn draw_departures(fb: &mut Fb, board: &DepartureBoard, prev: &mut ZoneState
     // ── Extra rows (birthday / Jour J) ────────────────────────────────────────
     let n_tram = board.lines.len().min(4);
     let show_birthday = !board.birthdays_today.is_empty();
-    let show_jour_j   = board.jour_j.is_some();
+    let show_jour_j   = !board.jour_j_events.is_empty();
 
     if let Some((sep_y, bday_y_opt, jj_y_opt)) = extra_row_layout(n_tram) {
         if show_birthday || show_jour_j {
@@ -544,9 +544,9 @@ pub fn draw_departures(fb: &mut Fb, board: &DepartureBoard, prev: &mut ZoneState
             if let Some(jy) = jj_y_opt {
                 let jh = jour_j_row_h(n_tram);
                 if show_jour_j {
-                    if let Some((days, ref label)) = board.jour_j {
+                    if let Some(ev) = board.jour_j_events.first() {
                         let new_scroll = draw_jour_j_row(
-                            fb, jy, jh, days, label, prev.jour_j_scroll,
+                            fb, jy, jh, ev.days, &ev.label, prev.jour_j_scroll,
                         );
                         prev.jour_j_scroll = new_scroll;
                     }

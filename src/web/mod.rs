@@ -4,14 +4,15 @@ pub mod router;
 pub mod ws;
 
 use std::sync::Arc;
-use std::sync::atomic::AtomicI64;
+use std::sync::atomic::{AtomicI64, AtomicU32};
 use std::time::Duration;
 
 use reqwest::Client;
 use tokio::sync::{broadcast, Notify, RwLock};
 use tracing::warn;
 
-use crate::departure::model::DepartureBoard;
+use crate::config::JourJEventConfig;
+use crate::departure::model::BoardPayload;
 use crate::display::DisplayRenderer;
 use crate::meteoblue::model::{WeatherCoords, WeatherSnapshot};
 
@@ -24,8 +25,10 @@ pub struct AppState {
     pub latest: RwLock<Option<String>>,
 
     // ── Runtime-mutable configuration ───────────────────────────────────
-    /// The stop code currently being monitored (may change via the config UI)
-    pub monitoring_ref: RwLock<String>,
+    /// The ordered list of stop codes to monitor (may change via the config UI).
+    pub monitoring_refs: RwLock<Vec<String>>,
+    /// How long (seconds) each stop is displayed before rotating; None = no rotation.
+    pub stop_rotation_secs: Option<u64>,
     /// Path to config.toml, used when persisting configuration changes
     pub config_path: String,
 
@@ -98,10 +101,11 @@ pub struct AppState {
     // ── Jour J countdown ────────────────────────────────────────────────
     /// When true, include the Jour J countdown in each board.
     pub jour_j_enabled: bool,
-    /// Target date (DD/MM/YYYY), mutable via the config UI.
-    pub jour_j_date: RwLock<Option<String>>,
-    /// Event label, mutable via the config UI.
-    pub jour_j_label: RwLock<Option<String>>,
+    /// List of countdown events, mutable via the config UI.
+    pub jour_j_events: RwLock<Vec<JourJEventConfig>>,
+    /// How many days ahead to look for upcoming birthdays in the Jour J row.
+    /// AtomicU32 so it can be updated at runtime without a restart.
+    pub birthday_days_ahead: AtomicU32,
 
     // ── Demo ────────────────────────────────────────────────────────────
     /// Number of simulated lines to show (1–4).
@@ -111,7 +115,8 @@ pub struct AppState {
 impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        monitoring_ref: String,
+        monitoring_refs: Vec<String>,
+        stop_rotation_secs: Option<u64>,
         config_path: String,
         api_token: String,
         max_stop_visits: u32,
@@ -131,8 +136,8 @@ impl AppState {
         birthday_enabled: bool,
         birthday_file: Option<String>,
         jour_j_enabled: bool,
-        jour_j_date: Option<String>,
-        jour_j_label: Option<String>,
+        jour_j_events: Vec<JourJEventConfig>,
+        birthday_days_ahead: u32,
         cts_demo_lines: u8,
     ) -> Arc<Self> {
         let (tx, _) = broadcast::channel(4);
@@ -154,7 +159,8 @@ impl AppState {
         Arc::new(Self {
             tx,
             latest: RwLock::new(None),
-            monitoring_ref: RwLock::new(monitoring_ref),
+            monitoring_refs: RwLock::new(monitoring_refs),
+            stop_rotation_secs,
             config_path,
             cts_api_token: api_token,
             http_client,
@@ -182,8 +188,8 @@ impl AppState {
             birthday_enabled,
             birthday_file,
             jour_j_enabled,
-            jour_j_date: RwLock::new(jour_j_date),
-            jour_j_label: RwLock::new(jour_j_label),
+            jour_j_events: RwLock::new(jour_j_events),
+            birthday_days_ahead: AtomicU32::new(birthday_days_ahead),
             cts_demo_lines,
         })
     }
@@ -318,8 +324,8 @@ pub struct WebRenderer {
 }
 
 impl DisplayRenderer for WebRenderer {
-    fn update(&self, board: &DepartureBoard) -> Result<(), Box<dyn std::error::Error>> {
-        let json = serde_json::to_string(board)?;
+    fn update(&self, payload: &BoardPayload) -> Result<(), Box<dyn std::error::Error>> {
+        let json = serde_json::to_string(payload)?;
 
         match self.state.latest.try_write() {
             Ok(mut guard) => *guard = Some(json.clone()),
