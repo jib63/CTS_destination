@@ -38,6 +38,30 @@ html, body {
     flex-direction: column;
     width: 100vw;
     height: 100vh;
+    overflow-x: hidden;   /* clip horizontal wipe animation */
+}
+
+/* ── Stop rotation wipe (departures-inner slides inside departures) ── */
+#departures-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+@keyframes departures-wipe-out {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-100%); }
+}
+@keyframes departures-wipe-in {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+}
+.departures-wipe-out {
+    animation: departures-wipe-out 0.35s ease-in forwards;
+    pointer-events: none;
+}
+.departures-wipe-in {
+    animation: departures-wipe-in 0.35s ease-out forwards;
 }
 
 /* ── Header ── */
@@ -168,8 +192,7 @@ html, body {
     padding: 0 clamp(0.75rem, 2vw, 2rem);
 }
 
-.birthday-icon,
-.jour-j-icon {
+.birthday-icon {
     flex-shrink: 0;
     width:  clamp(2.4rem, 6vw, 4.8rem);
     height: clamp(2.4rem, 6vw, 4.8rem);
@@ -188,37 +211,336 @@ html, body {
 
 .birthday-text-wrap.scrolling span {
     display: inline-block;
-    animation: board-marquee 22s linear infinite;
+    animation: board-marquee 32s linear infinite;
 }
 
-.jour-j-badge {
+/* ── Multi-event Jour J marquee ─────────────────────────────────────────── */
+
+.jour-j-marquee-wrap {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+}
+
+.jj-scroll {
+    display: inline-block;
+    animation: board-marquee 45s linear infinite;
+}
+
+.jj-entry {
+    display: inline-flex;
+    align-items: center;
+    gap: clamp(0.3rem, 1vw, 0.8rem);
+    vertical-align: middle;
+}
+
+.jj-entry-icon {
     flex-shrink: 0;
-    font-size: clamp(1.5rem, 4.5vw, 3.6rem);
+    width:  clamp(2rem, 5vw, 4rem);
+    height: clamp(2rem, 5vw, 4rem);
+    vertical-align: middle;
+}
+
+.jj-entry-badge {
+    flex-shrink: 0;
+    font-size: clamp(1.4rem, 4vw, 3.2rem);
     font-weight: 900;
     color: #f0c83c;
     letter-spacing: 0.02em;
     white-space: nowrap;
 }
 
-.jour-j-text-wrap {
-    flex: 1;
-    overflow: hidden;
-    white-space: nowrap;
-    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
-    mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+.jj-entry-label {
     font-size: clamp(1.2rem, 3.5vw, 2.8rem);
     color: #7ec8dc;
     font-weight: 600;
-}
-
-.jour-j-text-wrap.scrolling span {
-    display: inline-block;
-    animation: board-marquee 20s linear infinite;
+    white-space: nowrap;
 }
 
 @keyframes board-marquee {
     0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
+}
+
+/* ── J-0 (today!) marquee entry ─────────────────────────────────────────── */
+
+.jj-entry--today .jj-entry-badge {
+    color: #fff;
+    background: rgba(240,200,60,0.45);
+    border-radius: 5px;
+    padding: 0 0.25em;
+    animation: jj-badge-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes jj-badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(240,200,60,0.75);     background: rgba(240,200,60,0.55); }
+    50%       { box-shadow: 0 0 14px 5px rgba(240,200,60,0.15); background: rgba(240,200,60,0.15); }
+}
+
+.jj-entry--today .jj-entry-icon {
+    animation: jj-icon-party 0.55s ease-in-out infinite alternate;
+    transform-origin: center bottom;
+}
+
+@keyframes jj-icon-party {
+    from { transform: rotate(-14deg) scale(1.0); }
+    to   { transform: rotate(14deg)  scale(1.18); }
+}
+
+.jj-entry--today .jj-entry-label {
+    color: #fff;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(240,200,60,0.45);
+}
+
+/* Confetti sparks flying upward */
+.jj-spark {
+    display: inline-block;
+    width: 0.28em; height: 0.28em;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin: 0 0.05em;
+    animation: jj-spark-fly ease-out infinite;
+    opacity: 0;
+}
+.jj-spark--1 { background: #e2001a; animation-duration: 1.05s; animation-delay: 0s; }
+.jj-spark--2 { background: #f0c83c; animation-duration: 0.88s; animation-delay: 0.22s; }
+.jj-spark--3 { background: #2e8b3c; animation-duration: 1.15s; animation-delay: 0.44s; }
+.jj-spark--4 { background: #7b2d8b; animation-duration: 0.95s; animation-delay: 0.11s; }
+
+@keyframes jj-spark-fly {
+    0%   { transform: translateY(0)      rotate(0deg);   opacity: 1; }
+    80%  { transform: translateY(-1.1em) rotate(200deg); opacity: 0.6; }
+    100% { transform: translateY(-1.5em) rotate(360deg); opacity: 0; }
+}
+
+/* J-0 config panel row highlight */
+.jj-event-row--today {
+    border: 1px solid rgba(240,200,60,0.4);
+    background: rgba(240,200,60,0.07);
+}
+
+.jj-event-badge--today {
+    color: #fff !important;
+    background: rgba(240,200,60,0.45);
+    border-radius: 4px;
+    padding: 0.05em 0.4em;
+    animation: jj-badge-pulse 0.9s ease-in-out infinite;
+}
+
+/* ── Jour J config panel styles ─────────────────────────────────────────── */
+
+.jj-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0.5rem 0;
+}
+
+.jj-event-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+}
+
+.jj-event-icon-cell svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.jj-event-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.88rem;
+}
+
+.jj-event-date {
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+}
+
+.jj-event-badge {
+    font-weight: 700;
+    color: #f0c83c;
+    white-space: nowrap;
+}
+
+.jj-event-label {
+    color: #e6dca8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jj-trash-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    padding: 0.2rem;
+    line-height: 1;
+    transition: color 0.15s;
+}
+.jj-trash-btn:hover { color: #e87070; }
+.jj-trash-btn svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    display: block;
+}
+
+.jj-add-btn {
+    margin-top: 0.4rem;
+    background: rgba(46, 139, 60, 0.3);
+    color: #6df083;
+    border: 1px solid rgba(109, 240, 131, 0.3);
+    border-radius: 6px;
+    padding: 0.4em 1em;
+    font-size: 0.88rem;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition: background 0.15s;
+}
+.jj-add-btn:hover { background: rgba(46, 139, 60, 0.5); }
+
+.jj-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    padding: 0.6rem;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.jj-add-form.hidden { display: none; }
+
+.jj-input {
+    background: #1a2744;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 0.4em 0.7em;
+    font-size: 0.88rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.jj-select {
+    background: #1a2744;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 0.4em 0.7em;
+    font-size: 0.88rem;
+    width: 100%;
+    cursor: pointer;
+}
+
+.jj-form-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.jj-save-new-btn {
+    background: #2e8b3c;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4em 1em;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+.jj-save-new-btn:hover { background: #3aa34b; }
+
+.jj-cancel-btn {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    border: none;
+    border-radius: 6px;
+    padding: 0.4em 1em;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+.jj-cancel-btn:hover { background: rgba(255,255,255,0.18); }
+
+.jj-days-ahead-section {
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.jj-days-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.3rem;
+}
+
+.jj-days-input {
+    width: 5rem !important;
+    text-align: center;
+}
+
+.jj-save-days-btn {
+    background: #2e5080;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4em 0.9em;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+.jj-save-days-btn:hover { background: #3b6399; }
+
+.jj-bday-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.4rem 0 0.5rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.jj-bday-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.jj-bday-row .jj-entry-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex-shrink: 0;
+}
+
+.jj-bday-label {
+    flex: 1;
+    color: #e6dca8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jj-bday-days {
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    font-size: 0.8rem;
 }
 
 /* ── Board footer (sits immediately after rows; shrinks before tram rows if space is tight) ── */
@@ -230,10 +552,130 @@ html, body {
     overflow: hidden; /* Collapses cleanly to zero when tram rows need the space */
     display: flex;
     align-items: center;
+    position: relative; /* stacking context for #wx-bg */
 }
 
-/* ── Weather row ── */
+/* ── Weather ambient background animation ─────────────────────────────────── */
+
+#wx-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Rain / sleet streaks */
+.wx-drop {
+    position: absolute;
+    top: -25px;
+    width: 1.5px;
+    border-radius: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(91,163,216,0.5));
+    animation: wx-drop-fall linear infinite;
+    will-change: transform, opacity;
+}
+
+@keyframes wx-drop-fall {
+    from { transform: translate(0,    -5px); opacity: 0.8; }
+    to   { transform: translate(-14px, 280px); opacity: 0.1; }
+}
+
+/* Snow flakes */
+.wx-flake {
+    position: absolute;
+    top: -10px;
+    border-radius: 50%;
+    background: rgba(210,225,245,0.88);
+    animation: wx-flake-fall linear infinite;
+    will-change: transform, opacity;
+}
+
+@keyframes wx-flake-fall {
+    0%   { transform: translate(0,     -8px); opacity: 0.9; }
+    30%  { transform: translate(10px,  80px); opacity: 0.8; }
+    60%  { transform: translate(-5px, 155px); opacity: 0.6; }
+    100% { transform: translate(7px,  270px); opacity: 0; }
+}
+
+/* Cloud blobs */
+.wx-cloud-el {
+    position: absolute;
+    animation: wx-cloud-drift linear infinite;
+    will-change: transform;
+}
+
+@keyframes wx-cloud-drift {
+    from { transform: translateX(-220px); }
+    to   { transform: translateX(110vw); }
+}
+
+/* Sun disk + rays */
+.wx-sun-el {
+    position: absolute;
+    animation: wx-sun-spin linear infinite;
+    transform-origin: center center;
+    will-change: transform;
+}
+
+@keyframes wx-sun-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* Fog bands */
+.wx-fog-band {
+    position: absolute;
+    left: 0;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(to right,
+        transparent 0%, rgba(165,180,205,0.28) 20%,
+        rgba(165,180,205,0.28) 80%, transparent 100%);
+    animation: wx-fog-drift linear infinite;
+    will-change: transform;
+}
+
+@keyframes wx-fog-drift {
+    from { transform: translateX(-40%); }
+    to   { transform: translateX(130%); }
+}
+
+/* Lightning bolt */
+.wx-lightning-el {
+    position: absolute;
+    top: 0;
+    animation: wx-lightning-flash ease-in-out infinite;
+    opacity: 0;
+    will-change: opacity;
+}
+
+@keyframes wx-lightning-flash {
+    0%, 78%, 100% { opacity: 0; }
+    80%  { opacity: 0.55; }
+    82%  { opacity: 0; }
+    84%  { opacity: 0.35; }
+    86%  { opacity: 0; }
+}
+
+/* Stars */
+.wx-star-el {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(210,225,255,0.9);
+    animation: wx-star-twinkle ease-in-out infinite;
+    will-change: opacity, transform;
+}
+
+@keyframes wx-star-twinkle {
+    0%, 100% { opacity: 0.12; transform: scale(1); }
+    50%      { opacity: 0.85; transform: scale(1.45); }
+}
+
+/* ── Weather row (content above background) ── */
 #weather-row {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: clamp(0.8rem, 2.5vw, 2.5rem);
@@ -308,8 +750,8 @@ html, body {
 }
 
 .wx-value {
-    font-size: 0.95em;
-    font-weight: 700;
+    font-size: 1.9em;
+    font-weight: 800;
     white-space: nowrap;
 }
 
@@ -321,7 +763,7 @@ html, body {
 
 .wx-location {
     margin-left: auto;
-    font-size: 0.62em;
+    font-size: 1.02em;
     font-weight: 500;
     color: rgba(255,255,255,0.32);
     letter-spacing: 0.04em;
@@ -334,6 +776,42 @@ html, body {
     width: 1em;
     height: 1em;
     flex-shrink: 0;
+}
+
+/* ── Canvas zone (empty flex remainder below weather row) ─────────────────── */
+
+#board-canvas {
+    flex: 1;            /* fills all remaining vertical space in #board */
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    background: var(--header-bg);
+}
+
+/* ── Arabesque ornamental background ──────────────────────────────────────── */
+
+#wx-arabesque {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.ara-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 2s ease;
+}
+
+.ara-svg path {
+    fill: none;
+    stroke: rgba(150, 185, 215, 0.28);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 /* Alternating rows — subtle lightness difference, no border between them */
@@ -612,6 +1090,50 @@ html, body {
 #config-filter:focus {
     border-color: rgba(255,255,255,0.6);
     background: rgba(255,255,255,0.13);
+}
+
+/* ── Current refs bar (chips showing active stops) ── */
+#current-refs-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem clamp(0.75rem, 2vw, 1.25rem) 0;
+    min-height: 0;
+}
+#current-refs-bar:empty { display: none; }
+
+.ref-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    background: rgba(25, 102, 184, 0.35);
+    border: 1.5px solid rgba(25, 102, 184, 0.7);
+    border-radius: 20px;
+    padding: 0.25em 0.55em 0.25em 0.75em;
+    font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.03em;
+}
+
+.ref-chip-remove {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.1em;
+    transition: color 0.12s;
+}
+.ref-chip-remove:hover { color: #ff6b6b; }
+
+.ref-chip-add-hint {
+    font-size: clamp(0.7rem, 1.3vw, 0.82rem);
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    padding: 0.25em 0;
 }
 
 /* ── Stop cards grid (level 1) ── */

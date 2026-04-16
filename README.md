@@ -4,17 +4,17 @@ A real-time departure board for the **CTS** (Compagnie des Transports Strasbourg
 
 The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/open-data/) and serves a live departure board to any browser over WebSocket — no page refresh needed. It can also drive a **Divoom Pixoo64** 64×64 LED display. A single self-contained binary serves both the API and the embedded web UI.
 
-![Departure board — desktop](docs/screenshots/board-desktop.png)
+![Departure board — desktop](docs/screenshots/board-desktop.gif)
 
-| iPad | Status — CTS | Status — Météoblue |
-|:---:|:---:|:---:|
-| ![iPad](docs/screenshots/board-ipad.png) | ![Status CTS](docs/screenshots/status-cts.png) | ![Status Météoblue](docs/screenshots/status-meteoblue.png) |
+| Status — CTS | Status — Météoblue |
+|:---:|:---:|
+| ![Status CTS](docs/screenshots/status-cts.png) | ![Status Météoblue](docs/screenshots/status-meteoblue.png) |
 
 ![Pixoo64 simulator](docs/screenshots/pixoo64.png)
 
 | Config — Arrêt | Config — Recherche | Config — Compteur J |
 |:---:|:---:|:---:|
-| ![Config Arrêt](docs/screenshots/config-arret.png) | ![Config Recherche](docs/screenshots/config-search.png) | ![Config Jour J](docs/screenshots/config-jour-j.png) |
+| ![Config Arrêt](docs/screenshots/config-arret.png) | ![Config Recherche](docs/screenshots/config-search.png) | ![Config Jour J](docs/screenshots/config-jour.png) |
 
 ---
 
@@ -22,16 +22,18 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 
 - **Live departure board** — next two departures per line/direction, updated in real time via WebSocket
 - **Real-time indicator** — bold times = GPS-confirmed, italic = theoretical schedule
-- **Weather widget** — current conditions, daily min/max, precipitation, and sunshine hours in the board footer, powered by [Meteoblue](https://www.meteoblue.com/) (optional)
-- **Birthday of the day** — reads a JSON file of contacts and displays today's birthdays with age, when board space permits
-- **Jour J countdown** — shows days remaining to any event you configure; date and label are editable from the web UI at runtime
-- **Pixoo64 LED display** — renders the departure board on a Divoom Pixoo64 64×64 LED matrix, with scrolling destination text, birthday row, and Jour J row
+- **Multiple stops + rotation** — monitor several stop codes simultaneously; the board rotates through them on a configurable interval
+- **Touch / swipe** — swipe left/right on mobile and tablet to cycle stops manually
+- **Weather widget** — current conditions, daily min/max, precipitation, and sunshine hours in the board footer, powered by [Meteoblue](https://www.meteoblue.com/) (optional); animated weather background (rain, snow, sun, etc.) renders behind the weather strip
+- **Ornamental canvas** — arabesque SVG animations progress slowly in the empty zone below the weather banner, cycling through several designs
+- **Birthday of the day** — reads a JSON file of contacts and displays today's birthdays with age, when board space permits; J-0 birthdays are excluded from the Jour J row to avoid duplication
+- **Jour J countdown** — shows a scrolling marquee of multiple upcoming countdown events, each with a label and icon; events within N days of today are merged with upcoming birthdays in the same row; events at **J-0** (today) blink with a party animation
+- **Pixoo64 LED display** — renders the departure board on a Divoom Pixoo64 64×64 LED matrix, with scrolling destination text, birthday row, and Jour J row (closest event only)
 - **Stop picker** — browse all CTS stops and switch at runtime without restarting the server
 - **Crontab-style query windows** — restrict API polling to specific hours or days using 5-field crontab expressions, supporting different schedules for weekdays vs. weekends
 - **Independent simulation modes** — CTS and weather can each be simulated independently; no API keys needed for either
-- **System status overlay** — tabbed view showing CTS polling state, Meteoblue weather status, and the Jour J counter configuration
+- **System status overlay** — tabbed view showing CTS polling state, Meteoblue weather status, and Jour J event management
 - **Single binary** — web UI assets are embedded at compile time; deploy with one file copy
-- **Responsive UI** — works on desktop, tablet, and mobile
 
 ---
 
@@ -113,9 +115,13 @@ Copy and edit `config.toml`. All CTS keys are prefixed `cts_`, weather keys `met
 # Your CTS Open Data API token
 cts_api_token = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
-# Logical stop code to monitor — find codes via the CTS stoppoints-discovery API
+# Stop codes to monitor — TOML inline array.
+# Add more entries to rotate between stops automatically.
 # Examples: "233A" = Homme de Fer,  "298B" = Jean Jaurès (direction Gare Centrale)
-cts_monitoring_ref = "298B"
+cts_monitoring_ref = ["298B"]
+
+# Seconds each stop is displayed before rotating to the next (multi-stop only)
+cts_stop_rotation_in_second = 15
 
 # API polling frequency in minutes
 cts_polling_interval_minutes = 2
@@ -163,10 +169,19 @@ cts_query_intervals = "* 6-9,14-17,22-23 * * 1-5; * 6-23 * * 0,6"
 # birthday_file = "data/birthdays.json"
 
 # ── Jour J countdown (optional) ───────────────────────────────────────────────
+# Multiple events are supported. Past events are silently ignored at runtime
+# and pruned automatically when the config UI is opened.
+# Icons: star | party | heart | present | skull
+#
+# birthday_days_ahead controls how many days ahead upcoming birthdays are shown
+# in the Jour J scrolling row (birthdays on day 0 appear in the birthday banner instead).
 
 # jour_j_enabled = true
-# jour_j_date = "25/12/2026"
-# jour_j_label = "Noël"
+# birthday_days_ahead = 7
+# jour_j_events = [
+#   { date = "14/07/2026", label = "Fête Nationale", icon = "star" },
+#   { date = "25/12/2026", label = "Noël",           icon = "present" },
+# ]
 ```
 
 Alternatively, store API keys in separate files:
@@ -200,25 +215,26 @@ Both CTS and weather can be simulated independently. Use `demo.toml` for a fully
 cargo run -- demo.toml
 ```
 
-`demo.toml` enables simulated CTS departures, simulated weather, birthday display, and a Jour J countdown. Set `cts_demo_lines` to control how many departure rows appear (1–4), leaving room for birthday and Jour J rows.
+`demo.toml` enables simulated CTS departures, simulated weather, birthday display, and Jour J countdowns. Set `cts_demo_lines` to control how many departure rows appear (1–4), leaving room for birthday and Jour J rows.
 
 ```toml
 cts_api_token        = "demo"
 cts_simulation       = true
 cts_always_query     = true
-cts_demo_lines       = 2        # show 2 lines; leaves room for birthday + Jour J below
+cts_demo_lines       = 3        # show 3 lines; leaves room for birthday + Jour J below
 
 meteoblue_enabled    = true
 meteoblue_simulation = true
 meteoblue_api_key    = "demo"
 meteoblue_location   = "Strasbourg"
+meteoblue_always_query = true
 
 birthday_enabled     = true
-birthday_file        = "data/birthdays.json"
+birthday_file        = "data/birthdays.json.demo"
 
 jour_j_enabled       = true
-jour_j_date          = "27/06/2026"
-jour_j_label         = "♥ Mariage Coline et Hugo"
+birthday_days_ahead  = 40
+jour_j_events        = [{ date = "14/07/2026", label = "Fête Nationale", icon = "star" }]
 ```
 
 The board updates every polling interval with slightly jittered departure times so the countdown feels alive.
@@ -235,6 +251,7 @@ When `meteoblue_enabled = true`, the board footer shows a live weather strip:
 
 - The **city name** (`meteoblue_location`) is resolved to coordinates via the Meteoblue location search API on startup — no need to supply latitude/longitude manually.
 - Weather is polled every `meteoblue_polling_interval_minutes` minutes (default 60).
+- An **animated weather background** renders behind the weather strip: falling rain drops, snow flakes, drifting clouds, a spinning sun, flickering lightning, etc. — the animation type is selected automatically from the current Meteoblue pictocode. The background is decorative only; all board content sits above it.
 - When too many departure rows are displayed and space is tight, the weather footer shrinks gracefully — departure rows always take priority.
 - Use `meteoblue_always_query = false` with `meteoblue_query_intervals` to restrict weather polling to specific hours (same crontab syntax as for CTS).
 - Set `meteoblue_simulation = true` to show weather without an API key.
@@ -257,16 +274,46 @@ When `birthday_enabled = true`, today's birthdays are loaded from a JSON file an
 
 - Date format: `DD/MM` (annual, no year) or `DD/MM/YYYY` (age is calculated automatically and shown in parentheses).
 - Multiple entries for the same date are all displayed, scrolling across the board.
- 
+- Birthdays in the next N days (controlled by `birthday_days_ahead`) also appear in the Jour J scrolling row as upcoming events.
+
+---
+
 ## Jour J countdown
 
-When `jour_j_enabled = true`, the board shows a countdown in days to the configured event. The date and label can be updated at runtime from the web UI without restarting the server:
+When `jour_j_enabled = true`, the board shows a **scrolling marquee** of all upcoming countdown events. Events are defined as a TOML array, each with a date, a label, and an icon:
 
-1. Click the **status dot** (●) in the header.
-2. Select the **Compteur J** tab.
-3. Enter a date (DD/MM/YYYY) and label, then click **Enregistrer**.
+```toml
+jour_j_enabled      = true
+birthday_days_ahead = 7
 
-The new values are saved back to `config.toml` and take effect immediately.
+jour_j_events = [
+  { date = "14/07/2026", label = "Fête Nationale", icon = "star"    },
+  { date = "25/12/2026", label = "Noël",           icon = "present" },
+  { date = "31/12/2026", label = "Réveillon",      icon = "party"   },
+]
+```
+
+**Available icons:** `star` | `party` | `heart` | `present` | `skull`
+
+**Upcoming birthdays** from the birthday file are automatically merged into the Jour J row for birthdays within `birthday_days_ahead` days. Birthdays on day 0 (today) are excluded — they appear in the birthday banner instead.
+
+**J-0 animation:** when an event is today (J‑0), its badge pulses gold and its icon rocks back and forth with confetti sparks.
+
+**Managing events at runtime:** open **Configuration → Jour J** to:
+- View the list of current events with date, label, and icon
+- Delete any event with the trash button
+- Add a new event via the inline form (date, label, icon picker)
+- Adjust `birthday_days_ahead`
+
+Past events are pruned automatically whenever the config UI is opened and when saving changes. Events are saved back to `config.toml` and take effect immediately without a restart.
+
+**Pixoo64:** only the closest upcoming event (smallest days remaining) is rendered on the LED display.
+
+---
+
+## Arabesque canvas
+
+The empty zone below the weather banner contains a slow ornamental animation: arabesque SVG designs are drawn progressively (path stroke-dashoffset animation), held briefly, then fade out before the next design begins. Five different designs cycle in sequence. The canvas sits below all other board content and is purely decorative.
 
 ---
 
@@ -276,7 +323,7 @@ When `pixoo64_enabled = true`, the board is rendered every `pixoo64_refresh_inte
 
 - **Scrolling destination names** — text too wide for the 32-pixel destination area scrolls continuously.
 - **Birthday row** — shown below departure rows when fewer than 4 lines are displayed.
-- **Jour J row** — shown below the birthday row when fewer than 3 lines are displayed.
+- **Jour J row** — shown below the birthday row when fewer than 3 lines are displayed; uses the closest upcoming event.
 - **Simulation mode** — set `pixoo64_simulation = true` to render a PNG preview served at `/api/pixoo64/preview` without sending anything to the device. Useful for layout development.
 
 A web-based Pixoo64 simulator is available at <https://github.com/jib63/pixoo64-simulator> — it replicates the device display in the browser and can receive frames from this application.
@@ -287,17 +334,18 @@ A web-based Pixoo64 simulator is available at <https://github.com/jib63/pixoo64-
 
 Click the **Configuration** button in the header to browse all CTS stops and switch the monitored stop at runtime. The change is saved back to `config.toml` and a new poll is triggered immediately — no restart needed.
 
+Multiple stops can be monitored simultaneously: the board rotates through them every `cts_stop_rotation_in_second` seconds. On touch screens, swipe left/right to cycle stops manually.
+
 > **Note:** the stop list is fetched from the live CTS API even in simulation mode.
 
 ---
 
 ## System status
 
-Click the **status dot** (●) in the header to open the system status overlay. It has three tabs:
+Click the **status dot** (●) in the header to open the system status overlay. It has two tabs:
 
-- **CTS** — monitored stop code, simulation flag, polling interval, crontab window config, and the timestamp of the next scheduled poll.
+- **CTS** — monitored stop codes, simulation flag, polling interval, crontab window config, and the timestamp of the next scheduled poll.
 - **Météoblue** — resolved location name and coordinates, last fetch time, current weather values, and query window status.
-- **Compteur J** — current event date and label; edit form to update both at runtime.
 
 ---
 
@@ -309,8 +357,8 @@ Click the **status dot** (●) in the header to open the system status overlay. 
 | `GET /api/stops` | List all logical stops (sorted by name) |
 | `GET /api/stops/:code/details` | Physical stops and line/directions under a logical code |
 | `POST /api/config` | `{"monitoring_ref":"298B"}` — change stop at runtime |
-| `POST /api/jour-j` | `{"date":"DD/MM/YYYY","label":"…"}` — update Jour J config at runtime |
-| `GET /api/status` | Polling state, weather status, Jour J config |
+| `POST /api/jour-j` | `{"events":[{"date":"DD/MM/YYYY","label":"…","icon":"star"}],"birthday_days_ahead":7}` — update Jour J events |
+| `GET /api/status` | Polling state, weather status, Jour J events and birthday config |
 | `GET /api/pixoo64/preview` | Latest Pixoo64 frame as PNG (simulation mode only) |
 
 ---
@@ -320,13 +368,13 @@ Click the **status dot** (●) in the header to open the system status overlay. 
 ```
 src/
 ├── main.rs              Entry point and server startup
-├── config.rs            TOML config loading and in-place updates
+├── config.rs            TOML config loading, in-place updates, JourJEventConfig
 ├── cts/
-│   ├── client.rs        CTS API client and poll loop
+│   ├── client.rs        CTS API client, poll loop, board assembly
 │   ├── model.rs         SIRI 2.0 data structures
 │   └── simulation.rs    Fake departure data generator
 ├── departure/
-│   └── model.rs         API-agnostic DepartureBoard domain model
+│   └── model.rs         DepartureBoard domain model (JourJEventDisplay, birthday loader)
 ├── display/
 │   └── mod.rs           DisplayRenderer trait
 ├── meteoblue/
@@ -342,11 +390,12 @@ src/
     ├── router.rs        Axum routes and REST handlers
     └── ws.rs            WebSocket connection lifecycle
 static/
-├── index.html
-├── app.js
-└── style.css
+├── index.html           Board UI shell (departure board + overlays + SVG weather sprites)
+├── app.js               WebSocket client, rendering logic, weather bg, arabesque canvas
+└── style.css            Board styles, J-0 party animations, weather bg keyframes
 data/
-└── birthdays.json       Birthday list (DD/MM or DD/MM/YYYY format)
+├── birthdays.json        Birthday list (DD/MM or DD/MM/YYYY format)
+└── birthdays.json.demo   Demo birthday list used with demo.toml
 export_birthdays.applescript   macOS Contacts → birthdays.json exporter
 ```
 

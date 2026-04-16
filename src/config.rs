@@ -1,8 +1,40 @@
 // SPDX-License-Identifier: MIT
 
 use anyhow::{bail, Context, Result};
-use serde::Deserialize;
+use chrono::{Local, NaiveDate};
+use serde::{Deserialize, Serialize};
 use std::fs;
+
+/// A single Jour J countdown event stored in the config file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JourJEventConfig {
+    /// Target date in DD/MM/YYYY format.
+    pub date:  String,
+    /// Event label displayed next to the countdown.
+    pub label: String,
+    /// Icon key: "star" | "party" | "heart" | "present" | "skull"
+    pub icon:  String,
+}
+
+impl JourJEventConfig {
+    /// Returns the number of days remaining (0 = today, None if past or unparseable).
+    pub fn days_remaining(&self) -> Option<i64> {
+        let parts: Vec<&str> = self.date.split('/').collect();
+        if parts.len() != 3 { return None; }
+        let d: u32 = parts[0].parse().ok()?;
+        let m: u32 = parts[1].parse().ok()?;
+        let y: i32 = parts[2].parse().ok()?;
+        let target = NaiveDate::from_ymd_opt(y, m, d)?;
+        let today  = Local::now().date_naive();
+        let diff   = target.signed_duration_since(today).num_days();
+        if diff >= 0 { Some(diff) } else { None }
+    }
+}
+
+/// Remove events whose date is strictly in the past.
+pub fn prune_past_events(events: Vec<JourJEventConfig>) -> Vec<JourJEventConfig> {
+    events.into_iter().filter(|e| e.days_remaining().is_some()).collect()
+}
 
 #[derive(Debug, Deserialize)]
 pub struct AppConfig {
@@ -11,8 +43,11 @@ pub struct AppConfig {
     pub cts_api_token_file: Option<String>,
     /// Inline CTS API token (alternative to cts_api_token_file)
     pub cts_api_token: Option<String>,
-    /// Stop code to monitor (e.g. "233A")
-    pub cts_monitoring_ref: String,
+    /// Stop code(s) to monitor — TOML inline array, e.g. ["298A"] or ["298A","298B"]
+    pub cts_monitoring_ref: Vec<String>,
+    /// How long (seconds) each stop is displayed before rotating to the next.
+    /// Only meaningful when `cts_monitoring_ref` contains more than one entry.
+    pub cts_stop_rotation_in_second: Option<u64>,
     /// CTS API query frequency in minutes
     pub cts_polling_interval_minutes: u64,
     /// Maximum departures to request per API call
@@ -86,14 +121,16 @@ pub struct AppConfig {
     pub birthday_file: Option<String>,
 
     // ── Jour J countdown ──────────────────────────────────────────────────────
-    /// When true, show a countdown to the configured event date.
+    /// When true, show countdown events on the board.
     #[serde(default)]
     pub jour_j_enabled: bool,
-    /// Target date in DD/MM/YYYY format.
-    pub jour_j_date: Option<String>,
-    /// Event label displayed next to the countdown.
-    pub jour_j_label: Option<String>,
-
+    /// Array of countdown events (date, label, icon).
+    #[serde(default)]
+    pub jour_j_events: Vec<JourJEventConfig>,
+    /// How many days ahead to look for upcoming birthdays in the Jour J row.
+    /// Birthdays on day 0 (today) are excluded — they appear in the birthday banner.
+    #[serde(default = "default_birthday_days_ahead")]
+    pub birthday_days_ahead: u32,
     // ── Demo controls ─────────────────────────────────────────────────────────
     /// Number of simulated departure lines to show (1–4); default 4.
     pub cts_demo_lines: Option<u8>,
@@ -109,6 +146,10 @@ fn default_listen_addr() -> String {
 
 fn default_always_query() -> bool {
     true
+}
+
+fn default_birthday_days_ahead() -> u32 {
+    7
 }
 
 impl AppConfig {
@@ -164,11 +205,25 @@ impl AppConfig {
     }
 }
 
-/// Update the `cts_monitoring_ref` value in the config file in-place, preserving
+/// Update the `cts_monitoring_ref` array in the config file in-place, preserving
 /// all other content (including comments).
-pub fn save_monitoring_ref(path: &str, new_ref: &str) -> Result<()> {
+/// Writes TOML inline-array syntax, e.g. `cts_monitoring_ref = ["298A", "298B"]`.
+pub fn save_monitoring_ref(path: &str, refs: &[String]) -> Result<()> {
+    if refs.is_empty() {
+        bail!("monitoring_ref list must not be empty");
+    }
+
     let content =
         fs::read_to_string(path).with_context(|| format!("Cannot read config file: {path}"))?;
+
+    // Build the inline TOML array value: ["298A", "298B"]
+    let array_value = format!(
+        "[{}]",
+        refs.iter()
+            .map(|r| format!("\"{}\"", r.replace('\\', "\\\\").replace('"', "\\\"")))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     let mut found = false;
     let lines_out: Vec<String> = content
@@ -177,7 +232,7 @@ pub fn save_monitoring_ref(path: &str, new_ref: &str) -> Result<()> {
             let trimmed = line.trim_start();
             if !trimmed.starts_with('#') && trimmed.starts_with("cts_monitoring_ref") && trimmed.contains('=') {
                 found = true;
-                format!("cts_monitoring_ref = \"{}\"", new_ref)
+                format!("cts_monitoring_ref = {}", array_value)
             } else {
                 line.to_owned()
             }
@@ -197,37 +252,66 @@ pub fn save_monitoring_ref(path: &str, new_ref: &str) -> Result<()> {
     Ok(())
 }
 
-/// Update (or append) `jour_j_date` and `jour_j_label` in the config file in-place,
-/// preserving all other content (including comments).
-pub fn save_jour_j(path: &str, date: &str, label: &str) -> Result<()> {
+/// Persist the `jour_j_events` array and `birthday_days_ahead` in the config file,
+/// replacing any existing values and removing the legacy scalar fields.
+/// All other content (comments, other keys) is preserved.
+pub fn save_jour_j_events(
+    path: &str,
+    events: &[JourJEventConfig],
+    birthday_days_ahead: u32,
+) -> Result<()> {
     let content =
         fs::read_to_string(path).with_context(|| format!("Cannot read config file: {path}"))?;
 
-    let mut found_date  = false;
-    let mut found_label = false;
+    fn escape_toml_str(s: &str) -> String {
+        s.replace('\\', "\\\\").replace('"', "\\\"")
+    }
+
+    // Build compact single-line TOML array of inline tables
+    let array_value = if events.is_empty() {
+        "[]".to_owned()
+    } else {
+        format!(
+            "[{}]",
+            events
+                .iter()
+                .map(|e| format!(
+                    r#"{{ date = "{}", label = "{}", icon = "{}" }}"#,
+                    escape_toml_str(&e.date),
+                    escape_toml_str(&e.label),
+                    escape_toml_str(&e.icon),
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
+
+    let found_events       = false;
+    let found_days_ahead   = false;
+
+    // Keys to strip (legacy scalars + keys we'll re-write)
+    let skip_keys = ["jour_j_date", "jour_j_label", "jour_j_events", "birthday_days_ahead"];
 
     let mut lines_out: Vec<String> = content
         .lines()
-        .map(|line| {
+        .filter_map(|line| {
             let trimmed = line.trim_start();
-            if !trimmed.starts_with('#') && trimmed.starts_with("jour_j_date") && trimmed.contains('=') {
-                found_date = true;
-                format!("jour_j_date = \"{}\"", date)
-            } else if !trimmed.starts_with('#') && trimmed.starts_with("jour_j_label") && trimmed.contains('=') {
-                found_label = true;
-                format!("jour_j_label = \"{}\"", label)
+            if trimmed.starts_with('#') || !trimmed.contains('=') {
+                return Some(line.to_owned());
+            }
+            let key = trimmed.split('=').next().unwrap_or("").trim();
+            if skip_keys.contains(&key) {
+                None  // drop this line; we'll re-append below
             } else {
-                line.to_owned()
+                Some(line.to_owned())
             }
         })
         .collect();
 
-    if !found_date {
-        lines_out.push(format!("jour_j_date = \"{}\"", date));
-    }
-    if !found_label {
-        lines_out.push(format!("jour_j_label = \"{}\"", label));
-    }
+    // Append updated values
+    lines_out.push(format!("jour_j_events = {}", array_value));
+    lines_out.push(format!("birthday_days_ahead = {}", birthday_days_ahead));
+    let _ = (found_events, found_days_ahead); // suppress unused warnings
 
     let mut updated = lines_out.join("\n");
     if content.ends_with('\n') {

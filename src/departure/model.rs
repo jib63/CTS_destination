@@ -3,8 +3,31 @@
 use chrono::{DateTime, Datelike, Local, NaiveDate, Utc};
 use serde::Serialize;
 
+use crate::config::JourJEventConfig;
 use crate::cts::model::StopMonitoringDelivery;
 use crate::meteoblue::model::WeatherSnapshot;
+
+/// A single countdown event ready for display (days already computed).
+#[derive(Debug, Clone, Serialize)]
+pub struct JourJEventDisplay {
+    pub days:  i64,
+    pub label: String,
+    /// Icon key: "star" | "party" | "heart" | "present" | "skull"
+    pub icon:  String,
+}
+
+/// Wrapper sent by the poll loop to all renderers on every cycle.
+/// Contains one board per monitored stop; the web renderer broadcasts the
+/// full payload, Pixoo64 uses only `boards[0]`.
+#[derive(Debug, Clone, Serialize)]
+pub struct BoardPayload {
+    /// One entry per configured stop, in config order.
+    pub boards: Vec<DepartureBoard>,
+    /// How often the web frontend should rotate between stops (seconds).
+    /// `None` when only one stop is configured.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_rotation_secs: Option<u64>,
+}
 
 /// API-agnostic departure board sent to all display renderers.
 #[derive(Debug, Clone, Serialize)]
@@ -26,9 +49,9 @@ pub struct DepartureBoard {
     /// Birthday names for today (empty when the feature is disabled or no match).
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub birthdays_today: Vec<String>,
-    /// Jour J countdown: (days_remaining, event_label). None when disabled or unconfigured.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub jour_j: Option<(i64, String)>,
+    /// Upcoming countdown events (Jour J + upcoming birthdays), sorted by days ascending.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub jour_j_events: Vec<JourJEventDisplay>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -131,7 +154,7 @@ impl DepartureBoard {
             offline_message: None,
             weather: None,
             birthdays_today: Vec::new(),
-            jour_j: None,
+            jour_j_events: Vec::new(),
         }
     }
 
@@ -145,7 +168,7 @@ impl DepartureBoard {
             offline_message: Some(message),
             weather: None,
             birthdays_today: Vec::new(),
-            jour_j: None,
+            jour_j_events: Vec::new(),
         }
     }
 
@@ -193,17 +216,75 @@ impl DepartureBoard {
             .collect()
     }
 
-    /// Compute days remaining until the given date (DD/MM/YYYY format).
-    /// Returns None if the date is unparseable or in the past.
-    pub fn compute_jour_j(date_str: &str) -> Option<i64> {
-        let parts: Vec<&str> = date_str.split('/').collect();
-        if parts.len() != 3 { return None; }
-        let d: u32 = parts[0].parse().ok()?;
-        let m: u32 = parts[1].parse().ok()?;
-        let y: i32 = parts[2].parse().ok()?;
-        let target = NaiveDate::from_ymd_opt(y, m, d)?;
-        let today  = Local::now().date_naive();
-        let diff   = target.signed_duration_since(today).num_days();
-        if diff >= 0 { Some(diff) } else { None }
+    /// Compute `JourJEventDisplay` entries from the configured event list.
+    /// Filters out past events (days < 0) and sorts by days ascending.
+    pub fn compute_jour_j_events(events: &[JourJEventConfig]) -> Vec<JourJEventDisplay> {
+        let mut result: Vec<JourJEventDisplay> = events
+            .iter()
+            .filter_map(|e| {
+                e.days_remaining().map(|days| JourJEventDisplay {
+                    days,
+                    label: e.label.clone(),
+                    icon:  e.icon.clone(),
+                })
+            })
+            .collect();
+        result.sort_by_key(|e| e.days);
+        result
+    }
+
+    /// Load upcoming birthdays (1 ≤ days ≤ `days_ahead`) from the JSON file.
+    /// Day 0 (today) is excluded — it is handled by the birthday banner.
+    /// Returns each birthday as a `JourJEventDisplay` with `icon = "present"`.
+    pub fn load_upcoming_birthdays(file_path: &str, days_ahead: u32) -> Vec<JourJEventDisplay> {
+        let content = match std::fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => return Vec::new(),
+        };
+        let v: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => return Vec::new(),
+        };
+        let today = Local::now().date_naive();
+        let mut result: Vec<JourJEventDisplay> = v["birthdays"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|entry| {
+                let date = entry["date"].as_str()?;
+                let name = entry["name"].as_str()?;
+                let year = Local::now().year();
+
+                // Accept "DD/MM" or "DD/MM/YYYY"
+                let parts: Vec<&str> = date.split('/').collect();
+                let (dd, mm, birth_year): (u32, u32, Option<i32>) = match parts.as_slice() {
+                    [dd, mm]       => (dd.parse().ok()?, mm.parse().ok()?, None),
+                    [dd, mm, yyyy] => (dd.parse().ok()?, mm.parse().ok()?, yyyy.parse().ok()),
+                    _              => return None,
+                };
+
+                // Try this year's occurrence first; if already past, try next year
+                let this_year = NaiveDate::from_ymd_opt(year, mm, dd);
+                let target = match this_year {
+                    Some(d) if d >= today => d,
+                    _ => NaiveDate::from_ymd_opt(year + 1, mm, dd)?,
+                };
+
+                let days = target.signed_duration_since(today).num_days();
+                // Exclude today (day 0) and anything beyond the window
+                if days < 1 || days > days_ahead as i64 {
+                    return None;
+                }
+
+                let label = match birth_year {
+                    Some(y) => format!("{} ({})", name, year - y),
+                    None    => name.to_owned(),
+                };
+
+                Some(JourJEventDisplay { days, label, icon: "present".to_owned() })
+            })
+            .collect();
+        result.sort_by_key(|e| e.days);
+        result
     }
 }

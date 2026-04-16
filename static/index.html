@@ -26,12 +26,15 @@
                 <span class="col-label">SUIVANT</span>
             </div>
         </header>
-        <div id="departures"><!-- Populated by app.js --></div>
+        <div id="departures">
+            <div id="departures-inner"><!-- Populated by app.js --></div>
+        </div>
         <div id="extras-row" style="display:none">
             <div id="birthday-row"><!-- Populated by app.js --></div>
             <div id="jour-j-row"><!-- Populated by app.js --></div>
         </div>
         <div id="board-footer"><!-- Reserved for weather / info panel --></div>
+        <div id="board-canvas" aria-hidden="true"><!-- Arabesque ornamental animations --></div>
     </div>
 
     <!-- ── Status overlay ── -->
@@ -66,6 +69,8 @@
         <div id="config-tab-arret">
             <!-- Level 1 : stop name picker -->
             <div id="config-level1">
+                <!-- Currently monitored stops (chips) -->
+                <div id="current-refs-bar"><!-- Populated by app.js --></div>
                 <div id="config-search-bar">
                     <input id="config-filter" type="text"
                            placeholder="Filtrer par nom d'arrêt…"

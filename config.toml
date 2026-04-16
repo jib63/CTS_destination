@@ -2,13 +2,17 @@
 # Path to file containing the CTS API token (UUID)
 cts_api_token = "GET YOURS ON https://www.cts-strasbourg.eu/fr/open-data/"
 
-# Stop code to monitor — find codes via the CTS stoppoints-discovery API
-# or the CTS open data portal. Examples:
+# Stop codes to monitor — TOML inline array; add more entries to rotate between stops.
+# Examples:
 #   "233A"  = Homme de Fer (direction Neuhof / Kehl)
 #   "233B"  = Homme de Fer (other direction)
 #   "298A"  = Jean Jaurès (C → Neuhof, D → Kehl Rathaus)
 #   "298B"  = Jean Jaurès (C → Gare Centrale, D → Poteries)
-cts_monitoring_ref = "298A"
+cts_monitoring_ref = ["298A","298B","298C"]
+
+# How long (seconds) each stop is displayed before rotating to the next.
+# Only used when cts_monitoring_ref contains more than one entry.
+cts_stop_rotation_in_second = 15
 
 # When true, the CTS API is never contacted; fake departure data is generated
 # locally. Useful for UI development and offline testing.
@@ -63,9 +67,9 @@ listen_addr = "0.0.0.0:3000"
 # meteoblue_location = "Strasbourg"
 # meteoblue_polling_interval_minutes = 60
 # meteoblue_simulation = false
-#
-# meteoblue_always_query = true   # set to false to restrict weather polling to a time window
-# meteoblue_query_intervals = "* 6-23 * * *"   # same crontab syntax as cts_query_intervals
+# meteoblue_always_query = false
+# meteoblue_query_intervals = "* 6-9,14-17,22-23 * * 1-5; * 6-23 * * 0,6"
+
 
 # ── Birthday feature (optional) ───────────────────────────────────────────────
 # When enabled, today's birthdays from the JSON file are shown on the board
@@ -75,9 +79,19 @@ listen_addr = "0.0.0.0:3000"
 # birthday_file = "data/birthdays.json"
 
 # ── Jour J countdown (optional) ───────────────────────────────────────────────
-# When enabled, a countdown to the configured date is shown on the board.
-# The date can also be updated via the web UI (Status → Compteur J).
+# When enabled, countdown events are shown as a scrolling marquee on the board.
+# Events can also be managed via the web UI (Configuration → Jour J).
+# Icons: star | party | heart | present | skull
+# Past events are silently ignored at runtime and pruned when saving via the UI.
+#
+# How many days ahead to look for upcoming birthdays to show in the Jour J row.
+# Birthdays on day 0 (today) are excluded — they appear in the birthday banner.
 #
 # jour_j_enabled = true
-# jour_j_date = "25/12/2026"
-# jour_j_label = "Noël"
+# birthday_days_ahead = 7
+# jour_j_events = [
+#   { date = "14/07/2026", label = "Fête Nationale", icon = "star" },
+#   { date = "25/12/2026", label = "Noël",           icon = "present" },
+# ]
+jour_j_events = [{ date = "16/04/2026", label = "Test", icon = "skull" }]
+birthday_days_ahead = 7

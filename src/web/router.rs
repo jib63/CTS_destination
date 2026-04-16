@@ -13,8 +13,11 @@ use rust_embed::Embed;
 use serde::Deserialize;
 use tracing::info;
 
+use std::sync::atomic::Ordering::Relaxed;
+
 use crate::cts::client::{fetch_stop_details, fetch_stops};
-use crate::config::{save_jour_j, save_monitoring_ref};
+use crate::config::{save_jour_j_events, save_monitoring_ref, JourJEventConfig, prune_past_events};
+use crate::departure::model::DepartureBoard;
 use crate::web::AppState;
 use crate::web::ws::ws_handler;
 
@@ -62,29 +65,34 @@ async fn stop_details_handler(
 
 #[derive(Deserialize)]
 struct ConfigUpdate {
-    monitoring_ref: String,
+    monitoring_refs: Vec<String>,
 }
 
 async fn config_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<ConfigUpdate>,
 ) -> Response {
-    let new_ref = body.monitoring_ref.trim().to_owned();
-    if new_ref.is_empty() {
-        return (StatusCode::BAD_REQUEST, "monitoring_ref cannot be empty").into_response();
+    let new_refs: Vec<String> = body.monitoring_refs
+        .into_iter()
+        .map(|r| r.trim().to_owned())
+        .filter(|r| !r.is_empty())
+        .collect();
+
+    if new_refs.is_empty() {
+        return (StatusCode::BAD_REQUEST, "monitoring_refs must not be empty").into_response();
     }
 
-    if let Err(e) = save_monitoring_ref(&state.config_path, &new_ref) {
+    if let Err(e) = save_monitoring_ref(&state.config_path, &new_refs) {
         return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save config: {e}"))
             .into_response();
     }
 
     {
-        let mut mr = state.monitoring_ref.write().await;
-        *mr = new_ref.clone();
+        let mut mr = state.monitoring_refs.write().await;
+        *mr = new_refs.clone();
     }
 
-    info!(monitoring_ref = %new_ref, "Stop updated via configuration UI");
+    info!(monitoring_refs = ?new_refs, "Stops updated via configuration UI");
     state.poll_trigger.notify_one();
 
     StatusCode::OK.into_response()
@@ -94,42 +102,60 @@ async fn config_handler(
 
 #[derive(Deserialize)]
 struct JourJUpdate {
+    events: Vec<JourJEventPayload>,
+    birthday_days_ahead: Option<u32>,
+}
+
+#[derive(Deserialize)]
+struct JourJEventPayload {
     date:  String,
     label: String,
+    icon:  String,
 }
+
+const VALID_ICONS: &[&str] = &["star", "party", "heart", "present", "skull"];
 
 async fn jour_j_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<JourJUpdate>,
 ) -> Response {
-    let date  = body.date.trim().to_owned();
-    let label = body.label.trim().to_owned();
+    // Validate and convert each event
+    let mut events: Vec<JourJEventConfig> = Vec::new();
+    for p in body.events {
+        let date  = p.date.trim().to_owned();
+        let label = p.label.trim().to_owned();
+        let icon  = p.icon.trim().to_owned();
 
-    if date.is_empty() || label.is_empty() {
-        return (StatusCode::BAD_REQUEST, "date and label are required").into_response();
+        if label.is_empty() {
+            return (StatusCode::BAD_REQUEST, "Event label must not be empty").into_response();
+        }
+        let parts: Vec<&str> = date.split('/').collect();
+        if parts.len() != 3 || parts[0].len() != 2 || parts[1].len() != 2 || parts[2].len() != 4 {
+            return (StatusCode::BAD_REQUEST, "Event date must be DD/MM/YYYY").into_response();
+        }
+        if !VALID_ICONS.contains(&icon.as_str()) {
+            return (StatusCode::BAD_REQUEST, "Invalid icon value").into_response();
+        }
+        events.push(JourJEventConfig { date, label, icon });
     }
 
-    // Basic DD/MM/YYYY format check
-    let parts: Vec<&str> = date.split('/').collect();
-    if parts.len() != 3 || parts[0].len() != 2 || parts[1].len() != 2 || parts[2].len() != 4 {
-        return (StatusCode::BAD_REQUEST, "date must be DD/MM/YYYY").into_response();
-    }
+    // Auto-remove past events before saving
+    let events = prune_past_events(events);
 
-    if let Err(e) = save_jour_j(&state.config_path, &date, &label) {
+    let birthday_days_ahead = body.birthday_days_ahead.unwrap_or_else(|| state.birthday_days_ahead.load(Relaxed));
+
+    if let Err(e) = save_jour_j_events(&state.config_path, &events, birthday_days_ahead) {
         return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save config: {e}"))
             .into_response();
     }
 
     {
-        let mut d = state.jour_j_date.write().await;
-        *d = Some(date.clone());
+        let mut guard = state.jour_j_events.write().await;
+        *guard = events.clone();
     }
-    {
-        let mut l = state.jour_j_label.write().await;
-        *l = Some(label.clone());
-    }
+    state.birthday_days_ahead.store(birthday_days_ahead, Relaxed);
 
-    info!(date = %date, label = %label, "Jour J updated via configuration UI");
+    info!(count = events.len(), birthday_days_ahead, "Jour J events updated via configuration UI");
     state.poll_trigger.notify_one();
 
     StatusCode::OK.into_response()
@@ -176,7 +202,7 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> Response {
     use chrono::Local;
     use std::sync::atomic::Ordering;
 
-    let monitoring_ref = state.monitoring_ref.read().await.clone();
+    let monitoring_refs = state.monitoring_refs.read().await.clone();
     let now = Local::now();
 
     let in_window = state.cts_always_query
@@ -218,21 +244,27 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> Response {
         "file": state.birthday_file,
     });
 
-    // ── Jour J snapshot ──────────────────────────────────────────────────────
-    let jj_date  = state.jour_j_date.read().await.clone();
-    let jj_label = state.jour_j_label.read().await.clone();
-    let jj_days  = jj_date.as_deref().and_then(crate::departure::model::DepartureBoard::compute_jour_j);
+    // ── Jour J snapshot (including upcoming birthdays for the config panel) ──
+    let jj_events = state.jour_j_events.read().await.clone();
+    let days_ahead = state.birthday_days_ahead.load(Relaxed);
+    let birthday_upcoming = if state.birthday_enabled && state.jour_j_enabled {
+        let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
+        DepartureBoard::load_upcoming_birthdays(path, days_ahead)
+    } else {
+        vec![]
+    };
     let jour_j = serde_json::json!({
-        "enabled": state.jour_j_enabled,
-        "date":    jj_date,
-        "label":   jj_label,
-        "days_remaining": jj_days,
+        "enabled":              state.jour_j_enabled,
+        "events":               jj_events,
+        "birthday_days_ahead":  days_ahead,
+        "birthday_upcoming":    birthday_upcoming,
     });
 
     Json(serde_json::json!({
         "cts": {
             "simulation": state.cts_simulation,
-            "monitoring_ref": monitoring_ref,
+            "monitoring_refs": monitoring_refs,
+            "stop_rotation_secs": state.stop_rotation_secs,
             "polling_interval_minutes": state.cts_polling_interval_minutes,
             "always_query": state.cts_always_query,
             "in_window": in_window,
