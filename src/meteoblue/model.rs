@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
+use chrono::{DateTime, Local, NaiveDateTime, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 
 // ── Meteoblue location search API response ────────────────────────────────────
@@ -61,6 +61,9 @@ pub struct Data1h {
     pub windspeed: Vec<f32>,
     #[serde(default)]
     pub isdaylight: Vec<u8>,
+    /// UV index for each hour (0–11+).
+    #[serde(default)]
+    pub uvindex: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -74,9 +77,6 @@ pub struct DataDay {
     pub temperature_min: Vec<f32>,
     #[serde(default)]
     pub precipitation: Vec<f32>,
-    /// Sunshine duration in hours (meteoblue field name: sunshine_time)
-    #[serde(default)]
-    pub sunshine_time: Vec<f32>,
     #[serde(default)]
     pub pictocode: Vec<u8>,
 }
@@ -100,8 +100,8 @@ pub struct WeatherSnapshot {
     pub temp_max: f32,
     /// Today's total precipitation (mm)
     pub precipitation: f32,
-    /// Today's sunshine duration (hours)
-    pub sunshine_hours: f32,
+    /// Current-hour UV index (0–11+)
+    pub uv_index: u8,
     /// Location name for display
     pub location_name: String,
 }
@@ -116,15 +116,14 @@ impl WeatherSnapshot {
         let temp_max = *day.temperature_max.first()?;
         let temp_min = *day.temperature_min.first()?;
         let precipitation = day.precipitation.first().copied().unwrap_or(0.0);
-        let sunshine_hours = day.sunshine_time.first().copied().unwrap_or(0.0);
 
         // Find the current hour in the hourly array
-        let (pictocode, temp_now, is_daylight) = if let Some(h) = resp.data_1h.as_ref() {
+        let (pictocode, temp_now, is_daylight, uv_index) = if let Some(h) = resp.data_1h.as_ref() {
             find_current_hour(h)
         } else {
             // Fall back to daily pictocode when hourly data is absent
             let pc = day.pictocode.first().copied().unwrap_or(1);
-            (pc, (temp_max + temp_min) / 2.0, true)
+            (pc, (temp_max + temp_min) / 2.0, true, 0u8)
         };
 
         Some(WeatherSnapshot {
@@ -135,32 +134,38 @@ impl WeatherSnapshot {
             temp_min,
             temp_max,
             precipitation,
-            sunshine_hours,
+            uv_index,
             location_name: location_name.to_string(),
         })
     }
 }
 
-/// Walk `data_1h.time` to find the entry matching the current UTC hour.
-/// Returns (pictocode, temperature, is_daylight).
-fn find_current_hour(h: &Data1h) -> (u8, f32, bool) {
-    let now = Utc::now();
+/// Walk `data_1h.time` to find the entry matching the current local date and hour.
+/// Returns (pictocode, temperature, is_daylight, uv_index).
+///
+/// The API returns timestamps in the location's local time (e.g. "2026-04-18 10:00"
+/// for Strasbourg CEST). We must compare against local time, not UTC, to avoid
+/// picking the wrong hour when there is a UTC offset.
+fn find_current_hour(h: &Data1h) -> (u8, f32, bool, u8) {
+    let now        = Local::now();
+    let today      = now.date_naive();
     let target_hour = now.hour();
-    // data_1h.time entries look like "2026-04-12 14:00" (local time from the API)
-    // We match on hour-of-day which is close enough for a display widget.
+
     for (i, ts) in h.time.iter().enumerate() {
         if let Ok(dt) = NaiveDateTime::parse_from_str(ts, "%Y-%m-%d %H:%M") {
-            if dt.hour() == target_hour {
-                let pc = h.pictocode.get(i).copied().unwrap_or(1);
-                let temp = h.temperature.get(i).copied().unwrap_or(0.0);
+            if dt.date() == today && dt.hour() == target_hour {
+                let pc  = h.pictocode.get(i).copied().unwrap_or(1);
+                let tmp = h.temperature.get(i).copied().unwrap_or(0.0);
                 let day = h.isdaylight.get(i).copied().unwrap_or(1) != 0;
-                return (pc, temp, day);
+                let uv  = h.uvindex.get(i).copied().unwrap_or(0);
+                return (pc, tmp, day, uv);
             }
         }
     }
     // Fallback: use first entry
-    let pc = h.pictocode.first().copied().unwrap_or(1);
-    let temp = h.temperature.first().copied().unwrap_or(0.0);
+    let pc  = h.pictocode.first().copied().unwrap_or(1);
+    let tmp = h.temperature.first().copied().unwrap_or(0.0);
     let day = h.isdaylight.first().copied().unwrap_or(1) != 0;
-    (pc, temp, day)
+    let uv  = h.uvindex.first().copied().unwrap_or(0);
+    (pc, tmp, day, uv)
 }

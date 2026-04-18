@@ -24,7 +24,7 @@ pub fn simulate_weather(location_name: &str) -> WeatherSnapshot {
         temp_min: 7.0,
         temp_max: 19.0,
         precipitation: 2.5,
-        sunshine_hours: 5.0,
+        uv_index: 3,
         location_name: location_name.to_string(),
     }
 }

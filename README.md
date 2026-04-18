@@ -22,9 +22,10 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 
 - **Live departure board** — next two departures per line/direction, updated in real time via WebSocket
 - **Real-time indicator** — bold times = GPS-confirmed, italic = theoretical schedule
-- **Multiple stops + rotation** — monitor several stop codes simultaneously; the board rotates through them on a configurable interval
+- **Multiple stops + rotation** — monitor several stop codes simultaneously; the board rotates through them on a configurable interval; the current stop name and reference code are shown in the stop bar between the header and departure rows
+- **Responsive phone portrait layout** — on narrow screens (≤ 480 px, e.g. iPhone), the board switches to a compact 2-line-per-departure layout: line badge spans both lines, destination on top, "Prochain / Suivant" time slots stacked below; the weather footer wraps to two lines; tested via DevTools device emulation (Chrome: Cmd+Shift+M, Safari Develop menu)
 - **Touch / swipe** — swipe left/right on mobile and tablet to cycle stops manually
-- **Weather widget** — current conditions, daily min/max, precipitation, and sunshine hours in the board footer, powered by [Meteoblue](https://www.meteoblue.com/) (optional); animated weather background (rain, snow, sun, etc.) renders behind the weather strip
+- **Weather widget** — current conditions, daily min/max, precipitation, and UV index in the board footer, powered by [Meteoblue](https://www.meteoblue.com/) (optional); animated weather background (rain, snow, sun, etc.) renders behind the weather strip
 - **Ornamental canvas** — arabesque SVG animations progress slowly in the empty zone below the weather banner, cycling through several designs
 - **Birthday of the day** — reads a JSON file of contacts and displays today's birthdays with age, when board space permits; J-0 birthdays are excluded from the Jour J row to avoid duplication
 - **Jour J countdown** — shows a scrolling marquee of multiple upcoming countdown events, each with a label and icon; events within N days of today are merged with upcoming birthdays in the same row; events at **J-0** (today) blink with a party animation
@@ -90,7 +91,19 @@ export PATH="$HOME/.local/zig-0.13.0:$PATH"   # add to ~/.zshrc to make permanen
 ```
 
 This produces a **fully static ELF binary** (no glibc dependency) in
-`dist-freebox/` and prints the `scp` command to copy it to the Freebox.
+`dist-freebox/`, then automatically copies it to all three instances on the
+Freebox via `scp`:
+
+```
+scp -r dist-freebox/cts-departures user@freebox:~/cts/cts-gallia/
+scp -r dist-freebox/cts-departures user@freebox:~/cts/cts-jaures/
+scp -r dist-freebox/cts-departures user@freebox:~/cts/cts-portehop/
+```
+
+Override the remote target with the `REMOTE` environment variable:
+```bash
+REMOTE=pi@192.168.1.10 ./build_freebox.sh
+```
 
 ```
 dist-freebox/
@@ -246,7 +259,7 @@ The board updates every polling interval with slightly jittered departure times 
 When `meteoblue_enabled = true`, the board footer shows a live weather strip:
 
 ```
-☁  7°C / 19°C  💧 2.5 mm  ☀ 5 h
+☁  7°C / 19°C  💧 2.5 mm  UV 3
 ```
 
 - The **city name** (`meteoblue_location`) is resolved to coordinates via the Meteoblue location search API on startup — no need to supply latitude/longitude manually.
@@ -311,6 +324,38 @@ Past events are pruned automatically whenever the config UI is opened and when s
 
 ---
 
+## Security
+
+The application is designed to be exposed to the internet via an nginx reverse proxy. Two deployment artefacts are provided in `dist/`:
+
+- `dist/nginx-conf.d-cts.conf` — deploy to `/etc/nginx/conf.d/cts.conf` (geo block + rate-limit zone)
+- `dist/nginx-default` — deploy to `/etc/nginx/sites-enabled/default` (virtual host with three instances)
+
+**Geo-based access control** — nginx uses a `geo` block to classify requests as internal (LAN) or external. The variable `$cts_is_external` drives all access decisions:
+
+| Surface | Internal (LAN) | External (internet) |
+|---|---|---|
+| Departure board (WebSocket) | Full board including birthday and Jour J rows | Board delivered — but `birthdays_today` and `jour_j_events` are **stripped server-side** before transmission |
+| `/api/stops`, `/api/config`, `/api/jour-j`, `/api/status` | Allowed | **Blocked by nginx (403)** — never reaches Rust |
+| Config and status buttons | Visible | Hidden (UI only — the API block is the real gate) |
+| Birthday / Jour J rows | Visible | Hidden (JS) — data is absent from the payload anyway |
+
+**Why strip at the server, not just hide in JS?** JavaScript running in the browser can be modified by anyone. Hiding a UI element does not prevent an attacker from reading the WebSocket frames directly in DevTools. The server maintains two broadcast channels — one full (internal), one stripped (external) — and routes each WebSocket client to the appropriate channel based on the `X-CTS-External` header set by nginx.
+
+**Rate limiting** — `GET /api/stops` and related stop-discovery endpoints are limited to 10 requests/minute per IP (`cts_stops` zone in `nginx-conf.d-cts.conf`).
+
+**Multi-instance nginx config** (`dist/nginx-default`) covers three simultaneous instances:
+
+| Instance | Path prefix | Port |
+|---|---|---|
+| Jaurès | `/cts/jaures/` | 3000 |
+| Gallia | `/cts/gallia/` | 3001 |
+| Porte Hop | `/cts/portehop/` | 3002 |
+
+Each instance has its own WebSocket, API, and static asset location blocks. A shared `error_page 502 503 504` serves a French "service indisponible" page (`dist/cts-offline.html`, deploy to `/var/www/html/`) when any backend is down.
+
+---
+
 ## Arabesque canvas
 
 The empty zone below the weather banner contains a slow ornamental animation: arabesque SVG designs are drawn progressively (path stroke-dashoffset animation), held briefly, then fade out before the next design begins. Five different designs cycle in sequence. The canvas sits below all other board content and is purely decorative.
@@ -351,12 +396,14 @@ Click the **status dot** (●) in the header to open the system status overlay. 
 
 ## REST & WebSocket API
 
+All `/api/*` endpoints are **blocked by nginx for external (non-LAN) clients** — they return 403 before the request reaches Rust. The WebSocket endpoint is accessible externally but delivers a stripped payload (see [Security](#security) below).
+
 | Endpoint | Description |
 |---|---|
 | `GET /ws` | WebSocket stream — pushes `DepartureBoard` JSON on every update |
 | `GET /api/stops` | List all logical stops (sorted by name) |
 | `GET /api/stops/:code/details` | Physical stops and line/directions under a logical code |
-| `POST /api/config` | `{"monitoring_ref":"298B"}` — change stop at runtime |
+| `POST /api/config` | `{"monitoring_refs":["298B"]}` — change monitored stops at runtime |
 | `POST /api/jour-j` | `{"events":[{"date":"DD/MM/YYYY","label":"…","icon":"star"}],"birthday_days_ahead":7}` — update Jour J events |
 | `GET /api/status` | Polling state, weather status, Jour J events and birthday config |
 | `GET /api/pixoo64/preview` | Latest Pixoo64 frame as PNG (simulation mode only) |
@@ -390,9 +437,9 @@ src/
     ├── router.rs        Axum routes and REST handlers
     └── ws.rs            WebSocket connection lifecycle
 static/
-├── index.html           Board UI shell (departure board + overlays + SVG weather sprites)
-├── app.js               WebSocket client, rendering logic, weather bg, arabesque canvas
-└── style.css            Board styles, J-0 party animations, weather bg keyframes
+├── index.html           Board UI shell (departure board + stop bar + overlays + SVG weather sprites)
+├── app.js               WebSocket client, rendering logic, stop bar update, weather bg, arabesque canvas
+└── style.css            Board styles, phone portrait media query (≤480 px), J-0 party animations, weather bg keyframes
 data/
 ├── birthdays.json        Birthday list (DD/MM or DD/MM/YYYY format)
 └── birthdays.json.demo   Demo birthday list used with demo.toml

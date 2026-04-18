@@ -68,6 +68,9 @@ struct ConfigUpdate {
     monitoring_refs: Vec<String>,
 }
 
+const MAX_REF_LEN:  usize = 50;
+const MAX_REFS:     usize = 10;
+
 async fn config_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<ConfigUpdate>,
@@ -80,6 +83,12 @@ async fn config_handler(
 
     if new_refs.is_empty() {
         return (StatusCode::BAD_REQUEST, "monitoring_refs must not be empty").into_response();
+    }
+    if new_refs.len() > MAX_REFS {
+        return (StatusCode::BAD_REQUEST, "Too many monitoring refs").into_response();
+    }
+    if new_refs.iter().any(|r| r.len() > MAX_REF_LEN) {
+        return (StatusCode::BAD_REQUEST, "Monitoring ref too long").into_response();
     }
 
     if let Err(e) = save_monitoring_ref(&state.config_path, &new_refs) {
@@ -114,11 +123,17 @@ struct JourJEventPayload {
 }
 
 const VALID_ICONS: &[&str] = &["star", "party", "heart", "present", "skull"];
+const MAX_LABEL_LEN: usize = 100;
+const MAX_EVENTS: usize = 20;
 
 async fn jour_j_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<JourJUpdate>,
 ) -> Response {
+    if body.events.len() > MAX_EVENTS {
+        return (StatusCode::BAD_REQUEST, "Too many events").into_response();
+    }
+
     // Validate and convert each event
     let mut events: Vec<JourJEventConfig> = Vec::new();
     for p in body.events {
@@ -129,8 +144,15 @@ async fn jour_j_handler(
         if label.is_empty() {
             return (StatusCode::BAD_REQUEST, "Event label must not be empty").into_response();
         }
+        if label.len() > MAX_LABEL_LEN {
+            return (StatusCode::BAD_REQUEST, "Event label too long").into_response();
+        }
         let parts: Vec<&str> = date.split('/').collect();
         if parts.len() != 3 || parts[0].len() != 2 || parts[1].len() != 2 || parts[2].len() != 4 {
+            return (StatusCode::BAD_REQUEST, "Event date must be DD/MM/YYYY").into_response();
+        }
+        // Ensure all three date parts are pure digits
+        if !parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit())) {
             return (StatusCode::BAD_REQUEST, "Event date must be DD/MM/YYYY").into_response();
         }
         if !VALID_ICONS.contains(&icon.as_str()) {
@@ -235,13 +257,12 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> Response {
         "temp_min": weather.as_ref().map(|w| w.temp_min),
         "temp_max": weather.as_ref().map(|w| w.temp_max),
         "precipitation": weather.as_ref().map(|w| w.precipitation),
-        "sunshine_hours": weather.as_ref().map(|w| w.sunshine_hours),
+        "uv_index": weather.as_ref().map(|w| w.uv_index),
     });
 
     // ── Birthday snapshot ────────────────────────────────────────────────────
     let birthday = serde_json::json!({
         "enabled": state.birthday_enabled,
-        "file": state.birthday_file,
     });
 
     // ── Jour J snapshot (including upcoming birthdays for the config panel) ──

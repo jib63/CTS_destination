@@ -25,6 +25,11 @@ ZIG_VER="0.13.0"
 ZIG_DIR="$HOME/.local/zig-${ZIG_VER}"
 DIST_DIR="dist-freebox"
 
+# ── Remote deploy target ──────────────────────────────────────────────────────
+# Override with:  REMOTE=myuser@192.168.1.1 ./build_freebox.sh
+REMOTE="${REMOTE:-user@freebox}"
+REMOTE_INSTANCES=(cts-gallia cts-jaures cts-portehop)
+
 # ── 1. Ensure Zig is available ────────────────────────────────────────────────
 if ! command -v zig &>/dev/null; then
     if [ -f "$ZIG_DIR/zig" ]; then
@@ -95,25 +100,13 @@ SIZE=$(du -h "$DIST_DIR/$BINARY_NAME" | cut -f1)
 
 echo ""
 echo "==> Done!  $DIST_DIR/$BINARY_NAME  ($SIZE)"
+
+# ── 6. Deploy binary to each instance on the Freebox ─────────────────────────
 echo ""
-echo "── Deploy to Freebox ───────────────────────────────────────────────────"
-echo ""
-echo "  Copy the dist-freebox/ directory to the Freebox (adjust user/host):"
-echo "       scp -r $DIST_DIR/ user@freebox:~/cts/"
-echo ""
-echo "  Then on the Freebox:"
-echo ""
-echo "  1. Allow binding port 80 without root (once):"
-echo "       sudo setcap cap_net_bind_service=+ep ~/cts/$BINARY_NAME"
-echo ""
-echo "  2. Run:"
-echo "       ~/cts/$BINARY_NAME ~/cts/config.toml"
-echo ""
-echo "  3. (Optional) Install as a systemd service so it starts on boot:"
-echo "       sudo cp ~/cts/$BINARY_NAME   /usr/local/bin/"
-echo "       sudo mkdir -p /etc/cts"
-echo "       sudo cp ~/cts/config.toml    /etc/cts/"
-echo "       sudo cp deploy/cts.service   /etc/systemd/system/"
-echo "       sudo systemctl daemon-reload"
-echo "       sudo systemctl enable --now cts"
+echo "==> Deploying to ${REMOTE}..."
+for INSTANCE in "${REMOTE_INSTANCES[@]}"; do
+    echo "    scp -r $DIST_DIR/$BINARY_NAME ${REMOTE}:~/${INSTANCE}/"
+    scp -r "$DIST_DIR/$BINARY_NAME" "${REMOTE}:~/${INSTANCE}/"
+done
+echo "==> Deploy complete."
 echo ""

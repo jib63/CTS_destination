@@ -27,10 +27,22 @@ async fn store_and_rebroadcast(state: &AppState, snap: WeatherSnapshot) {
     let latest_json = state.latest.read().await.clone();
     if let Some(json_str) = latest_json {
         if let Ok(mut board_val) = serde_json::from_str::<serde_json::Value>(&json_str) {
-            board_val["weather"] = weather_val;
+            board_val["weather"] = weather_val.clone();
             if let Ok(new_json) = serde_json::to_string(&board_val) {
                 *state.latest.write().await = Some(new_json.clone());
                 let _ = state.tx.send(new_json);
+            }
+        }
+    }
+
+    // Mirror the weather patch into the external snapshot (private fields already absent).
+    let latest_ext = state.latest_external.read().await.clone();
+    if let Some(json_str) = latest_ext {
+        if let Ok(mut board_val) = serde_json::from_str::<serde_json::Value>(&json_str) {
+            board_val["weather"] = weather_val;
+            if let Ok(new_json) = serde_json::to_string(&board_val) {
+                *state.latest_external.write().await = Some(new_json.clone());
+                let _ = state.tx_external.send(new_json);
             }
         }
     }
@@ -158,6 +170,7 @@ pub async fn weather_poll_loop(state: Arc<AppState>, interval_mins: u64) {
                     temp_now  = snap.temp_now,
                     temp_min  = snap.temp_min,
                     temp_max  = snap.temp_max,
+                    uv_index  = snap.uv_index,
                     "Weather updated"
                 );
                 store_and_rebroadcast(&state, snap).await;

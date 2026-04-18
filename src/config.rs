@@ -220,7 +220,12 @@ pub fn save_monitoring_ref(path: &str, refs: &[String]) -> Result<()> {
     let array_value = format!(
         "[{}]",
         refs.iter()
-            .map(|r| format!("\"{}\"", r.replace('\\', "\\\\").replace('"', "\\\"")))
+            .map(|r| format!("\"{}\"", r
+                .replace('\\', "\\\\")
+                .replace('"',  "\\\"")
+                .replace('\n', "\\n")
+                .replace('\r', "\\r")
+                .replace('\t', "\\t")))
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -264,7 +269,11 @@ pub fn save_jour_j_events(
         fs::read_to_string(path).with_context(|| format!("Cannot read config file: {path}"))?;
 
     fn escape_toml_str(s: &str) -> String {
-        s.replace('\\', "\\\\").replace('"', "\\\"")
+        s.replace('\\', "\\\\")
+         .replace('"',  "\\\"")
+         .replace('\n', "\\n")
+         .replace('\r', "\\r")
+         .replace('\t', "\\t")
     }
 
     // Build compact single-line TOML array of inline tables

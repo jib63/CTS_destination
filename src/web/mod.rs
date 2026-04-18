@@ -19,10 +19,14 @@ use crate::meteoblue::model::{WeatherCoords, WeatherSnapshot};
 /// Shared application state for the web server and polling task.
 pub struct AppState {
     // ── WebSocket broadcast ──────────────────────────────────────────────
-    /// Channel for sending departure JSON to all connected WebSocket clients
+    /// Channel for internal (LAN) clients — full board including private fields.
     pub tx: broadcast::Sender<String>,
-    /// Cached latest JSON snapshot; sent immediately to newly-connecting clients
+    /// Cached latest full JSON snapshot; sent immediately to newly-connecting internal clients.
     pub latest: RwLock<Option<String>>,
+    /// Channel for external clients — birthdays and Jour J stripped.
+    pub tx_external: broadcast::Sender<String>,
+    /// Cached latest external JSON snapshot (private fields removed).
+    pub latest_external: RwLock<Option<String>>,
 
     // ── Runtime-mutable configuration ───────────────────────────────────
     /// The ordered list of stop codes to monitor (may change via the config UI).
@@ -140,7 +144,8 @@ impl AppState {
         birthday_days_ahead: u32,
         cts_demo_lines: u8,
     ) -> Arc<Self> {
-        let (tx, _) = broadcast::channel(4);
+        let (tx, _)          = broadcast::channel(4);
+        let (tx_external, _) = broadcast::channel(4);
         let http_client = Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
@@ -159,6 +164,8 @@ impl AppState {
         Arc::new(Self {
             tx,
             latest: RwLock::new(None),
+            tx_external,
+            latest_external: RwLock::new(None),
             monitoring_refs: RwLock::new(monitoring_refs),
             stop_rotation_secs,
             config_path,
@@ -318,6 +325,23 @@ fn parse_cron_list(s: Option<&str>, field_name: &str) -> Vec<CronMatcher> {
         .collect()
 }
 
+/// Remove `birthdays_today` and `jour_j_events` from every board in a payload
+/// JSON string so that external clients cannot read private household data.
+fn strip_private_fields(json: &str) -> String {
+    let Ok(mut val) = serde_json::from_str::<serde_json::Value>(json) else {
+        return json.to_owned();
+    };
+    if let Some(boards) = val.get_mut("boards").and_then(|b| b.as_array_mut()) {
+        for board in boards.iter_mut() {
+            if let Some(obj) = board.as_object_mut() {
+                obj.remove("birthdays_today");
+                obj.remove("jour_j_events");
+            }
+        }
+    }
+    serde_json::to_string(&val).unwrap_or_else(|_| json.to_owned())
+}
+
 /// WebRenderer broadcasts departure JSON to all connected WebSocket clients.
 pub struct WebRenderer {
     pub state: Arc<AppState>,
@@ -325,14 +349,20 @@ pub struct WebRenderer {
 
 impl DisplayRenderer for WebRenderer {
     fn update(&self, payload: &BoardPayload) -> Result<(), Box<dyn std::error::Error>> {
-        let json = serde_json::to_string(payload)?;
+        let json          = serde_json::to_string(payload)?;
+        let json_external = strip_private_fields(&json);
 
         match self.state.latest.try_write() {
             Ok(mut guard) => *guard = Some(json.clone()),
             Err(_) => warn!("Could not update latest snapshot (RwLock contended)"),
         }
+        match self.state.latest_external.try_write() {
+            Ok(mut guard) => *guard = Some(json_external.clone()),
+            Err(_) => warn!("Could not update latest_external snapshot (RwLock contended)"),
+        }
 
         let _ = self.state.tx.send(json);
+        let _ = self.state.tx_external.send(json_external);
         Ok(())
     }
 

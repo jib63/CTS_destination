@@ -1,6 +1,15 @@
 (function () {
     "use strict";
 
+    // ── Deployment base path + external-access flag ────────────────────────
+    // When served behind nginx at a sub-path (e.g. /cts/jaures/), nginx's
+    // sub_filter injects:
+    //   window.CTS_BASE     = "/cts/jaures/"
+    //   window.CTS_EXTERNAL = 1   (if client is outside 192.168.1.0/24)
+    // When accessed directly (local dev / LAN), neither variable is set.
+    var BASE     = (typeof window.CTS_BASE     !== "undefined") ? window.CTS_BASE     : "/";
+    var EXTERNAL = (typeof window.CTS_EXTERNAL !== "undefined") ? window.CTS_EXTERNAL : 0;
+
     // ── Line badge colors ──────────────────────────────────────────────────
     var LINE_COLORS = {
         "A": "#c8102e",
@@ -69,7 +78,7 @@
 
     function connect() {
         var proto = location.protocol === "https:" ? "wss:" : "ws:";
-        ws = new WebSocket(proto + "//" + location.host + "/ws");
+        ws = new WebSocket(proto + "//" + location.host + BASE + "ws");
 
         ws.onopen = function () {
             reconnectDelay = 1000;
@@ -88,8 +97,15 @@
                 }
                 currentBoardIndex = 0;
                 resetRotation();
-                renderBoard();
-                updateDotFromData();
+                // Use rAF so the render runs inside a proper animation frame.
+                // On iOS Safari the first WS message can arrive while the browser
+                // is still in its initial layout pass; without rAF the rows land in
+                // the DOM but the compositing layer isn't repainted until an
+                // unrelated user interaction forces a flush.
+                requestAnimationFrame(function () {
+                    renderBoard();
+                    updateDotFromData();
+                });
             } catch (e) {
                 console.error("Failed to parse departure data:", e);
             }
@@ -140,9 +156,18 @@
         footer.innerHTML =
             '<div id="wx-bg" aria-hidden="true"></div>' +
             '<div id="weather-row">' +
+
             '<svg id="weather-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="' + iconId + '"/></svg>' +
 
-            '<div class="wx-group">' +
+            '<div class="wx-group wx-now-group">' +
+            '<span class="wx-label">Maintenant</span>' +
+            '<div class="wx-item">' +
+            '<span class="wx-value">' + Math.round(w.temp_now) + '<span class="wx-unit">\u00a0\u00b0C</span></span>' +
+            '</div></div>' +
+
+            '<div class="wx-sep-bar"></div>' +
+
+            '<div class="wx-group wx-group-temps">' +
             '<span class="wx-label">Temp\u00e9rature</span>' +
             '<div class="wx-temps">' +
             '<span class="wx-temp-min">' + Math.round(w.temp_min) + '\u00a0\u00b0C</span>' +
@@ -152,15 +177,7 @@
 
             '<div class="wx-sep-bar"></div>' +
 
-            '<div class="wx-group">' +
-            '<span class="wx-label">Maintenant</span>' +
-            '<div class="wx-item">' +
-            '<span class="wx-value">' + Math.round(w.temp_now) + '<span class="wx-unit">\u00a0\u00b0C</span></span>' +
-            '</div></div>' +
-
-            '<div class="wx-sep-bar"></div>' +
-
-            '<div class="wx-group">' +
+            '<div class="wx-group wx-group-precip">' +
             '<span class="wx-label">Pr\u00e9cipitations</span>' +
             '<div class="wx-item">' +
             '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
@@ -171,8 +188,8 @@
 
             '<div class="wx-sep-bar"></div>' +
 
-            '<div class="wx-group">' +
-            '<span class="wx-label">Ensoleillement</span>' +
+            '<div class="wx-group wx-group-uv">' +
+            '<span class="wx-label">Indice UV</span>' +
             '<div class="wx-item">' +
             '<svg viewBox="0 0 24 24" aria-hidden="true">' +
             '<circle cx="12" cy="12" r="5" fill="#FFD600"/>' +
@@ -182,10 +199,14 @@
             '<line x1="4.9" y1="4.9" x2="7.1" y2="7.1"/><line x1="16.9" y1="16.9" x2="19.1" y2="19.1"/>' +
             '<line x1="19.1" y1="4.9" x2="16.9" y2="7.1"/><line x1="7.1" y1="16.9" x2="4.9" y2="19.1"/>' +
             '</g></svg>' +
-            '<span class="wx-value">' + w.sunshine_hours.toFixed(0) + '<span class="wx-unit">\u00a0h</span></span>' +
+            '<span class="wx-value">UV\u00a0<span class="wx-unit">' + (+w.uv_index) + '</span></span>' +
             '</div></div>' +
 
             '<div class="wx-location">' + escHtml(w.location_name) + '</div>' +
+
+            /* Phone-only flex-break: forces line 2 in the phone layout */
+            '<div class="wx-phone-break" aria-hidden="true"></div>' +
+
             '</div>';
 
         renderWeatherBg(w.pictocode);
@@ -503,7 +524,7 @@
         var el = document.getElementById("birthday-row");
         var names = (board && board.birthdays_today) || [];
 
-        if (names.length === 0) {
+        if (EXTERNAL || names.length === 0) {
             el.style.display = "none";
             updateExtrasRowVisibility();
             return;
@@ -565,7 +586,7 @@
         var el = document.getElementById("jour-j-row");
         var events = (board && board.jour_j_events) || [];
 
-        if (events.length === 0) {
+        if (EXTERNAL || events.length === 0) {
             el.style.display = "none";
             updateExtrasRowVisibility();
             return;
@@ -611,6 +632,33 @@
         var inner = document.getElementById("departures-inner");
         inner.innerHTML = "";
 
+        // ── Update stop name bar ───────────────────────────────────────────
+        var stopBar  = document.getElementById("stop-bar");
+        var nameEl   = document.getElementById("stop-name");
+        var refEl    = document.getElementById("stop-ref");
+        var pagEl    = document.getElementById("stop-pagination");
+
+        var stopName = (board && board.stop_name) || "";
+        var stopRef  = (board && board.monitoring_ref) || "";
+
+        if (stopName) {
+            nameEl.textContent = stopName;
+            refEl.textContent  = stopRef;
+            refEl.style.display = "";
+        } else {
+            nameEl.textContent  = stopRef;
+            refEl.style.display = "none";
+        }
+
+        var totalBoards = departureData && departureData.boards && departureData.boards.length;
+        if (totalBoards > 1 && stopRotationSecs > 0) {
+            pagEl.textContent   = (currentBoardIndex + 1) + "\u00a0/\u00a0" + totalBoards;
+            pagEl.style.display = "";
+        } else {
+            pagEl.style.display = "none";
+        }
+        stopBar.style.display = (stopName || stopRef) ? "" : "none";
+
         if (!board) return;
 
         // ── Offline / no-service message ───────────────────────────────────
@@ -636,8 +684,13 @@
             dest.className = "destination";
             dest.textContent = lineDep.destination;
 
+            // Wrap both time cells in .time-pair for the phone layout
+            var pair = document.createElement("div");
+            pair.className = "time-pair";
+
             var next = document.createElement("div");
             next.className = "time-cell";
+            next.dataset.label = "Prochain";
             if (lineDep.departures.length > 0) {
                 next.dataset.expected = lineDep.departures[0].expected;
                 next.dataset.realtime = String(lineDep.departures[0].is_real_time);
@@ -645,15 +698,17 @@
 
             var following = document.createElement("div");
             following.className = "time-cell";
+            following.dataset.label = "Suivant";
             if (lineDep.departures.length > 1) {
                 following.dataset.expected = lineDep.departures[1].expected;
                 following.dataset.realtime = String(lineDep.departures[1].is_real_time);
             }
 
+            pair.appendChild(next);
+            pair.appendChild(following);
             row.appendChild(badge);
             row.appendChild(dest);
-            row.appendChild(next);
-            row.appendChild(following);
+            row.appendChild(pair);
             inner.appendChild(row);
         });
 
@@ -810,7 +865,7 @@
         var content = document.getElementById("status-content");
         content.innerHTML = '<div class="config-loading-msg">Chargement\u2026</div>';
 
-        fetch("/api/status")
+        fetch(BASE + "api/status")
             .then(function (r) {
                 if (!r.ok) throw new Error("HTTP " + r.status);
                 return r.json();
@@ -820,7 +875,7 @@
                 renderStatusTab(activeStatusTab, data);
             })
             .catch(function (err) {
-                content.innerHTML = '<div class="config-loading-msg">Erreur\u00a0: ' + err.message + '</div>';
+                content.innerHTML = '<div class="config-loading-msg">Erreur\u00a0: ' + escHtml(err.message) + '</div>';
             });
     }
 
@@ -944,8 +999,8 @@
                 Math.round(mb.temp_min) + "\u00a0\u00b0C\u00a0/\u00a0" + Math.round(mb.temp_max) + "\u00a0\u00b0C");
             row("Pr\u00e9cipitations",
                 mb.precipitation.toFixed(1) + "\u00a0mm");
-            row("Ensoleillement",
-                mb.sunshine_hours.toFixed(0) + "\u00a0h");
+            row("Indice UV",
+                "UV\u00a0" + mb.uv_index);
             row("Pictocode", String(mb.pictocode), "dim");
         } else {
             row("Donn\u00e9es m\u00e9t\u00e9o", "Pas encore disponibles", "dim");
@@ -1018,7 +1073,7 @@
     function openConfigJourJ() {
         var content = document.getElementById("config-jour-j-content");
         content.innerHTML = '<div class="config-loading-msg">Chargement\u2026</div>';
-        fetch("/api/status")
+        fetch(BASE + "api/status")
             .then(function (r) {
                 if (!r.ok) throw new Error("HTTP " + r.status);
                 return r.json();
@@ -1027,7 +1082,7 @@
                 renderConfigJourJ(data.jour_j || {}, content);
             })
             .catch(function (err) {
-                content.innerHTML = '<div class="config-loading-msg">Erreur\u00a0: ' + err.message + '</div>';
+                content.innerHTML = '<div class="config-loading-msg">Erreur\u00a0: ' + escHtml(err.message) + '</div>';
             });
     }
 
@@ -1179,7 +1234,7 @@
     }
 
     function postJourJEvents(events, birthdayDaysAhead, onSuccess) {
-        fetch("/api/jour-j", {
+        fetch(BASE + "api/jour-j", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ events: events, birthday_days_ahead: birthdayDaysAhead })
@@ -1235,7 +1290,7 @@
     }
 
     function postMonitoringRefs(refs, onSuccess) {
-        fetch("/api/config", {
+        fetch(BASE + "api/config", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ monitoring_refs: refs })
@@ -1270,7 +1325,7 @@
         loadingEl.classList.remove("hidden");
         gridEl.innerHTML = "";
 
-        fetch("/api/stops")
+        fetch(BASE + "api/stops")
             .then(function (r) {
                 if (!r.ok) throw new Error("HTTP " + r.status);
                 return r.json();
@@ -1327,7 +1382,7 @@
         document.getElementById("directions-grid").innerHTML = "";
         showLevel2();
 
-        fetch("/api/stops/" + encodeURIComponent(stop.code) + "/details")
+        fetch(BASE + "api/stops/" + encodeURIComponent(stop.code) + "/details")
             .then(function (r) {
                 if (!r.ok) throw new Error("HTTP " + r.status);
                 return r.json();
@@ -1547,6 +1602,34 @@
     updateClock();
     scheduleMidnightRefresh();
     connect();
+
+    // Hide configuration and status buttons when accessed from outside the
+    // local network.  CTS_EXTERNAL is injected by nginx (value 1) when the
+    // client IP is not in 192.168.1.0/24.  Removes the attack surface for
+    // the config and status endpoints on public-facing deployments.
+    if (EXTERNAL) {
+        document.getElementById("config-btn").style.display = "none";
+        document.getElementById("status-btn").style.display = "none";
+    }
+
+    // Re-render when the page becomes visible again (iOS Safari app-switching /
+    // tab backgrounding).  The WS is still alive in these cases; we just need
+    // to repaint the board because iOS may have discarded the compositing layer.
+    document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && departureData) {
+            renderBoard();
+        }
+    });
+
+    // When iOS Safari restores a page from the Back/Forward cache (bfcache) the
+    // WebSocket connection is already dead.  pageshow with e.persisted === true
+    // is the reliable signal for this; reconnect from scratch.
+    window.addEventListener("pageshow", function (e) {
+        if (e.persisted) {
+            if (ws) { try { ws.close(); } catch (x) {} }
+            connect();
+        }
+    });
 
     // Arabesque ornamental animation — lives in #board-canvas (below weather row)
     (function () {
