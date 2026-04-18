@@ -73,6 +73,7 @@ html, body {
     padding: clamp(0.4rem, 1.2vh, 1rem) clamp(0.5rem, 1.5vw, 1.5rem);
     flex-shrink: 0;
     border-bottom: 2px solid rgba(255,255,255,0.12);
+    overflow: hidden;   /* clip any overflow so #board's overflow-x:hidden doesn't crop col-headers */
 }
 
 #clock {
@@ -86,6 +87,9 @@ html, body {
     font-size: clamp(0.9rem, 2.5vw, 1.6rem);
     font-weight: 500;
     white-space: nowrap;
+    min-width: 0;          /* allow below content size when header is tight */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #branding {
@@ -93,6 +97,10 @@ html, body {
     font-weight: 700;
     white-space: nowrap;
     margin-left: auto;
+    min-width: 0;          /* allow below content size when header is tight */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 2;        /* compress before date does */
 }
 
 .brand-bus  { color: var(--text); }
@@ -120,6 +128,47 @@ html, body {
 .logo-t { color: #003f8a; }
 .logo-s { color: #e2001a; }
 
+/* ── Stop name bar ── */
+#stop-bar {
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 5px clamp(0.75rem, 2vw, 2rem);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 0;
+}
+
+#stop-name {
+    font-size: clamp(0.72rem, 1.6vw, 0.9rem);
+    font-weight: 700;
+    color: rgba(255,255,255,0.72);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#stop-ref {
+    font-size: clamp(0.6rem, 1.2vw, 0.74rem);
+    font-weight: 700;
+    color: rgba(255,255,255,0.38);
+    background: rgba(255,255,255,0.07);
+    border-radius: 4px;
+    padding: 0.1em 0.45em;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+#stop-pagination {
+    font-size: clamp(0.6rem, 1.2vw, 0.74rem);
+    font-weight: 600;
+    color: rgba(255,255,255,0.32);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* ── Column headers ── */
 #col-headers {
     display: flex;
@@ -129,6 +178,7 @@ html, body {
     letter-spacing: 0.08em;
     color: var(--subtext);
     white-space: nowrap;
+    flex-shrink: 0;   /* never compress — must align with time columns */
 }
 
 .col-label {
@@ -150,13 +200,16 @@ html, body {
     display: grid;
     grid-template-columns: auto 1fr clamp(100px, 20vw, 220px) clamp(100px, 20vw, 220px);
     align-items: center;
-    /* No column-gap — vertical separators are drawn as border-left on time cells */
     column-gap: 0;
     row-gap: 0;
     padding: 0 0 0 clamp(0.75rem, 2vw, 2rem);
-    /* ~15 vh per row → 3 rows ≈ 45 vh, leaving ~half screen for the footer */
     height: clamp(100px, 15vh, 150px);
-    flex-shrink: 0;   /* Never compress a row */
+    flex-shrink: 0;
+}
+
+/* Desktop: transparent to the grid — time cells participate in columns 3 & 4 directly */
+.time-pair {
+    display: contents;
 }
 
 /* ── Extras row: birthday + Jour J side by side, same height as a departure row ── */
@@ -778,6 +831,9 @@ html, body {
     flex-shrink: 0;
 }
 
+/* Phone flex-break — hidden on desktop, activated by phone media query */
+.wx-phone-break { display: none; }
+
 /* ── Canvas zone (empty flex remainder below weather row) ─────────────────── */
 
 #board-canvas {
@@ -851,15 +907,12 @@ html, body {
     font-weight: 900;
     white-space: nowrap;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: center;
     gap: 0.15em;
-    /* Vertical column separator — same dark navy as the header */
     border-left: 3px solid var(--header-bg);
-    /* ~37% of column width on each side, matching the reference board */
     padding: 0 clamp(1.5rem, 4.5vw, 5rem);
-    align-self: stretch;        /* border spans full row height */
-    align-items: center;
+    align-self: stretch;
 }
 
 .time-cell .unit {
@@ -1405,3 +1458,200 @@ html, body {
 
 .status-value.highlight { color: #ffc107; }
 .status-value.dim       { color: rgba(255,255,255,0.55); font-style: italic; font-weight: 400; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLET / SMALL LAPTOP  (481 px – 1200 px — iPad, Surface, small laptops)
+   Hides the date to free ~140–170 px so #col-headers always fits in full.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 481px) and (max-width: 1200px) {
+    #date { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHONE PORTRAIT LAYOUT  (≤ 480 px — iPhone and similar)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+    /* ── Header: compact ── */
+    #header {
+        padding: 12px 14px 10px;
+        gap: 8px;
+    }
+    #clock      { font-size: 1.55rem; flex-shrink: 0; }
+    #date       { font-size: 0.7rem; font-weight: 500; color: rgba(255,255,255,0.6);
+                  flex-shrink: 1; /* already set min-width:0 above */ }
+    #branding   { display: none; }
+    /* Logo can compress to make room for config/status buttons */
+    #logo       { font-size: 1.1rem; flex-shrink: 1; min-width: 0; overflow: hidden; }
+    #col-headers { display: none; }
+    /* Config and status buttons must stay fully visible on phone */
+    #config-btn { font-size: 0.72rem; padding: 0.25em 0.6em; flex-shrink: 0; }
+    #status-btn { flex-shrink: 0; }
+
+    /* ── Stop bar: more prominent ── */
+    #stop-bar {
+        padding: 7px 14px;
+        gap: 8px;
+        background: rgba(255,255,255,0.055);
+    }
+    #stop-name       { font-size: 1.05rem; color: rgba(255,255,255,0.9); }
+    #stop-ref        { font-size: 0.68rem; }
+    #stop-pagination { font-size: 0.65rem; }
+
+    /* ── Board canvas hidden on phone — departures fill the space ── */
+    #board-canvas { display: none; }
+
+    /* ── Departures: natural height, scroll when content overflows ── */
+    #departures { overflow-y: auto; }
+    #departures-inner { height: auto; }
+
+    /* ── Departure rows: 2-line phone layout, sized to content ── */
+    .departure-row {
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
+        grid-template-areas:
+            "badge dest"
+            "badge times";
+        height: auto;
+        min-height: 90px;
+        padding: 14px 18px;
+        gap: 6px 12px;
+        align-items: start;
+        align-content: center;
+    }
+
+    .line-badge {
+        grid-area: badge;
+        align-self: center;
+        width:  54px;
+        height: 54px;
+        font-size: 1.55rem;
+        border-radius: 10px;
+        margin-right: 0;
+    }
+
+    .destination {
+        grid-area: dest;
+        font-size: 1.3rem;
+        align-self: end;
+        padding-bottom: 2px;
+    }
+
+    /* On phone, .time-pair becomes a real flex grid item */
+    .time-pair {
+        display: flex;
+        grid-area: times;
+        align-self: start;
+        align-items: baseline;
+    }
+
+    /* Reset time cells for the phone 2-line layout */
+    .time-cell {
+        flex: 1;
+        align-self: auto;
+        border-left: none;
+        padding: 0;
+        font-size: 1.65rem;
+        font-weight: 900;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 0;
+    }
+
+    /* Divider between the two time slots */
+    .time-pair .time-cell:first-child {
+        border-right: 1px solid rgba(255,255,255,0.15);
+        padding-right: 14px;
+        margin-right: 14px;
+    }
+
+    /* "Prochain" / "Suivant" labels via CSS attr() */
+    .time-cell::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        color: rgba(255,255,255,0.65);
+        text-transform: uppercase;
+        line-height: 1.3;
+        margin-bottom: 3px;
+    }
+
+    /* .unit inherits 0.6em of 1.65rem ≈ 1rem — good for "min" */
+    .time-cell .arriving { font-size: 0.55em; }
+
+    /* ── Extras: stack vertically ── */
+    #extras-row {
+        height: auto;
+        flex-direction: column;
+    }
+    #birthday-row {
+        padding: 7px 12px;
+        gap: 8px;
+        min-height: 36px;
+    }
+    #jour-j-row {
+        border-left: none;
+        border-top: 2px solid #0d1b3e;
+        padding: 7px 12px;
+        gap: 8px;
+        min-height: 36px;
+    }
+    .birthday-icon { width: 22px; height: 22px; }
+    .birthday-text-wrap { font-size: 0.82rem; }
+    .jj-entry-badge { font-size: 0.85rem; }
+    .jj-entry-label { font-size: 0.8rem; }
+    .jj-entry-icon  { width: 1.2rem; height: 1.2rem; }
+
+    /* ── Weather: 2-line layout ── */
+    #weather-row {
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        padding: 10px 16px 11px;
+        font-size: 0.82rem;
+        align-items: center;
+    }
+
+    /* Hide the vertical separators between wx groups */
+    #weather-row .wx-sep-bar { display: none; }
+
+    /* Force a line break after icon + now + location (line 1) */
+    .wx-phone-break {
+        width: 100%;
+        height: 0;
+        order: 4;
+    }
+
+    /* Line 1 items */
+    #weather-icon  { width: 46px; height: 46px; order: 1; }
+    .wx-now-group  { order: 2; flex: 1; }
+    .wx-location   { order: 3; margin-left: 0; font-size: 0.6em; padding-right: 0; }
+
+    /* Current temp on line 1: prominent */
+    .wx-now-group .wx-value { font-size: 1.9rem; }
+
+    /* Line 2 items */
+    .wx-group-temps  { order: 5; flex: 1; min-width: 0; }
+    .wx-group-precip { order: 6; flex: 1; min-width: 0; }
+    .wx-group-uv     { order: 7; flex: 1; min-width: 0; }
+
+    /* Hide the verbose labels on line 2 — icon + value is enough */
+    .wx-group-temps .wx-label,
+    .wx-group-precip .wx-label,
+    .wx-group-uv .wx-label { display: none; }
+
+    /* Line 2 values */
+    .wx-group-temps .wx-value,
+    .wx-group-precip .wx-value,
+    .wx-group-uv .wx-value { font-size: 1.35em; }
+
+    .wx-temp-min,
+    .wx-temp-max { padding: 0.07em 0.32em; font-size: 0.85em; }
+
+    /* Overlays use full fixed positioning — unchanged */
+}

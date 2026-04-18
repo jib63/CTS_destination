@@ -7,6 +7,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
+    http::HeaderMap,
     response::Response,
 };
 use futures_util::{SinkExt, StreamExt};
@@ -17,20 +18,37 @@ use crate::web::AppState;
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+    // nginx injects "X-CTS-External: 1" for clients outside the LAN (via the
+    // geo block in cts.conf).  External clients receive a stripped board that
+    // has birthdays_today and jour_j_events removed.
+    let is_external = headers
+        .get("x-cts-external")
+        .and_then(|v| v.to_str().ok())
+        == Some("1");
+
+    ws.on_upgrade(move |socket| handle_socket(socket, state, is_external))
 }
 
-async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
+async fn handle_socket(socket: WebSocket, state: Arc<AppState>, is_external: bool) {
     let (mut sender, mut receiver) = socket.split();
 
     // Subscribe FIRST so we don't miss any broadcast that fires between
     // reading `latest` and subscribing (classic startup race).
-    let mut rx = state.tx.subscribe();
+    let mut rx = if is_external {
+        state.tx_external.subscribe()
+    } else {
+        state.tx.subscribe()
+    };
 
     // Then send the cached snapshot so the client isn't blank on connect.
     {
-        let latest = state.latest.read().await;
+        let latest = if is_external {
+            state.latest_external.read().await
+        } else {
+            state.latest.read().await
+        };
         if let Some(ref json) = *latest {
             if sender.send(Message::Text(json.clone().into())).await.is_err() {
                 return; // Client disconnected before we could send
