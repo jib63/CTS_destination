@@ -86,8 +86,12 @@ pub struct AppConfig {
     /// at /api/pixoo64/preview instead.
     #[serde(default)]
     pub pixoo64_simulation: bool,
-    /// How often to refresh the Pixoo64 display (seconds, default: 1).
-    pub pixoo64_refresh_interval_seconds: Option<u64>,
+    /// How many seconds each screen is shown before rotating to the next (default: 7).
+    /// Applies to all screen types: departures, weather, and birthday/Jour-J.
+    pub pixoo64_delay_between_screens: Option<u64>,
+    /// Screen brightness 0–100. Sent once at startup via Device/SetBrightness.
+    /// Omit to leave the device brightness unchanged.
+    pub pixoo64_brightness: Option<u8>,
 
     // ── Meteoblue weather widget ──────────────────────────────────────────────
     /// When true, show the weather widget in the board footer.

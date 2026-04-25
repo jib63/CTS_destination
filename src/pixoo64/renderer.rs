@@ -6,28 +6,37 @@ use tracing::{info, warn};
 use crate::departure::model::{BoardPayload, DepartureBoard};
 use crate::display::DisplayRenderer;
 use crate::web::AppState;
-use crate::pixoo64::draw::{fb_to_png, render_frames, Fb, ZoneState};
+use crate::pixoo64::draw::{
+    fb_to_png, render_frames, render_weather_frame, render_birthday_frame, Fb,
+};
+
+// ── Screen types ──────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ScreenType {
+    /// Departure board for `payload.boards[index]`.
+    Departures(usize),
+    /// Full-screen weather display (reads from `payload.boards[0].weather`).
+    Weather,
+    /// Birthday / Jour-J countdown display.
+    BirthdayJourJ,
+}
 
 // ── Pixoo64Renderer ───────────────────────────────────────────────────────────
 
-/// Synchronous renderer that forwards each board update to the async worker via
-/// an unbounded channel. The channel send never blocks.
 pub struct Pixoo64Renderer {
-    sender: tokio::sync::mpsc::UnboundedSender<Box<DepartureBoard>>,
+    sender: tokio::sync::mpsc::UnboundedSender<Box<BoardPayload>>,
 }
 
 impl Pixoo64Renderer {
-    pub fn new(sender: tokio::sync::mpsc::UnboundedSender<Box<DepartureBoard>>) -> Self {
+    pub fn new(sender: tokio::sync::mpsc::UnboundedSender<Box<BoardPayload>>) -> Self {
         Self { sender }
     }
 }
 
 impl DisplayRenderer for Pixoo64Renderer {
     fn update(&self, payload: &BoardPayload) -> Result<(), Box<dyn std::error::Error>> {
-        // Always display the first stop only — rotation is a web-only feature for now.
-        if let Some(board) = payload.boards.first() {
-            let _ = self.sender.send(Box::new(board.clone()));
-        }
+        let _ = self.sender.send(Box::new(payload.clone()));
         Ok(())
     }
 
@@ -36,45 +45,74 @@ impl DisplayRenderer for Pixoo64Renderer {
     }
 }
 
-// ── Async worker ─────────────────────────────────────────────────────────────
+// ── Async worker ──────────────────────────────────────────────────────────────
 
-/// Target animation framerate for the animated GIF sent to the Pixoo64.
-/// Higher = smoother scrolling; lower = less CPU / network load.
-const ANIM_FPS: u64 = 10;
-
-/// Spawned as a Tokio task. On each tick it renders an animated GIF covering
-/// the full `refresh_interval_secs` window and sends it to the device so the
-/// display loops the animation smoothly until the next update.
+/// Pixoo64 display worker with multi-screen rotation.
+///
+/// Screens cycle every `screen_dwell_secs` seconds in the order defined by
+/// `screens`. Each screen type maps to a different draw function:
+///   - `Departures(i)` → departure board for stop i
+///   - `Weather`       → full-screen weather summary
+///   - `BirthdayJourJ` → birthday & Jour-J countdown
+///
+/// A new `BoardPayload` on the channel triggers an immediate re-render of the
+/// current screen with fresh data, then resets the dwell timer.
 pub async fn pixoo_worker(
-    mut rx: UnboundedReceiver<Box<DepartureBoard>>,
+    mut rx: UnboundedReceiver<Box<BoardPayload>>,
     state: Arc<AppState>,
     addr: Option<String>,
     simulation: bool,
-    refresh_interval_secs: u64,
+    screen_dwell_secs: u64,
+    brightness: Option<u8>,
+    screens: Vec<ScreenType>,
 ) {
-    let mut fb          = Fb::new();
-    let mut zone        = ZoneState::default();
-    let mut bg_frame    = 0u32;
-    let mut dest_scroll = [0i32; 4];
-    let mut board       = Box::new(DepartureBoard::offline(
-        String::new(),
-        "Démarrage…".to_string(),
-    ));
+    if screens.is_empty() {
+        warn!("Pixoo64 worker started with no screens — nothing to display");
+        return;
+    }
 
-    // Number of frames per animated GIF = fps × refresh period (min 1)
-    let n_frames     = ((refresh_interval_secs * ANIM_FPS) as usize).max(1);
-    let pic_speed_ms = 1000 / ANIM_FPS;  // ms per frame
+    let mut fb = Fb::new();
+    // Start PicID from current Unix timestamp so it is always higher than
+    // whatever the device cached from a previous run.
+    let mut bg_frame: u32 = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as u32;
+    let mut screen_idx: usize = 0;
 
-    let tick = std::time::Duration::from_secs(refresh_interval_secs);
-    let mut interval = tokio::time::interval(tick);
+    let mut payload = Box::new(BoardPayload {
+        boards: vec![DepartureBoard::offline(
+            String::new(),
+            "Démarrage…".to_string(),
+        )],
+        stop_rotation_secs: None,
+    });
+
+    // Clock/offline mode: 10 fps, up to 40 frames (firmware safe limit).
+    const ANIM_FPS: u64 = 10;
+    const PIC_SPEED_MS: u64 = 1000 / ANIM_FPS;
+    let n_frames: usize = ((screen_dwell_secs * ANIM_FPS) as usize).min(40).max(1);
+
+    if let (Some(host), Some(level), false) = (&addr, brightness, simulation) {
+        let url  = format!("http://{}/post", host);
+        let body = serde_json::json!({
+            "Command":    "Device/SetBrightness",
+            "Brightness": level,
+        });
+        let _ = state.http_client.post(&url).json(&body).send().await;
+    }
+
+    let tick = std::time::Duration::from_secs(screen_dwell_secs);
+    let start = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
+    let mut interval = tokio::time::interval_at(start, tick);
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     info!(
         simulation,
         addr = addr.as_deref().unwrap_or("(none)"),
-        refresh_secs = refresh_interval_secs,
+        dwell_secs = screen_dwell_secs,
         n_frames,
-        pic_speed_ms,
+        screens = ?screens,
         "Pixoo64 worker started"
     );
 
@@ -82,14 +120,28 @@ pub async fn pixoo_worker(
         tokio::select! {
             maybe = rx.recv() => {
                 match maybe {
-                    Some(b) => { board = b; dest_scroll = [0; 4]; }
-                    None    => { info!("Pixoo64 channel closed — worker exiting"); break; }
+                    Some(p) => {
+                        payload = p;
+                        // Re-render current screen with fresh data, reset timer.
+                        let screen = screens[screen_idx % screens.len()];
+                        render_and_send(
+                            &mut fb, &mut bg_frame, &payload,
+                            &state, &addr, simulation, n_frames, PIC_SPEED_MS, screen,
+                        ).await;
+                        bg_frame = bg_frame.wrapping_add(n_frames as u32);
+                        interval.reset();
+                    }
+                    None => { info!("Pixoo64 channel closed — worker exiting"); break; }
                 }
             }
             _ = interval.tick() => {
+                // Advance to next screen, then render.
+                screen_idx = screen_idx.wrapping_add(1);
+                let screen = screens[screen_idx % screens.len()];
+                info!(screen = ?screen, idx = screen_idx % screens.len(), "Pixoo64 screen rotation");
                 render_and_send(
-                    &mut fb, &mut zone, &mut bg_frame, &mut dest_scroll,
-                    &board, &state, &addr, simulation, n_frames, pic_speed_ms,
+                    &mut fb, &mut bg_frame, &payload,
+                    &state, &addr, simulation, n_frames, PIC_SPEED_MS, screen,
                 ).await;
                 bg_frame = bg_frame.wrapping_add(n_frames as u32);
             }
@@ -99,20 +151,40 @@ pub async fn pixoo_worker(
 
 async fn render_and_send(
     fb:           &mut Fb,
-    zone:         &mut ZoneState,
     bg_frame:     &mut u32,
-    dest_scroll:  &mut [i32; 4],
-    board:        &DepartureBoard,
+    payload:      &BoardPayload,
     state:        &Arc<AppState>,
     addr:         &Option<String>,
     simulation:   bool,
     n_frames:     usize,
     pic_speed_ms: u64,
+    screen:       ScreenType,
 ) {
-    // Render all animation frames; `fb` holds the last frame after the call.
-    let frames = render_frames(fb, board, zone, dest_scroll, *bg_frame, n_frames);
+    // Pick the right board (fall back to first if index out of range).
+    let board = |idx: usize| -> &DepartureBoard {
+        payload.boards.get(idx).or_else(|| payload.boards.first())
+            .unwrap_or_else(|| payload.boards.first().expect("payload always has ≥1 board"))
+    };
 
-    // Store the last frame as PNG preview (visible in the web UI).
+    let frames: Vec<String> = match screen {
+        ScreenType::Departures(i) => {
+            render_frames(fb, board(i), *bg_frame, n_frames)
+        }
+        ScreenType::Weather => {
+            let b = board(0);
+            if b.weather.is_some() {
+                vec![render_weather_frame(fb, b)]
+            } else {
+                // No weather data yet — fall back to departure screen.
+                render_frames(fb, board(0), *bg_frame, n_frames)
+            }
+        }
+        ScreenType::BirthdayJourJ => {
+            vec![render_birthday_frame(fb, board(0))]
+        }
+    };
+
+    // Update PNG preview (visible in the web UI).
     {
         let png = fb_to_png(fb);
         if let Ok(mut guard) = state.pixoo64_preview.try_write() {
@@ -124,7 +196,6 @@ async fn render_and_send(
         return;
     }
 
-    // Send every frame to the device as one animated GIF.
     if let Some(host) = addr {
         let pic_id  = bg_frame.wrapping_add(1);
         let pic_num = frames.len();

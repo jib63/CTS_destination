@@ -14,7 +14,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::config::prune_past_events;
 use crate::display::DisplayRenderer;
-use crate::pixoo64::renderer::{pixoo_worker, Pixoo64Renderer};
+use crate::pixoo64::renderer::{pixoo_worker, Pixoo64Renderer, ScreenType};
 use crate::web::{AppState, WebRenderer};
 use crate::web::router::build_router;
 
@@ -32,10 +32,11 @@ async fn main() -> Result<()> {
 
     let (config, token) = config::AppConfig::load(&config_path)?;
 
-    let pixoo_enabled = config.pixoo64_enabled;
-    let pixoo_address = config.pixoo64_address.clone();
-    let pixoo_sim     = config.pixoo64_simulation;
-    let pixoo_refresh = config.pixoo64_refresh_interval_seconds.unwrap_or(1);
+    let pixoo_enabled      = config.pixoo64_enabled;
+    let pixoo_address      = config.pixoo64_address.clone();
+    let pixoo_sim          = config.pixoo64_simulation;
+    let pixoo_brightness   = config.pixoo64_brightness;
+    let pixoo_screen_dwell = config.pixoo64_delay_between_screens.unwrap_or(7);
 
     let meteoblue_key = config.resolve_meteoblue_key();
     let weather_enabled = config.meteoblue_enabled && (meteoblue_key.is_some() || config.meteoblue_simulation);
@@ -92,11 +93,22 @@ async fn main() -> Result<()> {
     })];
 
     if pixoo_enabled {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Box<crate::departure::model::DepartureBoard>>();
-        renderers.push(Box::new(Pixoo64Renderer::new(tx)));
         let pstate = app_state.clone();
+
+        // Build ordered screen list: one departure screen per stop, then weather,
+        // then birthday/Jour-J (each only if the feature is enabled).
+        let n_stops = config.cts_monitoring_ref.len().max(1);
+        let birthday_jour_j = config.birthday_enabled || config.jour_j_enabled;
+        let mut pixoo_screens: Vec<ScreenType> =
+            (0..n_stops).map(ScreenType::Departures).collect();
+        if weather_enabled  { pixoo_screens.push(ScreenType::Weather); }
+        if birthday_jour_j  { pixoo_screens.push(ScreenType::BirthdayJourJ); }
+
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Box<crate::departure::model::BoardPayload>>();
+        renderers.push(Box::new(Pixoo64Renderer::new(tx)));
         tokio::spawn(async move {
-            pixoo_worker(rx, pstate, pixoo_address, pixoo_sim, pixoo_refresh).await;
+            pixoo_worker(rx, pstate, pixoo_address, pixoo_sim, pixoo_screen_dwell,
+                         pixoo_brightness, pixoo_screens).await;
         });
     }
 

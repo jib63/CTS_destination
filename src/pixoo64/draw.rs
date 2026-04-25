@@ -125,14 +125,6 @@ fn draw_text_clipped(
     }
 }
 
-/// Advance a single scroll offset by 1 pixel per call; resets after a pause gap.
-fn advance_scroll(current: i32, text_w: i32, visible_w: i32) -> i32 {
-    if text_w <= visible_w {
-        return 0;
-    }
-    let max = text_w - visible_w + 12; // 12-pixel pause before reset
-    if current >= max { 0 } else { current + 1 }
-}
 
 // ── CTS line colours ─────────────────────────────────────────────────────────
 
@@ -147,6 +139,14 @@ fn line_color(line: &str) -> (u8, u8, u8) {
         "G" => ( 92, 107, 192),
         _   => ( 84, 110, 122),
     }
+}
+
+fn row_tint(lr: u8, lg: u8, lb: u8) -> (u8, u8, u8) {
+    (
+        ((lr as u32 * 12 / 100) + 5).min(255) as u8,
+        ((lg as u32 * 12 / 100) + 9).min(255) as u8,
+        ((lb as u32 * 12 / 100) + 16).min(255) as u8,
+    )
 }
 
 // ── Small weather icon (6×5 block) ────────────────────────────────────────────
@@ -223,361 +223,380 @@ pub fn draw_weather_icon_sm(fb: &mut Fb, x: i32, y: i32, pictocode: u32) {
     }
 }
 
-// ── Zone state for diff-based rendering ───────────────────────────────────────
+// ── Large weather icon (16×16 block) ─────────────────────────────────────────
 
-#[derive(Default, Clone, PartialEq)]
-pub struct ZoneState {
-    pub clock_hhmm:      String,
-    pub clock_ss:        u8,
-    pub weather_key:     String,
-    /// Per-row: "line|destination_short|Nmin" or empty
-    pub row_times:       [String; 4],
-    /// Hash of line names / destinations + birthday/Jour J content (changes rarely)
-    pub line_set:        String,
-    /// Scroll offset for the birthday row (persistent across frames)
-    pub birthday_scroll: i32,
-    /// Scroll offset for the Jour J label (persistent across frames)
-    pub jour_j_scroll:   i32,
-}
+pub fn draw_weather_icon_lg(fb: &mut Fb, x: i32, y: i32, pictocode: u32) {
+    let night = pictocode > 100;
+    let c = if night { pictocode - 100 } else { pictocode };
 
-impl ZoneState {
-    pub fn from_board(board: &DepartureBoard) -> Self {
-        let now = Local::now();
-        let clock_hhmm = format!("{:02}:{:02}", now.hour(), now.minute());
-        let clock_ss   = now.second() as u8;
-
-        let weather_key = board.weather.as_ref().map(|w| {
-            format!("{}:{:.0}:{:.0}:{:.0}", w.pictocode, w.temp_min, w.temp_max, w.temp_now)
-        }).unwrap_or_default();
-
-        let mut row_times: [String; 4] = Default::default();
-        let mut line_set_parts = Vec::new();
-
-        for (i, line) in board.lines.iter().enumerate().take(4) {
-            let mins = line.departures.first().map(|d| {
-                let diff = d.expected.signed_duration_since(chrono::Utc::now());
-                diff.num_minutes().max(0)
-            }).unwrap_or(0);
-            if i < 4 {
-                row_times[i] = format!("{}min", mins);
+    if night && c <= 3 {
+        // crescent moon
+        for py in 0i32..16 {
+            for px in 0i32..16 {
+                let dx = px - 8; let dy = py - 8;
+                let in_outer = dx*dx + dy*dy <= 64;
+                let cdx = dx - 3; let cdy = dy - 2;
+                let in_inner = cdx*cdx + cdy*cdy <= 25;
+                if in_outer && !in_inner {
+                    fb.set(x + px, y + py, 220, 220, 180);
+                }
             }
-            line_set_parts.push(format!("{}|{}", line.line, line.destination_short));
         }
+        return;
+    }
 
-        // Include birthday/Jour J data in line_set so redraws happen when they change
-        if !board.birthdays_today.is_empty() {
-            line_set_parts.push(board.birthdays_today.join(","));
+    match c {
+        1 => {
+            // Sun: 8×8 body + 8-direction rays
+            fb.fill_rect(x+4,  y+4,  8, 8, 255, 220, 0);
+            fb.fill_rect(x+7,  y,    2, 3, 255, 195, 0);   // top
+            fb.fill_rect(x+7,  y+13, 2, 3, 255, 195, 0);   // bottom
+            fb.fill_rect(x,    y+7,  3, 2, 255, 195, 0);   // left
+            fb.fill_rect(x+13, y+7,  3, 2, 255, 195, 0);   // right
+            fb.fill_rect(x+2,  y+2,  2, 2, 240, 175, 0);   // diag TL
+            fb.fill_rect(x+12, y+2,  2, 2, 240, 175, 0);   // diag TR
+            fb.fill_rect(x+2,  y+12, 2, 2, 240, 175, 0);   // diag BL
+            fb.fill_rect(x+12, y+12, 2, 2, 240, 175, 0);   // diag BR
         }
-        if let Some(ev) = board.jour_j_events.first() {
-            line_set_parts.push(format!("J-{}:{}", ev.days, ev.label));
+        2 | 3 => {
+            // Partly cloudy
+            fb.fill_rect(x+5, y+1,  6, 4, 240, 200, 60);
+            fb.fill_rect(x+3, y+6, 10, 4, 190, 190, 210);
+            fb.fill_rect(x+1, y+8, 14, 5, 210, 210, 220);
         }
-
-        ZoneState {
-            clock_hhmm,
-            clock_ss,
-            weather_key,
-            row_times,
-            line_set: line_set_parts.join(";"),
-            // scroll positions are NOT derived from board; they persist in prev
-            birthday_scroll: 0,
-            jour_j_scroll:   0,
+        4 | 31 | 34 => {
+            // Cloudy
+            fb.fill_rect(x+3, y+1, 10, 4, 180, 180, 200);
+            fb.fill_rect(x+1, y+4, 14, 5, 200, 200, 210);
+            fb.fill_rect(x,   y+8, 16, 5, 210, 210, 220);
+        }
+        5 | 6 => {
+            // Fog: horizontal stripes
+            for row in 0i32..8 {
+                let xoff = if row % 2 == 0 { 0 } else { 1 };
+                fb.fill_rect(x + xoff, y + row * 2, 15, 1, 160, 160, 180);
+            }
+        }
+        7 | 8 | 9 | 10 | 11 | 19 | 33 | 35 => {
+            // Rain: cloud + drops
+            fb.fill_rect(x,   y,   16, 5, 100, 140, 200);
+            fb.fill_rect(x+2, y+3, 12, 3,  80, 120, 190);
+            for col in 0i32..4 {
+                fb.fill_rect(x + 1 + col * 4, y +  7, 1, 3, 100, 160, 255);
+                fb.fill_rect(x + 3 + col * 4, y + 10, 1, 3, 100, 160, 255);
+            }
+        }
+        14..=18 => {
+            // Snow: cloud + flakes
+            fb.fill_rect(x,   y,   16, 5, 160, 180, 220);
+            fb.fill_rect(x+2, y+3, 12, 3, 140, 165, 215);
+            for col in 0i32..4 {
+                fb.set(x + 2 + col * 4, y +  8, 220, 240, 255);
+                fb.set(x + 4 + col * 4, y + 10, 220, 240, 255);
+                fb.set(x + 2 + col * 4, y + 12, 220, 240, 255);
+                fb.set(x + 4 + col * 4, y + 14, 220, 240, 255);
+            }
+        }
+        20..=28 => {
+            // Thunder: dark cloud + bolt
+            fb.fill_rect(x,   y,   16, 5,  80,  80, 120);
+            fb.fill_rect(x+2, y+3, 12, 3,  60,  60, 100);
+            fb.fill_rect(x+8, y+7,  3, 4, 255, 240,   0);
+            fb.fill_rect(x+6, y+9,  3, 4, 255, 240,   0);
+            fb.fill_rect(x+5, y+12, 2, 3, 255, 240,   0);
+        }
+        _ => {
+            // Default cloud
+            fb.fill_rect(x+2, y+2, 12, 6, 160, 160, 180);
+            fb.fill_rect(x,   y+6, 16, 8, 180, 180, 200);
         }
     }
 }
+
+// ── Birthday / Jour-J pixel icons (6×7) ──────────────────────────────────────
+
+fn draw_icon_cake(fb: &mut Fb, x: i32, y: i32) {
+    fb.set(x+2, y,   255, 220,  80);   // flame
+    fb.fill_rect(x+2, y+1, 1, 2, 200, 200, 220);  // candle
+    fb.fill_rect(x,   y+3, 6, 1, 210, 190, 240);  // frosting
+    fb.fill_rect(x,   y+4, 6, 3, 190, 155, 220);  // cake body
+    fb.set(x+1, y+5, 255, 100, 100);
+    fb.set(x+3, y+5, 100, 200, 100);
+    fb.set(x+5, y+5, 100, 100, 255);
+}
+
+fn draw_icon_present(fb: &mut Fb, x: i32, y: i32) {
+    fb.fill_rect(x,   y+3, 6, 3,  91, 142, 238);  // box body
+    fb.fill_rect(x,   y+2, 6, 1, 122, 170, 245);  // lid
+    fb.fill_rect(x+2, y+2, 2, 4, 230, 220, 168);  // ribbon vertical
+    fb.fill_rect(x,   y+3, 6, 1, 230, 220, 168);  // ribbon horizontal
+    fb.fill_rect(x+1, y,   2, 2, 232, 112, 112);  // bow left
+    fb.fill_rect(x+3, y,   2, 2, 232, 112, 112);  // bow right
+}
+
+fn draw_icon_heart(fb: &mut Fb, x: i32, y: i32) {
+    fb.fill_rect(x+1, y,   2, 1, 220, 60, 60);
+    fb.fill_rect(x+4, y,   2, 1, 220, 60, 60);
+    fb.fill_rect(x,   y+1, 6, 2, 220, 60, 60);
+    fb.fill_rect(x+1, y+3, 4, 2, 220, 60, 60);
+    fb.fill_rect(x+2, y+5, 2, 1, 220, 60, 60);
+}
+
+// ── Destination 2-line split ──────────────────────────────────────────────────
+
+fn split_dest_lines(dest: &str, max_chars: usize) -> (String, String) {
+    let chars: Vec<char> = dest.chars().collect();
+    if chars.len() <= max_chars {
+        return (dest.to_string(), String::new());
+    }
+    let mut split = max_chars;
+    for i in (0..=max_chars.min(chars.len().saturating_sub(1))).rev() {
+        if chars[i] == ' ' || chars[i] == '-' {
+            split = if chars[i] == '-' { i + 1 } else { i };
+            break;
+        }
+    }
+    split = split.min(chars.len());
+    let l1: String = chars[..split].iter().collect();
+    let l2_start = if split < chars.len() && chars[split] == ' ' { split + 1 } else { split };
+    let l2: String = chars[l2_start..].iter().take(max_chars).collect();
+    (l1, l2)
+}
+
+// ── Weather condition label ───────────────────────────────────────────────────
+
+fn weather_label(pictocode: u32) -> &'static str {
+    let night = pictocode > 100;
+    let c = if night { pictocode - 100 } else { pictocode };
+    match c {
+        1     => if night { "Ciel clair" } else { "Ensoleille" },
+        2 | 3 => "Peu nuageux",
+        4     => "Nuageux",
+        5 | 6 => "Brouillard",
+        7..=9 => "Pluie",
+        10 | 11 => "Forte pluie",
+        14 | 15 => "Neige",
+        16..=18 => "Forte neige",
+        19 | 33 | 35 => "Pluie",
+        20..=22 => "Orage",
+        23..=28 => "Orage fort",
+        31 | 34 => "Nuageux",
+        _ => "Variable",
+    }
+}
+
+// ── Shared header (y=0..9) ────────────────────────────────────────────────────
 
 use chrono::Timelike;
 
-// ── Pixel-art icons ───────────────────────────────────────────────────────────
-
-/// 🎁 Present icon — 6×7 at (x, y)
-fn draw_present_icon(fb: &mut Fb, x: i32, y: i32) {
-    // Box body (3 rows)
-    fb.fill_rect(x,     y + 3, 6, 3, 91, 142, 238);
-    // Lid
-    fb.fill_rect(x,     y + 2, 6, 1, 122, 170, 245);
-    // Ribbon vertical
-    fb.fill_rect(x + 2, y + 2, 2, 4, 230, 220, 168);
-    // Ribbon horizontal
-    fb.fill_rect(x,     y + 3, 6, 1, 230, 220, 168);
-    // Bow left
-    fb.set(x + 1, y,     232, 112, 112);
-    fb.set(x,     y + 1, 232, 112, 112);
-    fb.set(x + 1, y + 1, 232, 112, 112);
-    // Bow right
-    fb.set(x + 4, y,     232, 112, 112);
-    fb.set(x + 5, y + 1, 232, 112, 112);
-    fb.set(x + 4, y + 1, 232, 112, 112);
-    // Centre bow knot
-    fb.fill_rect(x + 2, y, 2, 2, 232, 112, 112);
+fn draw_header(fb: &mut Fb, board: &DepartureBoard) {
+    let now = Local::now();
+    let clock_hhmm = format!("{:02}:{:02}", now.hour(), now.minute());
+    fb.fill_rect(0, 0, 64, 9, 14, 20, 40);
+    fb.draw_text(1, 1, &clock_hhmm, 255, 255, 255, 1);
+    if let Some(ref w) = board.weather {
+        let temp = format!("{}°", w.temp_now.round() as i32);
+        fb.draw_text_right(63, 1, &temp, 180, 220, 255, 1);
+        draw_weather_icon_sm(fb, 37, 2, w.pictocode.into());
+    }
+    fb.fill_rect(0, 9, 64, 1, 30, 50, 80);
 }
 
-/// 🎉 Party/celebration icon — 6×7 at (x, y)
-fn draw_party_icon(fb: &mut Fb, x: i32, y: i32) {
-    // Party cone (triangle shape)
-    fb.set(x + 2, y,     240, 200, 60);
-    fb.fill_rect(x + 1, y + 1, 3, 1, 240, 200, 60);
-    fb.fill_rect(x,     y + 2, 5, 1, 240, 200, 60);
-    fb.fill_rect(x,     y + 3, 6, 2, 240, 200, 60);
-    // Sparkles
-    fb.set(x + 5, y,     255, 220, 80);
-    fb.set(x + 5, y + 2, 100, 200, 220);
-    fb.set(x + 3, y + 6, 200, 150, 220);
-}
+// ── Departure screen ──────────────────────────────────────────────────────────
+//
+// Shows ALL tram lines simultaneously. Row height adapts to line count:
+//   n=1,2 → row_h=27 (3×9px sub-zones: badge+time | dest L1 | dest L2)
+//   n=3   → row_h=18 (2×9px: badge+L1+time | L2)
+//   n=4   → row_h=13 (single compact line)
+//
+// Only "Prochain" departure time is shown, in yellow.
+pub fn draw_departures(fb: &mut Fb, board: &DepartureBoard) {
+    fb.fill_rect(0, 0, 64, 64, 6, 10, 20);
+    draw_header(fb, board);
 
-// ── Extra rows (birthday / Jour J) ────────────────────────────────────────────
-
-/// Compute y-coordinates for the separator and extra rows based on tram row count.
-/// Returns (sep_y, birthday_y, jour_j_y) where sep_y is the first blank of the separator.
-/// Returns None for rows that won't fit.
-fn extra_row_layout(n_tram: usize) -> Option<(i32, Option<i32>, Option<i32>)> {
-    match n_tram {
-        0 | 4 => None,
-        3 => Some((50, Some(53), None)),
-        2 => Some((37, Some(40), Some(52))),
-        1 => Some((24, Some(27), Some(40))),
-        _ => None,
-    }
-}
-
-/// Birthday row height (px) for a given tram row count.
-fn birthday_row_h(n_tram: usize) -> i32 {
-    match n_tram {
-        3 => 11,
-        2 | 1 => 12,
-        _ => 0,
-    }
-}
-
-/// Jour J row height (px) for a given tram row count.
-fn jour_j_row_h(n_tram: usize) -> i32 {
-    match n_tram {
-        2 | 1 => 12,
-        _ => 0,
-    }
-}
-
-/// Draw the birthday row at (0, row_y) with the given height.
-/// Returns the updated scroll offset.
-fn draw_birthday_row(
-    fb: &mut Fb,
-    row_y: i32, row_h: i32,
-    names: &[String],
-    scroll: i32,
-) -> i32 {
-    // Background
-    fb.fill_rect(0, row_y, 64, row_h, 10, 35, 40);
-
-    // Icon centred vertically
-    let icon_y = row_y + (row_h - 7) / 2;
-    draw_present_icon(fb, 1, icon_y);
-
-    // Build scrolling text
-    let text = format!("  {}  ", names.join("  \u{b7}  "));
-
-    let visible_x1 = 9i32;
-    let visible_x2 = 62i32;
-    let visible_w   = visible_x2 - visible_x1 + 1;
-    let text_w      = text_width(&text, 1);
-    let draw_x      = visible_x1 - scroll;
-
-    let text_y = row_y + (row_h - CHAR_H) / 2;
-    draw_text_clipped(fb, draw_x, text_y, &text, 230, 220, 180, 1, visible_x1, visible_x2);
-
-    advance_scroll(scroll, text_w, visible_w)
-}
-
-/// Draw the Jour J row at (0, row_y) with the given height.
-/// Returns the updated scroll offset.
-fn draw_jour_j_row(
-    fb: &mut Fb,
-    row_y: i32, row_h: i32,
-    days: i64, label: &str,
-    scroll: i32,
-) -> i32 {
-    // Background
-    fb.fill_rect(0, row_y, 64, row_h, 25, 20, 55);
-
-    // Icon centred vertically
-    let icon_y = row_y + (row_h - 7) / 2;
-    draw_party_icon(fb, 1, icon_y);
-
-    let text_y = row_y + (row_h - CHAR_H) / 2;
-
-    // Fixed "J-N" badge (yellow)
-    let badge = format!("J-{}", days);
-    let badge_x = 9;
-    let badge_end = fb.draw_text(badge_x, text_y, &badge, 240, 200, 60, 1);
-
-    // Scrolling label (cyan) — clipped after the badge
-    let visible_x1 = badge_end + 2;
-    let visible_x2 = 62i32;
-    let visible_w   = (visible_x2 - visible_x1 + 1).max(1);
-    let text_w      = text_width(label, 1);
-    let draw_x      = visible_x1 - scroll;
-
-    draw_text_clipped(fb, draw_x, text_y, label, 100, 200, 220, 1, visible_x1, visible_x2);
-
-    advance_scroll(scroll, text_w, visible_w)
-}
-
-// ── Departure mode (Layout A) ─────────────────────────────────────────────────
-
-/// Draw the departure board onto `fb`, only repainting zones that differ from
-/// `prev`. `dest_scroll[i]` is advanced by 1 pixel each call for the i-th row.
-/// Updates `prev` in-place.
-pub fn draw_departures(fb: &mut Fb, board: &DepartureBoard, prev: &mut ZoneState, dest_scroll: &mut [i32; 4]) {
-    let next = ZoneState::from_board(board);
-
-    let line_set_changed = next.line_set != prev.line_set;
-    let weather_changed  = next.weather_key != prev.weather_key;
-    let full_redraw      = line_set_changed || fb.as_bytes().iter().all(|&b| b == 0);
-
-    // ── Background ────────────────────────────────────────────────────────────
-    if full_redraw {
-        fb.fill_rect(0, 0, 64, 64, 6, 10, 20);
-    }
-
-    // ── Header bar (y 0..9) ────────────────────────────────────────────────────
-    let clock_changed = next.clock_hhmm != prev.clock_hhmm;
-    if clock_changed || full_redraw {
-        fb.fill_rect(0, 0, 64, 10, 14, 20, 40);
-        let time_str = &next.clock_hhmm;
-        fb.draw_text(1, 2, time_str, 255, 255, 255, 1);
-    }
-
-    if (weather_changed || clock_changed) || full_redraw {
-        if let Some(ref w) = board.weather {
-            let temp = format!("{}°", w.temp_now.round() as i32);
-            fb.draw_text_right(62, 2, &temp, 180, 220, 255, 1);
-            draw_weather_icon_sm(fb, 37, 2, w.pictocode.into());
-        }
-    }
-
-    // Separator line
-    if full_redraw || clock_changed {
-        fb.fill_rect(0, 10, 64, 1, 30, 50, 80);
-    }
-
-    // ── Departure rows (y 11..63, 13px per row) ───────────────────────────────
-    for (i, line) in board.lines.iter().enumerate().take(4) {
-        let row_y = 11 + i as i32 * 13;
-        let time_changed = next.row_times[i] != prev.row_times[i];
-
-        let (br, bg, bb) = if i % 2 == 0 { (10, 16, 30) } else { (8, 13, 25) };
-
-        if full_redraw || line_set_changed {
-            // Background stripe
-            fb.fill_rect(0, row_y, 64, 13, br, bg, bb);
-
-            // Line badge (11×9)
-            let (lr, lg, lb) = line_color(&line.line);
-            fb.fill_rect(1, row_y + 2, 11, 9, lr, lg, lb);
-            let bx = 1 + (11 - (line.line.chars().count() as i32) * 6) / 2;
-            fb.draw_text(bx, row_y + 3, &line.line, 255, 255, 255, 1);
-        }
-
-        // Destination: always redraw for smooth scrolling
-        {
-            let arriving = line.departures.first().map(|d| {
-                d.expected.signed_duration_since(chrono::Utc::now()).num_seconds() < 30
-            }).unwrap_or(false);
-            let clip_x2 = if arriving { 37 } else { 44 };
-            let visible_w = clip_x2 - 14 + 1;
-            let dest_w = text_width(&line.destination_short, 1);
-
-            // Clear destination area
-            fb.fill_rect(14, row_y + 1, clip_x2 - 14 + 1, 11, br, bg, bb);
-
-            // Draw clipped scrolled destination
-            let draw_x = 14 - dest_scroll[i];
-            draw_text_clipped(fb, draw_x, row_y + 3, &line.destination_short,
-                              200, 210, 230, 1, 14, clip_x2);
-
-            // Advance scroll offset for next frame
-            dest_scroll[i] = advance_scroll(dest_scroll[i], dest_w, visible_w);
-        }
-
-        if full_redraw || time_changed {
-            // Clear time area
-            let (br, bg, bb) = if i % 2 == 0 { (10, 16, 30) } else { (8, 13, 25) };
-            fb.fill_rect(46, row_y, 18, 13, br, bg, bb);
-
-            // Draw next departure time
-            if let Some(dep) = line.departures.first() {
-                let diff = dep.expected.signed_duration_since(chrono::Utc::now());
-                let mins = diff.num_minutes().max(0);
-                let label = if mins == 0 { "arr.".to_string() } else { format!("{}m", mins) };
-                fb.draw_text_right(62, row_y + 3, &label, 255, 220, 80, 1);
-            }
-        }
-    }
-
-    // ── Extra rows (birthday / Jour J) ────────────────────────────────────────
     let n_tram = board.lines.len().min(4);
-    let show_birthday = !board.birthdays_today.is_empty();
-    let show_jour_j   = !board.jour_j_events.is_empty();
+    if n_tram == 0 {
+        return;
+    }
 
-    if let Some((sep_y, bday_y_opt, jj_y_opt)) = extra_row_layout(n_tram) {
-        if show_birthday || show_jour_j {
-            // ── Separator ────────────────────────────────────────────────────
-            if full_redraw || line_set_changed {
-                fb.fill_rect(0, sep_y,     64, 1, 6, 10, 20);
-                fb.fill_rect(0, sep_y + 1, 64, 1, 40, 45, 55);
-                fb.fill_rect(0, sep_y + 2, 64, 1, 6, 10, 20);
+    let row_h: i32 = if n_tram <= 2 { 27 } else if n_tram == 3 { 18 } else { 13 };
+
+    for (i, line) in board.lines.iter().enumerate().take(n_tram) {
+        let row_y = 10 + i as i32 * row_h;
+        let (lr, lg, lb) = line_color(&line.line);
+        let (br, bg, bb) = row_tint(lr, lg, lb);
+
+        // Row background + left accent bar (full row height)
+        fb.fill_rect(0, row_y, 64, row_h, br, bg, bb);
+        fb.fill_rect(0, row_y, 5,  row_h, lr, lg, lb);
+
+        // "Prochain" departure in minutes
+        let mins = line.departures.first().map(|d| {
+            d.expected.signed_duration_since(chrono::Utc::now()).num_minutes().max(0)
+        }).unwrap_or(0);
+        let time_str = format!("{}", mins);
+
+        if row_h >= 27 {
+            // 3 sub-zones of 9px each ──────────────────────────────────────
+            // Zone 1: 9×9 badge + time right-aligned (y center = row_y+1)
+            fb.fill_rect(6, row_y, 9, 9, lr, lg, lb);
+            let lw = text_width(&line.line, 1);
+            fb.draw_text(6 + (9 - lw) / 2, row_y + 1, &line.line, 255, 255, 255, 1);
+            fb.draw_text_right(63, row_y + 1, &time_str, 255, 220, 80, 1);
+
+            // Zones 2+3: destination on up to 2 lines (max 9 chars each)
+            let (l1, l2) = split_dest_lines(&line.destination_short, 9);
+            draw_text_clipped(fb, 6, row_y + 10, &l1, 200, 212, 235, 1, 6, 63);
+            if !l2.is_empty() {
+                draw_text_clipped(fb, 6, row_y + 19, &l2, 150, 160, 185, 1, 6, 63);
             }
+        } else if row_h == 18 {
+            // 2 sub-zones of 9px each ─────────────────────────────────────
+            // Zone 1: badge + L1 (x=17, clips at x=51) + time right
+            fb.fill_rect(6, row_y, 9, 9, lr, lg, lb);
+            let lw = text_width(&line.line, 1);
+            fb.draw_text(6 + (9 - lw) / 2, row_y + 1, &line.line, 255, 255, 255, 1);
+            fb.draw_text_right(63, row_y + 1, &time_str, 255, 220, 80, 1);
 
-            // ── Birthday row ─────────────────────────────────────────────────
-            if let Some(by) = bday_y_opt {
-                let bh = birthday_row_h(n_tram);
-                if show_birthday {
-                    let new_scroll = draw_birthday_row(
-                        fb, by, bh, &board.birthdays_today, prev.birthday_scroll,
-                    );
-                    prev.birthday_scroll = new_scroll;
-                } else if full_redraw || line_set_changed {
-                    fb.fill_rect(0, by, 64, bh, 6, 10, 20);
-                    prev.birthday_scroll = 0;
-                }
-            }
+            let (l1, l2) = split_dest_lines(&line.destination_short, 5);
+            draw_text_clipped(fb, 17, row_y + 1, &l1, 200, 212, 235, 1, 17, 51);
 
-            // ── Jour J row ───────────────────────────────────────────────────
-            if let Some(jy) = jj_y_opt {
-                let jh = jour_j_row_h(n_tram);
-                if show_jour_j {
-                    if let Some(ev) = board.jour_j_events.first() {
-                        let new_scroll = draw_jour_j_row(
-                            fb, jy, jh, ev.days, &ev.label, prev.jour_j_scroll,
-                        );
-                        prev.jour_j_scroll = new_scroll;
-                    }
-                } else if full_redraw || line_set_changed {
-                    fb.fill_rect(0, jy, 64, jh, 6, 10, 20);
-                    prev.jour_j_scroll = 0;
-                }
+            // Zone 2: L2 full width
+            if !l2.is_empty() {
+                draw_text_clipped(fb, 6, row_y + 10, &l2, 150, 160, 185, 1, 6, 63);
             }
         } else {
-            // No extras — fill remaining space
-            if full_redraw || line_set_changed {
-                let fill_y = sep_y;
-                fb.fill_rect(0, fill_y, 64, 64 - fill_y, 6, 10, 20);
-            }
-        }
-    } else {
-        // 4 rows fill entire area — fill rows not in use (e.g. < 4 tram rows but no extras)
-        if full_redraw || line_set_changed {
-            for i in n_tram..4 {
-                let row_y = 11 + i as i32 * 13;
-                fb.fill_rect(0, row_y, 64, 13, 6, 10, 20);
-            }
+            // row_h=13: single compact line ───────────────────────────────
+            let ty = row_y + (row_h - CHAR_H) / 2;  // vertical center
+
+            // 7×7 badge
+            fb.fill_rect(6, ty, 7, 7, lr, lg, lb);
+            let lw = text_width(&line.line, 1);
+            fb.draw_text(6 + (7 - lw) / 2, ty, &line.line, 255, 255, 255, 1);
+
+            // Destination clipped to 5 chars
+            let dest_5: String = line.destination_short.chars().take(5).collect();
+            draw_text_clipped(fb, 15, ty, &dest_5, 200, 212, 235, 1, 15, 50);
+
+            fb.draw_text_right(63, ty, &time_str, 255, 220, 80, 1);
         }
     }
 
-    // Preserve scroll positions when assigning next (from_board sets them to 0)
-    let saved_bday  = prev.birthday_scroll;
-    let saved_jj    = prev.jour_j_scroll;
-    *prev = next;
-    prev.birthday_scroll = saved_bday;
-    prev.jour_j_scroll   = saved_jj;
+    // Fill 2px gap below 4 compact rows
+    if n_tram == 4 {
+        fb.fill_rect(0, 62, 64, 2, 6, 10, 20);
+    }
+}
+
+// ── Weather screen ────────────────────────────────────────────────────────────
+//
+// Layout (y=0..63):
+//   y=0..8   header: clock + temp + icon
+//   y=9      separator
+//   y=10..25 large weather icon 16×16 centred
+//   y=28..34 current temp scale=1 centred (yellow)
+//   y=37..43 min (blue) / max (orange)
+//   y=47..53 condition label (light green)
+//   y=55     separator
+//   y=57..63 location name
+pub fn draw_weather(fb: &mut Fb, board: &DepartureBoard) {
+    fb.fill_rect(0, 0, 64, 64, 8, 12, 26);
+    draw_header(fb, board);
+
+    let w = match board.weather {
+        Some(ref w) => w,
+        None => return,
+    };
+
+    // Large icon centred horizontally: (64-16)/2 = 24
+    draw_weather_icon_lg(fb, 24, 10, w.pictocode.into());
+
+    // Current temp
+    let temp_str = format!("{}°", w.temp_now.round() as i32);
+    fb.draw_text_center(31, 28, &temp_str, 255, 220, 80, 1);
+
+    // Min / max
+    let min_s = format!("{}°", w.temp_min.round() as i32);
+    let max_s = format!("{}°", w.temp_max.round() as i32);
+    fb.draw_text(2, 37, &min_s, 100, 150, 255, 1);
+    fb.draw_text_center(31, 37, "-", 60, 70, 110, 1);
+    fb.draw_text_right(62, 37, &max_s, 255, 140, 60, 1);
+
+    // Condition label
+    let label = weather_label(w.pictocode.into());
+    fb.draw_text_center(31, 47, label, 170, 210, 170, 1);
+
+    // Separator + location name
+    fb.fill_rect(0, 55, 64, 1, 22, 32, 58);
+    draw_weather_icon_sm(fb, 1, 57, w.pictocode.into());
+    draw_text_clipped(fb, 9, 57, &w.location_name, 120, 140, 160, 1, 9, 62);
+}
+
+// ── Birthday / Jour-J screen ──────────────────────────────────────────────────
+//
+// Header (purple) + up to 6 rows of 9px each.
+// Rows show birthdays_today first, then jour_j_events, then "Aucun evenement".
+pub fn draw_birthday_jour_j(fb: &mut Fb, board: &DepartureBoard) {
+    fb.fill_rect(0, 0, 64, 64, 14, 10, 30);
+
+    // Special header: purple background
+    fb.fill_rect(0, 0, 64, 9, 42, 18, 62);
+    fb.draw_text(1, 1, "Anniversaires", 230, 200, 255, 1);
+    fb.fill_rect(0, 9, 64, 1, 65, 35, 85);
+
+    // Collect display rows: (accent_rgb, icon_type, text_rgb, label)
+    enum Icon { Cake, Present, Heart }
+    struct Row {
+        accent: (u8, u8, u8),
+        icon:   Icon,
+        text:   (u8, u8, u8),
+        label:  String,
+    }
+
+    let mut rows: Vec<Row> = Vec::new();
+
+    for name in &board.birthdays_today {
+        rows.push(Row {
+            accent: (220, 200, 80),
+            icon:   Icon::Cake,
+            text:   (255, 240, 160),
+            label:  name.clone(),
+        });
+    }
+
+    for event in &board.jour_j_events {
+        let (icon, accent, text, label) = if event.icon == "present" {
+            (Icon::Present, (100u8, 120u8, 240u8), (180u8, 200u8, 255u8),
+             format!("+{}j {}", event.days, event.label))
+        } else {
+            (Icon::Heart, (180u8, 80u8, 220u8), (220u8, 170u8, 255u8),
+             format!("J-{} {}", event.days, event.label))
+        };
+        rows.push(Row { accent, icon, text, label });
+    }
+
+    if rows.is_empty() {
+        fb.draw_text_center(31, 30, "Aucun", 80, 70, 100, 1);
+        fb.draw_text_center(31, 39, "evenement", 80, 70, 100, 1);
+        return;
+    }
+
+    for (i, row) in rows.iter().enumerate().take(6) {
+        let y = 10 + i as i32 * 9;
+        let (bg_r, bg_g, bg_b): (u8, u8, u8) = if i % 2 == 0 { (18, 13, 34) } else { (14, 10, 28) };
+        fb.fill_rect(0, y, 64, 9, bg_r, bg_g, bg_b);
+        fb.fill_rect(0, y, 2, 9, row.accent.0, row.accent.1, row.accent.2);
+
+        let iy = y + 1;
+        match row.icon {
+            Icon::Cake    => draw_icon_cake(fb, 3, iy),
+            Icon::Present => draw_icon_present(fb, 3, iy),
+            Icon::Heart   => draw_icon_heart(fb, 3, iy),
+        }
+
+        let label_9: String = row.label.chars().take(9).collect();
+        fb.draw_text(11, y + 1, &label_9, row.text.0, row.text.1, row.text.2, 1);
+    }
 }
 
 // ── Clock mode (offline / no CTS service) ─────────────────────────────────────
@@ -786,40 +805,43 @@ fn draw_bg_thunder(fb: &mut Fb, frame: u32) {
     }
 }
 
-// ── Multi-frame animated GIF rendering ───────────────────────────────────────
+// ── Frame rendering ───────────────────────────────────────────────────────────
 
-/// Render `n_frames` animation frames and return their base64-encoded RGB data.
-///
-/// * **Clock mode** (offline): each frame advances `bg_frame` by 1, producing
-///   smooth background animation (stars, rain, clouds, etc.).
-/// * **Departure mode**: each frame advances `dest_scroll` by 1 px per row,
-///   producing smooth destination-text scrolling.
-///
-/// The caller should transmit all frames to the Pixoo64 with the same `PicID`
-/// and `PicSpeed = 1000 / fps_ms`, then the device loops them as an animated GIF.
-///
-/// After the call `fb` holds the last rendered frame (usable for PNG preview).
+/// Render departure or clock frames.
+/// Departure mode: always 1 static frame.
+/// Clock mode (offline/no lines): `n_frames` animated frames.
 pub fn render_frames(
     fb: &mut Fb,
     board: &DepartureBoard,
-    prev: &mut ZoneState,
-    dest_scroll: &mut [i32; 4],
     bg_frame_start: u32,
     n_frames: usize,
 ) -> Vec<String> {
     let is_offline = board.offline_message.is_some() || board.lines.is_empty();
-    let mut frames = Vec::with_capacity(n_frames);
+    let actual_n = if is_offline { n_frames } else { 1 };
+    let mut frames = Vec::with_capacity(actual_n);
 
-    for i in 0..n_frames {
+    for i in 0..actual_n {
         if is_offline {
             draw_clock(fb, board, bg_frame_start + i as u32);
         } else {
-            draw_departures(fb, board, prev, dest_scroll);
+            draw_departures(fb, board);
         }
         frames.push(fb_to_base64(fb));
     }
 
     frames
+}
+
+/// Render 1 weather frame.
+pub fn render_weather_frame(fb: &mut Fb, board: &DepartureBoard) -> String {
+    draw_weather(fb, board);
+    fb_to_base64(fb)
+}
+
+/// Render 1 birthday/Jour-J frame.
+pub fn render_birthday_frame(fb: &mut Fb, board: &DepartureBoard) -> String {
+    draw_birthday_jour_j(fb, board);
+    fb_to_base64(fb)
 }
 
 // ── PNG encoding ──────────────────────────────────────────────────────────────

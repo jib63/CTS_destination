@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maquette Téléphone — CTS</title>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --line-A: #c8102e; --line-B: #7b2d8b; --line-C: #e07b10;
+  --line-D: #2e8b3c; --line-E: #6f2c91; --line-F: #c5145b; --line-G: #5c6bc0;
+  --header-bg: #1a2744;
+  --row-dark:  #1966b8;
+  --row-light: #2474cc;
+  --text:    #ffffff;
+  --subtext: rgba(255,255,255,0.65);
+  --board-bg: #0d1b3e;
+  --phone-w: 390px;
+  --phone-h: 844px;
+}
+
+html, body {
+  min-height: 100%;
+  background: #0a0f1e;
+  font-family: -apple-system, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+  color: var(--text);
+}
+
+/* ── Controls bar (mockup-only) ── */
+#ctrl-bar {
+  position: sticky; top: 0; z-index: 200;
+  height: 44px; background: #060d1e; border-bottom: 1px solid #1a2744;
+  display: flex; align-items: center; gap: 1.2rem; padding: 0 1rem;
+  overflow-x: auto;
+}
+#ctrl-bar label {
+  font-size: 11px; color: #778899; letter-spacing: 0.07em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; cursor: pointer;
+}
+#ctrl-bar select, #ctrl-bar button {
+  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
+  padding: 3px 9px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: background 0.12s;
+}
+#ctrl-bar select:hover, #ctrl-bar button:hover { background: #162038; border-color: #3a5070; }
+#ctrl-bar input[type=checkbox] { accent-color: #ffc107; width: 13px; height: 13px; cursor: pointer; }
+.ctrl-sep { width: 1px; height: 20px; background: #1a2744; flex-shrink: 0; }
+.ctrl-title { font-size: 12px; font-weight: 700; color: #ffc107; white-space: nowrap;
+  letter-spacing: 0.05em; margin-right: 0.3rem; }
+
+/* ── Phone frame wrapper ── */
+#stage {
+  display: flex; justify-content: center; padding: 2.5rem 1rem 3rem;
+}
+
+.phone-frame {
+  width: var(--phone-w);
+  height: var(--phone-h);
+  border-radius: 52px;
+  background: #111;
+  box-shadow:
+    0 0 0 2px #2a2a2a,
+    0 0 0 5px #111,
+    0 0 0 7px #2a2a2a,
+    0 30px 80px rgba(0,0,0,0.7),
+    inset 0 0 0 1px rgba(255,255,255,0.06);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dynamic island */
+.dynamic-island {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  width: 126px; height: 37px;
+  background: #000; border-radius: 20px;
+  z-index: 100;
+}
+
+/* Safe-area guard: content starts below island */
+.phone-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--board-bg);
+  margin-top: 0; /* starts at very top — header handles safe area */
+  overflow: hidden;
+}
+
+/* ── Board ── */
+#board {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Header ── */
+#header {
+  background: var(--header-bg);
+  padding: 56px 16px 10px; /* 56px top = island height + gap */
+  flex-shrink: 0;
+  border-bottom: 1.5px solid rgba(255,255,255,0.10);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#clock {
+  font-size: 1.65rem; font-weight: 700; letter-spacing: 0.04em;
+  line-height: 1;
+}
+#date {
+  font-size: 0.72rem; font-weight: 500; color: var(--subtext);
+  line-height: 1.3; flex: 1;
+}
+#logo {
+  background: white; border-radius: 5px; padding: 0.08em 0.28em;
+  font-size: 1.15rem; font-weight: 900; line-height: 1;
+  letter-spacing: -0.02em; flex-shrink: 0;
+}
+.logo-c { color: #e2001a; } .logo-t { color: #003f8a; } .logo-s { color: #e2001a; }
+#config-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  color: rgba(255,255,255,0.8); padding: 0.28em 0.65em;
+  font-size: 0.72rem; font-weight: 600; cursor: pointer; letter-spacing: 0.02em;
+  white-space: nowrap; flex-shrink: 0; transition: background 0.15s;
+}
+#config-btn:hover { background: rgba(255,255,255,0.1); }
+#status-btn {
+  background: none; border: none; padding: 4px; cursor: pointer;
+  display: flex; align-items: center; flex-shrink: 0;
+}
+#status-dot {
+  display: block; width: 9px; height: 9px;
+  border-radius: 50%; background: #4caf50;
+}
+
+/* ── Stop name bar ── */
+#stop-bar {
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 7px 16px;
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0; min-height: 0;
+}
+#stop-name {
+  flex: 1; font-size: 1.05rem; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#stop-ref {
+  font-size: 0.68rem; font-weight: 700; color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.08); border-radius: 4px;
+  padding: 0.15em 0.5em; flex-shrink: 0;
+}
+#stop-pagination {
+  font-size: 0.65rem; font-weight: 600; color: rgba(255,255,255,0.35);
+  flex-shrink: 0;
+}
+
+/* ── Departures — fills all available vertical space ── */
+#departures { flex: 1; min-height: 0; overflow: hidden; }
+#departures-inner { display: flex; flex-direction: column; height: 100%; }
+
+/* ── Phone departure row: 2 lines, fills #departures equally ── */
+.departure-row {
+  flex: 1;                          /* rows share available height equally */
+  min-height: 90px;                 /* never shorter than this */
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 14px 18px;
+  gap: 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
+}
+.departure-row:nth-child(odd)  { background: var(--row-light); }
+.departure-row:nth-child(even) { background: var(--row-dark); }
+
+/* Line 1: badge + destination */
+.row-line1 {
+  display: flex; align-items: center; gap: 12px;
+}
+.line-badge {
+  width: 54px; height: 54px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 1.55rem; color: white;
+  flex-shrink: 0; text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.destination {
+  font-size: 1.3rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* Line 2: time cells */
+.row-line2 {
+  display: flex; align-items: center;
+  gap: 0; padding-left: 66px; /* indent = badge 54 + gap 12 */
+}
+.time-slot {
+  display: flex; flex-direction: column; gap: 0;
+  flex: 1;
+}
+.time-label {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.5); text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.time-value {
+  font-size: 1.65rem; font-weight: 900; white-space: nowrap;
+  display: flex; align-items: baseline; gap: 3px;
+}
+.time-unit { font-size: 0.68rem; font-weight: 600; color: var(--subtext); }
+.time-arriving { font-size: 1.1rem; font-weight: 700; color: #ffc107; }
+.time-divider {
+  width: 1px; align-self: stretch; background: rgba(255,255,255,0.15);
+  margin: 3px 18px;
+}
+
+/* ── Extras row (birthday + jour-j) ── */
+#extras-row {
+  flex-shrink: 0; display: flex; flex-direction: column;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+#birthday-row {
+  background: #223265; overflow: hidden;
+  display: none; align-items: center;
+  padding: 7px 12px; gap: 8px; min-height: 36px;
+}
+.birthday-icon { width: 22px; height: 22px; flex-shrink: 0; }
+.birthday-text-wrap {
+  flex: 1; overflow: hidden; white-space: nowrap;
+  mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 94%, transparent);
+  font-size: 0.83rem; color: #e6dca8; font-weight: 600;
+}
+.birthday-text-wrap.scrolling span {
+  display: inline-block; animation: board-marquee 28s linear infinite;
+}
+
+#jour-j-row {
+  background: #163b48; overflow: hidden;
+  display: none; align-items: center;
+  padding: 7px 12px; gap: 8px; min-height: 36px;
+  border-top: 1px solid rgba(0,0,0,0.2);
+}
+.jour-j-marquee-wrap {
+  flex: 1; overflow: hidden; white-space: nowrap;
+  mask-image: linear-gradient(to right, transparent, black 2%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 95%, transparent);
+  font-size: 0.82rem;
+}
+.jour-j-marquee-wrap .jj-scroll {
+  display: inline-flex; align-items: center;
+  animation: board-marquee 40s linear infinite;
+}
+.jj-entry {
+  display: inline-flex; align-items: center; gap: 0.3em; padding-right: 1.8em;
+  font-weight: 700; color: #7ec8dc; white-space: nowrap;
+}
+.jj-entry-badge {
+  font-weight: 900; color: #f0c83c;
+  background: rgba(240,200,60,0.12); border-radius: 3px; padding: 0 0.28em;
+}
+.jj-entry-label { color: #90d8ec; }
+.jj-entry-sep   { color: rgba(255,255,255,0.2); padding: 0 0.5em; }
+
+@keyframes board-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* J-0 pulse */
+.jj-entry--today .jj-entry-badge {
+  color: #fff; background: rgba(240,200,60,0.4); border-radius: 4px;
+  animation: jj-pulse 0.9s ease-in-out infinite;
+}
+@keyframes jj-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(240,200,60,0.7); }
+  50%     { box-shadow: 0 0 10px 4px rgba(240,200,60,0.15); }
+}
+
+/* ── Weather footer — 2 lines ── */
+#board-footer {
+  /* no margin-top: auto — #departures fills the space above */
+  background: var(--header-bg);
+  border-top: 1.5px solid rgba(255,255,255,0.08);
+  padding: 10px 16px 11px;
+  flex-shrink: 0;
+}
+#board-footer.hidden { display: none !important; }
+
+/* Line 1: icon + temp now + location */
+.wx-line1 {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 7px;
+}
+#weather-icon { width: 46px; height: 46px; flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
+.wx-now {
+  display: flex; align-items: baseline; gap: 2px;
+  font-size: 1.9rem; font-weight: 900; flex-shrink: 0;
+}
+.wx-now .unit { font-size: 0.8rem; font-weight: 600; color: var(--subtext); }
+.wx-location-phone {
+  flex: 1; font-size: 0.68rem; font-weight: 500;
+  color: rgba(255,255,255,0.35); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; text-align: right;
+}
+
+/* Line 2: min / max / rain / UV chips */
+.wx-line2 {
+  display: flex; align-items: center; gap: 0;
+}
+.wx-chip {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.88rem; font-weight: 600;
+  white-space: nowrap; flex: 1;
+  padding: 3px 6px 3px 0;
+}
+.wx-chip + .wx-chip {
+  border-left: 1px solid rgba(255,255,255,0.12);
+  padding-left: 10px;
+}
+.wx-chip-icon { width: 15px; height: 15px; flex-shrink: 0; }
+.wx-chip-val { font-weight: 800; }
+.wx-chip-unit { color: var(--subtext); font-weight: 500; }
+.wx-chip-min { color: #7eb8f0; }
+.wx-chip-max { color: #f0a040; }
+.wx-chip-rain { color: #70b8e8; }
+.wx-chip-uv  { color: #f0d060; }
+
+/* ── Overlay base ── */
+.overlay {
+  position: absolute; inset: 0; z-index: 50;
+  background: var(--board-bg);
+  display: flex; flex-direction: column;
+  border-radius: 52px; overflow: hidden;
+}
+.overlay.hidden { display: none; }
+.overlay-topbar {
+  background: var(--header-bg); display: flex; align-items: center; gap: 10px;
+  padding: 56px 14px 10px;
+  border-bottom: 1.5px solid rgba(255,255,255,0.10); flex-shrink: 0;
+}
+.overlay-back-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  color: white; padding: 0.28em 0.6em; font-size: 0.72rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.15s;
+}
+.overlay-back-btn:hover { background: rgba(255,255,255,0.1); }
+.overlay-heading { font-size: 1rem; font-weight: 700; color: white; }
+
+.overlay-tabs {
+  display: flex; background: rgba(0,0,0,0.25);
+  border-bottom: 2px solid rgba(255,255,255,0.1); flex-shrink: 0;
+}
+.overlay-tab {
+  flex: 1; background: none; border: none; border-bottom: 2.5px solid transparent;
+  color: rgba(255,255,255,0.5); padding: 0.65em 0.5em;
+  font-size: 0.8rem; font-weight: 600; letter-spacing: 0.03em;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -2px;
+  text-align: center;
+}
+.overlay-tab.active { color: #fff; border-bottom-color: #ffc107; }
+
+.overlay-content {
+  flex: 1; overflow-y: auto; padding: 14px;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.overlay-content::-webkit-scrollbar { display: none; }
+
+/* Status rows */
+.status-row {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 0.7rem 0.9rem; display: flex; flex-direction: column; gap: 0.2rem;
+}
+.status-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.38); text-transform: uppercase; }
+.status-value { font-size: 0.88rem; font-weight: 600; color: white; word-break: break-all; }
+.status-value.highlight { color: #ffc107; }
+.status-value.dim { color: rgba(255,255,255,0.5); font-style: italic; font-weight: 400; }
+
+/* Config tab: Arrêt */
+.ref-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: rgba(255,193,7,0.15); border: 1.5px solid rgba(255,193,7,0.4);
+  border-radius: 20px; padding: 0.25em 0.7em;
+  font-size: 0.83rem; font-weight: 700; color: #ffc107;
+}
+.ref-chip-remove {
+  background: none; border: none; color: rgba(255,193,7,0.6);
+  cursor: pointer; font-size: 1.05em; line-height: 1; padding: 0; transition: color 0.15s;
+}
+.stop-search-input {
+  width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.18);
+  border-radius: 9px; color: white; padding: 0.6em 1em; font-size: 0.93rem; outline: none;
+  margin: 6px 0 2px;
+}
+.stop-card {
+  background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 0.6rem 0.9rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  transition: background 0.12s;
+}
+.stop-card:hover { background: rgba(255,255,255,0.09); }
+.stop-card.selected { background: rgba(255,193,7,0.12); border-color: rgba(255,193,7,0.4); }
+.stop-card-name { font-weight: 700; font-size: 0.9rem; color: white; }
+.stop-card-name.selected { color: #ffc107; }
+.stop-card-code { font-size: 0.72rem; color: rgba(255,255,255,0.4); }
+
+/* Config tab: Jour J */
+.jourj-section-title {
+  font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.45);
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding-bottom: 0.3rem; border-bottom: 1px solid rgba(255,255,255,0.07);
+  margin-top: 0.3rem;
+}
+.jourj-event-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 0.55rem 0.75rem;
+}
+.jourj-event-row.past { opacity: 0.4; }
+.jourj-event-meta { flex: 1; min-width: 0; }
+.jourj-event-label { font-size: 0.88rem; font-weight: 600; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jourj-event-date { font-size: 0.68em; color: rgba(255,255,255,0.4); }
+.jourj-event-days { font-size: 0.82rem; font-weight: 900; color: #f0c83c; white-space: nowrap; flex-shrink: 0; }
+.jourj-event-days.past { color: #ff6b6b; }
+.jourj-trash-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px;
+  color: rgba(255,255,255,0.4); width: 28px; height: 28px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: color 0.15s;
+}
+.jourj-trash-btn:hover { color: #ff6b6b; border-color: rgba(255,80,80,0.35); }
+.jourj-trash-btn svg { width: 14px; height: 14px; }
+.jourj-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  background: rgba(46,139,60,0.12); border: 1.5px dashed rgba(46,139,60,0.45);
+  border-radius: 8px; color: #6df083; padding: 0.62em 1em;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer; width: 100%;
+  transition: background 0.15s;
+}
+.jourj-add-btn:hover { background: rgba(46,139,60,0.25); }
+.jourj-add-form {
+  background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.13);
+  border-radius: 10px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.75rem;
+}
+.jourj-add-form.hidden { display: none; }
+.jourj-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.jourj-field label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.45); text-transform: uppercase; }
+.jourj-field input, .jourj-field select {
+  background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.18);
+  border-radius: 8px; color: white; padding: 0.55em 0.9em;
+  font-size: 0.93rem; outline: none;
+}
+.jourj-field input::placeholder { color: rgba(255,255,255,0.28); }
+.jourj-field select option { background: #1a2744; }
+.jourj-form-btns { display: flex; gap: 0.5rem; }
+.jourj-save-btn {
+  background: #2e7d32; border: none; border-radius: 7px; color: white;
+  padding: 0.55em 1.2em; font-size: 0.88rem; font-weight: 700; cursor: pointer; flex: 1;
+}
+.jourj-cancel-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 7px; color: rgba(255,255,255,0.65);
+  padding: 0.55em 1em; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+}
+
+/* Home indicator */
+.home-indicator {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  width: 134px; height: 5px;
+  background: rgba(255,255,255,0.28); border-radius: 3px;
+  z-index: 100; pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Mockup controls bar ── -->
+<div id="ctrl-bar">
+  <span class="ctrl-title">Maquette Téléphone</span>
+  <div class="ctrl-sep"></div>
+  <label>Lignes&nbsp;<select id="sel-rows">
+    <option value="4">4</option>
+    <option value="3" selected>3</option>
+    <option value="2">2</option>
+    <option value="1">1</option>
+  </select></label>
+  <label><input type="checkbox" id="chk-bday" checked> Anniversaires</label>
+  <label><input type="checkbox" id="chk-jourj" checked> Jour J</label>
+  <label><input type="checkbox" id="chk-weather" checked> Météo</label>
+  <div class="ctrl-sep"></div>
+  <label>Rotation&nbsp;<select id="sel-rotation">
+    <option value="0">Non</option>
+    <option value="6" selected>6 s</option>
+    <option value="12">12 s</option>
+  </select></label>
+</div>
+
+<!-- ── Stage ── -->
+<div id="stage">
+  <div class="phone-frame">
+    <div class="dynamic-island"></div>
+
+    <div class="phone-content">
+      <div id="board">
+
+        <!-- Header -->
+        <header id="header">
+          <div>
+            <div id="clock">--:--</div>
+            <div id="date">--</div>
+          </div>
+          <button id="config-btn">Arrêts</button>
+          <button id="status-btn"><span id="status-dot"></span></button>
+          <div id="logo">
+            <span class="logo-c">c</span><span class="logo-t">T</span><span class="logo-s">s</span>
+          </div>
+        </header>
+
+        <!-- Stop name bar -->
+        <div id="stop-bar">
+          <span id="stop-name">Jean Jaurès</span>
+          <span id="stop-ref">298A</span>
+          <span id="stop-pagination">1 / 2</span>
+        </div>
+
+        <!-- Departures -->
+        <div id="departures">
+          <div id="departures-inner"></div>
+        </div>
+
+        <!-- Extras (birthday + jour-j) -->
+        <div id="extras-row">
+          <div id="birthday-row"></div>
+          <div id="jour-j-row"></div>
+        </div>
+
+        <!-- Weather footer (2 lines) -->
+        <div id="board-footer">
+          <div class="wx-line1">
+            <svg id="weather-icon" viewBox="0 0 64 64" aria-hidden="true">
+              <use href="#w-mostly-sunny"/>
+            </svg>
+            <div class="wx-now">13<span class="unit">&nbsp;°C</span></div>
+            <span class="wx-location-phone">Strasbourg</span>
+          </div>
+          <div class="wx-line2">
+            <div class="wx-chip">
+              <svg class="wx-chip-icon" viewBox="0 0 24 24" fill="none">
+                <polyline points="7,17 12,7 17,17" stroke="#7eb8f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="wx-chip-val wx-chip-min">8°</span>
+            </div>
+            <div class="wx-chip">
+              <svg class="wx-chip-icon" viewBox="0 0 24 24" fill="none">
+                <polyline points="7,7 12,17 17,7" stroke="#f0a040" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="wx-chip-val wx-chip-max">22°</span>
+            </div>
+            <div class="wx-chip">
+              <svg class="wx-chip-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3C12 3 5 10 5 15C5 18.87 8.13 22 12 22C15.87 22 19 18.87 19 15C19 10 12 3 12 3Z" fill="#5ba3d8"/>
+              </svg>
+              <span class="wx-chip-val wx-chip-rain">1.2</span>
+              <span class="wx-chip-unit">mm</span>
+            </div>
+            <div class="wx-chip">
+              <svg class="wx-chip-icon" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="5" fill="#f0d060"/>
+                <g stroke="#f0d060" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="12" y1="2" x2="12" y2="5"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="2"  y1="12" x2="5"  y2="12"/>
+                  <line x1="19" y1="12" x2="22" y2="12"/>
+                </g>
+              </svg>
+              <span class="wx-chip-val wx-chip-uv">UV</span>
+              <span class="wx-chip-unit">3</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- #board -->
+    </div><!-- .phone-content -->
+
+    <!-- Status overlay -->
+    <div id="status-overlay" class="overlay hidden">
+      <div class="overlay-topbar">
+        <button class="overlay-back-btn" id="status-back">← Retour</button>
+        <span class="overlay-heading">État du système</span>
+      </div>
+      <div class="overlay-tabs" id="status-tabs">
+        <button class="overlay-tab active" data-tab="cts">CTS</button>
+        <button class="overlay-tab" data-tab="meteoblue">Météoblue</button>
+      </div>
+      <div class="overlay-content" id="status-content"></div>
+    </div>
+
+    <!-- Config overlay -->
+    <div id="config-overlay" class="overlay hidden">
+      <div class="overlay-topbar">
+        <button class="overlay-back-btn" id="config-back">← Retour</button>
+        <span class="overlay-heading">Configuration</span>
+      </div>
+      <div class="overlay-tabs" id="config-tabs">
+        <button class="overlay-tab active" data-tab="arret">Arrêt</button>
+        <button class="overlay-tab" data-tab="jourj">Jour J</button>
+      </div>
+      <div class="overlay-content" id="config-content"></div>
+    </div>
+
+    <div class="home-indicator"></div>
+  </div><!-- .phone-frame -->
+</div><!-- #stage -->
+
+<!-- ── Weather SVG sprite ── -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="w-sunny" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="13" fill="#FFD600"/>
+      <g stroke="#FFD600" stroke-width="3.5" stroke-linecap="round">
+        <line x1="32" y1="6"  x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="58"/>
+        <line x1="6"  y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="58" y2="32"/>
+        <line x1="13.9" y1="13.9" x2="18.1" y2="18.1"/><line x1="50.1" y1="13.9" x2="45.9" y2="18.1"/>
+        <line x1="45.9" y1="45.9" x2="50.1" y2="50.1"/><line x1="18.1" y1="45.9" x2="13.9" y2="50.1"/>
+      </g>
+    </symbol>
+    <symbol id="w-mostly-sunny" viewBox="0 0 64 64">
+      <circle cx="24" cy="22" r="10" fill="#FFD600"/>
+      <g stroke="#FFD600" stroke-width="3" stroke-linecap="round">
+        <line x1="24" y1="6"  x2="24" y2="10"/><line x1="24" y1="34" x2="24" y2="38"/>
+        <line x1="8"  y1="22" x2="12" y2="22"/><line x1="36" y1="22" x2="40" y2="22"/>
+        <line x1="12.7" y1="10.7" x2="15.5" y2="13.5"/><line x1="35.3" y1="10.7" x2="32.5" y2="13.5"/>
+      </g>
+      <path d="M52 44 Q52 36 44 36 Q41 30 34 32 Q28 28 26 34 Q20 34 20 41 Q20 48 28 48 L52 48 Q58 48 58 42 Q58 36 52 36 Z" fill="#e0e8f0"/>
+    </symbol>
+    <symbol id="w-rain" viewBox="0 0 64 64">
+      <path d="M50 34 Q50 24 40 24 Q37 17 28 19 Q21 15 18 22 Q11 22 11 30 Q11 38 20 38 L50 38 Q57 38 57 32 Q57 26 50 26 Z" fill="#7090b0"/>
+      <g stroke="#5ba3d8" stroke-width="2.8" stroke-linecap="round">
+        <line x1="20" y1="44" x2="18" y2="52"/><line x1="28" y1="44" x2="26" y2="52"/>
+        <line x1="36" y1="44" x2="34" y2="52"/><line x1="44" y1="44" x2="42" y2="52"/>
+      </g>
+    </symbol>
+    <symbol id="w-cloudy" viewBox="0 0 64 64">
+      <path d="M52 46 Q52 36 42 36 Q39 28 30 30 Q22 26 20 33 Q12 33 12 41 Q12 50 22 50 L52 50 Q60 50 60 43 Q60 36 52 36 Z" fill="#9ab0c8"/>
+    </symbol>
+    <symbol id="w-night-clear" viewBox="0 0 64 64">
+      <path d="M38 10 Q20 14 20 32 Q20 50 38 54 Q18 54 12 40 Q8 28 16 18 Q22 10 38 10 Z" fill="#c8d4e8"/>
+      <circle cx="48" cy="14" r="2" fill="#FFD600" opacity="0.9"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script>
+(function () {
+"use strict";
+
+// ── Demo data ────────────────────────────────────────────────────────────────
+
+var ICONS = {
+  party: '<path d="M4 20 L10 8 L16 14 Z" fill="#e07b10"/>' +
+         '<circle cx="17" cy="5"  r="1.5" fill="#e2001a"/>' +
+         '<circle cx="20" cy="10" r="1.2" fill="#f0c83c"/>' +
+         '<circle cx="13" cy="4"  r="1"   fill="#2e8b3c"/>',
+  present: '<rect x="3" y="10" width="18" height="12" rx="2" fill="#5b8dee" opacity="0.9"/>' +
+           '<rect x="9" y="10" width="6"  height="12" fill="#e6dca8" opacity="0.5"/>' +
+           '<rect x="3" y="7"  width="18" height="4"  rx="1" fill="#7aaaf5"/>' +
+           '<path d="M12 7 Q10 4 8 5 Q6 6 8 8 Q10 9 12 7Z" fill="#e87070"/>' +
+           '<path d="M12 7 Q14 4 16 5 Q18 6 16 8 Q14 9 12 7Z" fill="#e87070"/>',
+  star: '<path d="M12 2 L14 8 L20 8 L15 12 L17 18 L12 14 L7 18 L9 12 L4 8 L10 8 Z" fill="#f0c83c"/>',
+  heart: '<path d="M12 20.5 C12 20.5 3 14 3 8 C3 5.2 5.2 3 8 3 C9.8 3 11.4 4 12 5.4 C12.6 4 14.2 3 16 3 C18.8 3 21 5.2 21 8 C21 14 12 20.5 12 20.5Z" fill="#e2001a"/>'
+};
+
+var DEMO_STOPS = [
+  {
+    ref: "298A", name: "Jean Jaurès",
+    rows: [
+      { line:"C", color:"#e07b10", dest:"Neuhof Rodolphe Reuss",   t1:3,  t2:11 },
+      { line:"D", color:"#2e8b3c", dest:"Kehl Rathaus",             t1:1,  t2:8  },
+      { line:"A", color:"#c8102e", dest:"Illkirch-Lixenbuhl",       t1:6,  t2:15 },
+      { line:"B", color:"#7b2d8b", dest:"Hoenheim Gare",            t1:4,  t2:13 }
+    ]
+  },
+  {
+    ref: "298B", name: "Jean Jaurès",
+    rows: [
+      { line:"C", color:"#e07b10", dest:"Gare Centrale",            t1:5,  t2:14 },
+      { line:"D", color:"#2e8b3c", dest:"Poteries",                 t1:2,  t2:9  },
+      { line:"A", color:"#c8102e", dest:"Baggersee",                t1:7,  t2:16 },
+      { line:"B", color:"#7b2d8b", dest:"Lingolsheim Tiergässel",   t1:3,  t2:10 }
+    ]
+  }
+];
+
+var DEMO_BIRTHDAYS = ["Jean Martin", "Claire Dupont (35\u00a0ans)"];
+
+function pad2(n) { return n < 10 ? "0" + n : String(n); }
+function makeDemoDate(d) {
+  var dt = new Date(); dt.setDate(dt.getDate() + d);
+  return pad2(dt.getDate()) + "/" + pad2(dt.getMonth()+1) + "/" + dt.getFullYear();
+}
+
+var jourJEvents = [
+  { date: makeDemoDate(0),   label: "Fête de la Musique", icon: "party"   },
+  { date: makeDemoDate(58),  label: "Fête Nationale",     icon: "star"    },
+  { date: makeDemoDate(248), label: "Noël",                icon: "present" },
+  { date: makeDemoDate(432), label: "Mariage Dupont",     icon: "heart"   }
+];
+
+var UPCOMING_BDAYS = [
+  { name: "Nicolas Petit", days: 3 },
+  { name: "Emma Leroy",    days: 6 }
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+
+var nRows         = 3;
+var bdayOn        = true;
+var jourJOn       = true;
+var weatherOn     = true;
+var currentStop   = 0;
+var rotationSecs  = 6;
+var rotationTimer = null;
+var addFormOpen   = false;
+var activeStatus  = "cts";
+var activeConfig  = "arret";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function daysUntil(ds) {
+  if (!ds) return null;
+  var p = ds.split('/');
+  if (p.length < 3) return null;
+  var t = new Date(+p[2], +p[1]-1, +p[0]);
+  var now = new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((t - now) / 86400000);
+}
+function iconSvg(type, size) {
+  return '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:' + size + ';height:' + size + ';flex-shrink:0;vertical-align:middle">' +
+         (ICONS[type] || ICONS.star) + '</svg>';
+}
+
+// ── Board rendering ───────────────────────────────────────────────────────────
+
+function renderAll() {
+  renderDepartures();
+  renderBirthday();
+  renderJourJ();
+  document.getElementById("board-footer").classList.toggle("hidden", !weatherOn);
+}
+
+function renderDepartures() {
+  var stop  = DEMO_STOPS[currentStop];
+  var inner = document.getElementById("departures-inner");
+  var now   = Date.now();
+  inner.innerHTML = "";
+
+  var count = Math.min(nRows, stop.rows.length);
+  for (var i = 0; i < count; i++) {
+    var r   = stop.rows[i];
+    var row = document.createElement("div"); row.className = "departure-row";
+
+    // Line 1: badge + destination
+    var l1 = document.createElement("div"); l1.className = "row-line1";
+    var badge = document.createElement("div"); badge.className = "line-badge";
+    badge.textContent = r.line; badge.style.background = r.color;
+    var dest = document.createElement("div"); dest.className = "destination";
+    dest.textContent = r.dest;
+    l1.appendChild(badge); l1.appendChild(dest);
+
+    // Line 2: Prochain + divider + Suivant
+    var l2 = document.createElement("div"); l2.className = "row-line2";
+
+    var s1 = makeTimeSlot("Prochain", now + r.t1 * 60000);
+    var div = document.createElement("div"); div.className = "time-divider";
+    var s2 = makeTimeSlot("Suivant",  now + r.t2 * 60000);
+    l2.appendChild(s1); l2.appendChild(div); l2.appendChild(s2);
+
+    row.appendChild(l1); row.appendChild(l2);
+    inner.appendChild(row);
+  }
+
+  // Stop bar
+  document.getElementById("stop-name").textContent = stop.name;
+  document.getElementById("stop-ref").textContent  = stop.ref;
+  var pag = document.getElementById("stop-pagination");
+  if (DEMO_STOPS.length > 1 && rotationSecs > 0) {
+    pag.textContent = (currentStop + 1) + "\u00a0/\u00a0" + DEMO_STOPS.length;
+    pag.style.display = "";
+  } else {
+    pag.style.display = "none";
+  }
+}
+
+function makeTimeSlot(label, targetMs) {
+  var slot = document.createElement("div"); slot.className = "time-slot";
+  var lbl  = document.createElement("div"); lbl.className = "time-label"; lbl.textContent = label;
+  var val  = document.createElement("div"); val.className = "time-value";
+  val.dataset.target = String(targetMs);
+  refreshTimeSlotVal(val);
+  slot.appendChild(lbl); slot.appendChild(val);
+  return slot;
+}
+
+function refreshTimeSlotVal(val) {
+  var diff = val.dataset.target - Date.now();
+  if (diff < 0) {
+    val.innerHTML = '<span class="time-arriving">arr.</span>';
+  } else {
+    var m = Math.floor(diff / 60000);
+    val.innerHTML = m === 0
+      ? '<span class="time-arriving">&lt;&nbsp;1</span><span class="time-unit">min</span>'
+      : m + '<span class="time-unit">min</span>';
+  }
+}
+
+function renderBirthday() {
+  var el = document.getElementById("birthday-row");
+  if (!bdayOn || DEMO_BIRTHDAYS.length === 0) {
+    el.style.display = "none"; return;
+  }
+  el.style.display = "flex";
+  var text = "\u00a0\u00a0Bon anniversaire\u00a0\u2022\u00a0" +
+             DEMO_BIRTHDAYS.join("\u00a0\u2022\u00a0") + "\u00a0\u00a0";
+  var ic = '<svg class="birthday-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+           ICONS.present + '</svg>';
+  var wrap = document.createElement("div"); wrap.className = "birthday-text-wrap";
+  var span = document.createElement("span"); span.textContent = text + text;
+  wrap.appendChild(span); wrap.classList.add("scrolling");
+  el.innerHTML = ic; el.appendChild(wrap);
+}
+
+function renderJourJ() {
+  var el = document.getElementById("jour-j-row");
+  if (!jourJOn) { el.style.display = "none"; return; }
+
+  var items = [];
+  jourJEvents.forEach(function(ev) {
+    var d = daysUntil(ev.date);
+    if (d !== null && d >= 0) items.push({ days: d, label: ev.label, icon: ev.icon });
+  });
+  UPCOMING_BDAYS.forEach(function(b) {
+    if (b.days >= 1 && b.days <= 7)
+      items.push({ days: b.days, label: b.name, icon: "present" });
+  });
+  items.sort(function(a,b) { return a.days - b.days; });
+
+  if (items.length === 0) { el.style.display = "none"; return; }
+  el.style.display = "flex";
+
+  var halfHtml = items.map(function(item) {
+    var isToday = item.days === 0;
+    var cls = "jj-entry" + (isToday ? " jj-entry--today" : "");
+    return '<span class="' + cls + '">' +
+      iconSvg(item.icon, "1.1em") +
+      '<span class="jj-entry-badge">J\u2011' + item.days + '</span>' +
+      '<span class="jj-entry-label">' + esc(item.label) + '</span>' +
+      '</span><span class="jj-entry-sep">\u2022</span>';
+  }).join('');
+
+  var wrap   = document.createElement("div"); wrap.className = "jour-j-marquee-wrap";
+  var scroll = document.createElement("span"); scroll.className = "jj-scroll";
+  scroll.innerHTML = halfHtml + halfHtml;
+  wrap.appendChild(scroll);
+  el.innerHTML = ""; el.appendChild(wrap);
+}
+
+// ── Rotation ─────────────────────────────────────────────────────────────────
+
+function startRotation() {
+  clearInterval(rotationTimer); rotationTimer = null;
+  if (DEMO_STOPS.length > 1 && rotationSecs > 0) {
+    rotationTimer = setInterval(function() {
+      currentStop = (currentStop + 1) % DEMO_STOPS.length;
+      renderDepartures();
+    }, rotationSecs * 1000);
+  }
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+
+function tick() {
+  var now = new Date();
+  document.getElementById("clock").textContent =
+    now.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+  document.getElementById("date").textContent =
+    now.toLocaleDateString("fr-FR", { weekday:"short", day:"numeric", month:"short" });
+  document.querySelectorAll(".time-value[data-target]").forEach(refreshTimeSlotVal);
+}
+
+// ── Status overlay ───────────────────────────────────────────────────────────
+
+function openStatus() {
+  document.getElementById("status-overlay").classList.remove("hidden");
+  activateStatusTab(activeStatus);
+}
+function closeStatus() { document.getElementById("status-overlay").classList.add("hidden"); }
+
+function activateStatusTab(tab) {
+  activeStatus = tab;
+  document.querySelectorAll("#status-tabs .overlay-tab").forEach(function(b) {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  var c = document.getElementById("status-content"); c.innerHTML = "";
+  if (tab === "cts") renderStatusCts(c); else renderStatusMb(c);
+}
+
+function srow(p, lbl, val, cls) {
+  var el = document.createElement("div"); el.className = "status-row";
+  el.innerHTML = '<div class="status-label">' + lbl + '</div>' +
+    '<div class="status-value' + (cls ? " "+cls : "") + '">' + val + '</div>';
+  p.appendChild(el);
+}
+
+function renderStatusCts(c) {
+  srow(c, "Arrêts surveillés",     "298A, 298B", "highlight");
+  srow(c, "Mode",                  "Simulation", "highlight");
+  srow(c, "Intervalle",            "5\u00a0min");
+  srow(c, "Prochain appel API",    "dans\u00a042\u00a0s");
+  srow(c, "Interrogation continue","Non");
+  srow(c, "Heure serveur",
+    new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}), "dim");
+}
+
+function renderStatusMb(c) {
+  srow(c, "Widget météo",    "Activé");
+  srow(c, "Mode",            "Simulation", "highlight");
+  srow(c, "Localisation",    "Strasbourg");
+  srow(c, "Intervalle",      "30\u00a0min");
+  srow(c, "Température",     "13\u00a0°C");
+  srow(c, "Min\u00a0/ Max",  "8\u00a0°C\u00a0/\u00a022\u00a0°C");
+  srow(c, "Précipitations",  "1.2\u00a0mm");
+  srow(c, "Indice UV",       "3");
+}
+
+document.getElementById("status-tabs").addEventListener("click", function(e) {
+  var b = e.target.closest(".overlay-tab"); if (b) activateStatusTab(b.dataset.tab);
+});
+
+// ── Config overlay ────────────────────────────────────────────────────────────
+
+function openConfig() {
+  document.getElementById("config-overlay").classList.remove("hidden");
+  activateConfigTab(activeConfig);
+}
+function closeConfig() { document.getElementById("config-overlay").classList.add("hidden"); }
+
+function activateConfigTab(tab) {
+  activeConfig = tab;
+  document.querySelectorAll("#config-tabs .overlay-tab").forEach(function(b) {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  var c = document.getElementById("config-content"); c.innerHTML = "";
+  if (tab === "arret") renderConfigArret(c); else renderConfigJourJ(c);
+}
+
+document.getElementById("config-tabs").addEventListener("click", function(e) {
+  var b = e.target.closest(".overlay-tab"); if (b) activateConfigTab(b.dataset.tab);
+});
+
+function renderConfigArret(c) {
+  // Current refs chips
+  var chipsLabel = document.createElement("div"); chipsLabel.className = "jourj-section-title";
+  chipsLabel.textContent = "Arrêts actifs"; c.appendChild(chipsLabel);
+
+  var chipsRow = document.createElement("div");
+  chipsRow.style.cssText = "display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.4rem 0;";
+  DEMO_STOPS.forEach(function(s) {
+    var chip = document.createElement("span"); chip.className = "ref-chip";
+    chip.textContent = s.ref + "\u00a0" + s.name;
+    if (DEMO_STOPS.length > 1) {
+      var rm = document.createElement("button"); rm.className = "ref-chip-remove";
+      rm.textContent = "\u00d7"; chip.appendChild(rm);
+    }
+    chipsRow.appendChild(chip);
+  });
+  c.appendChild(chipsRow);
+
+  // Search
+  var searchTitle = document.createElement("div"); searchTitle.className = "jourj-section-title";
+  searchTitle.style.marginTop = "0.5rem";
+  searchTitle.textContent = "Ajouter un arrêt"; c.appendChild(searchTitle);
+  var inp = document.createElement("input"); inp.type = "text";
+  inp.className = "stop-search-input"; inp.placeholder = "Filtrer par nom d\u2019arrêt\u2026";
+  c.appendChild(inp);
+
+  var stops = [
+    { code:"233A", name:"Homme de Fer" }, { code:"233B", name:"Homme de Fer" },
+    { code:"1A",   name:"Gare Centrale" }, { code:"42A",  name:"Esplanade" },
+    { code:"298A", name:"Jean Jaurès"  }, { code:"298B", name:"Jean Jaurès" }
+  ];
+  var currentRefs = DEMO_STOPS.map(function(s) { return s.ref; });
+  stops.forEach(function(s) {
+    var card = document.createElement("div");
+    var sel = currentRefs.indexOf(s.code) !== -1;
+    card.className = "stop-card" + (sel ? " selected" : "");
+    card.innerHTML = '<span class="stop-card-name' + (sel ? " selected" : "") + '">' + esc(s.name) + '</span>' +
+      '<span class="stop-card-code">' + esc(s.code) + '</span>';
+    c.appendChild(card);
+  });
+}
+
+function renderConfigJourJ(c) {
+  var secTitle = document.createElement("div"); secTitle.className = "jourj-section-title";
+  secTitle.textContent = "Événements programmés"; c.appendChild(secTitle);
+
+  var future = jourJEvents.filter(function(e) { var d = daysUntil(e.date); return d !== null && d >= 0; });
+  var past   = jourJEvents.filter(function(e) { var d = daysUntil(e.date); return d === null || d < 0;  });
+
+  if (future.length === 0 && past.length === 0) {
+    var empty = document.createElement("div");
+    empty.style.cssText = "color:rgba(255,255,255,0.3);font-size:0.85em;padding:0.6rem 0;text-align:center;";
+    empty.textContent = "Aucun événement configuré";
+    c.appendChild(empty);
+  }
+
+  future.forEach(function(ev) { c.appendChild(makeEventRow(ev, false, c)); });
+  if (past.length > 0) {
+    var pastNote = document.createElement("div");
+    pastNote.style.cssText = "color:#ff8a65;font-size:0.75em;padding:0.3rem 0;";
+    pastNote.textContent = "⚠ Les événements passés seront supprimés à la prochaine sauvegarde.";
+    c.appendChild(pastNote);
+    past.forEach(function(ev) { c.appendChild(makeEventRow(ev, true, c)); });
+  }
+
+  // Add button
+  var addBtn = document.createElement("button"); addBtn.className = "jourj-add-btn";
+  addBtn.innerHTML = '+ Ajouter un événement';
+  c.appendChild(addBtn);
+
+  // Add form
+  var form = document.createElement("div");
+  form.className = "jourj-add-form" + (addFormOpen ? "" : " hidden");
+  form.innerHTML =
+    '<div class="jourj-field"><label>Date (JJ/MM/AAAA)</label>' +
+    '<input type="text" id="add-date" placeholder="25/12/2027" maxlength="10"></div>' +
+    '<div class="jourj-field"><label>Nom de l\u2019événement</label>' +
+    '<input type="text" id="add-label" placeholder="ex.\u00a0Grandes Vacances" maxlength="60"></div>' +
+    '<div class="jourj-field"><label>Icône</label>' +
+    '<select id="add-icon"><option value="party">🎉 Fête</option>' +
+    '<option value="present">🎁 Cadeau</option>' +
+    '<option value="star">★ Étoile</option>' +
+    '<option value="heart">♥ Cœur</option></select></div>' +
+    '<div class="jourj-form-btns">' +
+    '<button class="jourj-save-btn" id="add-save">Enregistrer</button>' +
+    '<button class="jourj-cancel-btn" id="add-cancel">Annuler</button>' +
+    '</div>';
+  c.appendChild(form);
+
+  addBtn.addEventListener("click", function() {
+    addFormOpen = !addFormOpen;
+    form.classList.toggle("hidden", !addFormOpen);
+  });
+  form.querySelector("#add-cancel").addEventListener("click", function() {
+    addFormOpen = false; form.classList.add("hidden");
+  });
+  form.querySelector("#add-save").addEventListener("click", function() {
+    var d = (document.getElementById("add-date").value  || "").trim();
+    var l = (document.getElementById("add-label").value || "").trim();
+    var i =  document.getElementById("add-icon").value  || "star";
+    if (!d || !l) { alert("La date et le nom sont requis."); return; }
+    jourJEvents.push({ date: d, label: l, icon: i });
+    addFormOpen = false;
+    activateConfigTab("jourj");
+    renderJourJ();
+  });
+}
+
+function makeEventRow(ev, past, ctxContainer) {
+  var days = daysUntil(ev.date);
+  var isToday = !past && days === 0;
+  var row = document.createElement("div");
+  row.className = "jourj-event-row" + (past ? " past" : "");
+  row.innerHTML =
+    iconSvg(ev.icon, "1.5rem") +
+    '<div class="jourj-event-meta">' +
+    '<div class="jourj-event-label">' + esc(ev.label) + '</div>' +
+    '<div class="jourj-event-date">' + esc(ev.date) + '</div>' +
+    '</div>' +
+    '<div class="jourj-event-days' + (past ? " past" : "") + '">' +
+    (past ? "Passé" : isToday ? "Aujourd\u2019hui\u00a0!" : "J\u2011" + days) +
+    '</div>' +
+    '<button class="jourj-trash-btn" title="Supprimer">' +
+    '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' +
+    '</button>';
+  row.querySelector(".jourj-trash-btn").addEventListener("click", function() {
+    jourJEvents = jourJEvents.filter(function(e) { return e !== ev; });
+    activateConfigTab("jourj");
+    renderJourJ();
+  });
+  return row;
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+
+document.getElementById("sel-rows").addEventListener("change", function() {
+  nRows = parseInt(this.value, 10); renderAll();
+});
+document.getElementById("chk-bday").addEventListener("change", function() {
+  bdayOn = this.checked; renderBirthday();
+});
+document.getElementById("chk-jourj").addEventListener("change", function() {
+  jourJOn = this.checked; renderJourJ();
+});
+document.getElementById("chk-weather").addEventListener("change", function() {
+  weatherOn = this.checked;
+  document.getElementById("board-footer").classList.toggle("hidden", !weatherOn);
+});
+document.getElementById("sel-rotation").addEventListener("change", function() {
+  rotationSecs = parseInt(this.value, 10); currentStop = 0; renderDepartures(); startRotation();
+});
+
+document.getElementById("status-btn").addEventListener("click",  openStatus);
+document.getElementById("config-btn").addEventListener("click",  openConfig);
+document.getElementById("status-back").addEventListener("click", closeStatus);
+document.getElementById("config-back").addEventListener("click", closeConfig);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+setInterval(tick, 1000);
+tick();
+renderAll();
+startRotation();
+
+}());
+</script>
+</body>
+</html>
