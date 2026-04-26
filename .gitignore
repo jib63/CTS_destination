@@ -5,6 +5,7 @@
 .DS_Store
 demo.toml
 export_birthdays.applescript
+/data/birthdays.json
 /data/birthdays.json.DS_Store
 .marknote-index.json
 .codegraph/
