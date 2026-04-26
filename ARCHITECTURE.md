@@ -65,9 +65,11 @@ src/
 │
 ├── pixoo64/
 │   ├── mod.rs
-│   ├── draw.rs           Frame composition (departures, weather, birthday, Jour J)
+│   ├── draw.rs           Frame composition: departures, weather, birthday/Jour-J, clock backgrounds
 │   ├── font.rs           Embedded 5×7 pixel bitmap font
-│   └── renderer.rs       Pixoo64 HTTP client and DisplayRenderer impl
+│   └── renderer.rs       Multi-screen rotation worker, ScreenType enum, Pixoo64 HTTP client
+├── bin/
+│   └── pixoo_test.rs     Standalone diagnostic binary for Pixoo64 HTTP API testing
 │
 └── web/
     ├── mod.rs            AppState definition; CronMatcher + crontab parser
@@ -146,28 +148,65 @@ The `store_and_rebroadcast` step ensures the weather footer updates immediately 
 
 ### Pixoo64 renderer (`pixoo64/renderer.rs`, `pixoo64/draw.rs`)
 
-```
-on render(board):
-  draw_frame(board):
-      draw header:  stop name + clock
-      draw rows:    up to 4 departure rows
-                    each row: line badge | scrolling destination | next time | following time
-                    real-time times in bold; theoretical in italic (colour-coded)
-      if rows < 4 AND birthday_enabled AND birthdays_today non-empty:
-          draw separator (1 blank + 1 gray + 1 blank pixel)
-          draw birthday row: present icon + scrolling "Name (age)" text
-      if rows < 3 AND jour_j_enabled AND jour_j set:
-          draw Jour J row: party icon + "J-N" badge + scrolling event label
-      draw weather footer (when weather available):
-          pictocode icon | temperature | precipitation | UV index
+The renderer uses a multi-screen rotation driven by a `tokio::time::interval_at` timer. Screens are defined as a `Vec<ScreenType>` built at startup from config; `BirthdayJourJ(0)` placeholders are expanded into `N` consecutive `BirthdayJourJ(0..N)` entries on every new `BoardPayload` (because the page count depends on live data).
 
-  if pixoo64_simulation:
-      encode frame as PNG → store in AppState::pixoo64_preview
-  else:
-      POST frame to device HTTP API
 ```
+startup:
+  if brightness configured and not simulation:
+    POST Channel/SetBrightness → device   (logs success/failure)
+  start interval_at(now + 15 s, dwell_secs)   // 15 s grace for first CTS data
 
-Scrolling state (`dest_scroll[i]`) is maintained per row across ticks. Text wider than the destination area scrolls pixel-by-pixel, resetting with a brief pause.
+loop (tokio::select!):
+
+  new BoardPayload from channel:
+    update payload cache
+    rebuild active_screens   // expand BirthdayJourJ(0) into N pages
+    render current screen immediately
+    reset interval timer
+
+  interval tick:
+    screen_idx += 1
+    render active_screens[screen_idx % len]
+
+render_screen(screen, board):
+  match screen:
+    Departures(i):
+      board = boards[i] (or boards[0] if i out of range)
+      if offline or no lines:
+        draw_clock(bg_frame, n_frames)   // animated, up to 40 frames
+      else:
+        draw_departures(board)           // 1 static frame
+          shared header: HH:MM clock + current temp + small weather icon
+          rows adapt to line count:
+            n=1,2  row_h=27  3 sub-zones of 9px each:
+                   zone1: line badge (9×9) + first time (yellow, right)
+                   zone2: destination full width
+                   zone3: second time (amber, right)
+            n=3    row_h=18  2 sub-zones:
+                   zone1: badge + dest L1 (clipped) + first time
+                   zone2: dest L2 + second time
+            n=4    row_h=13  single compact line:
+                   badge (7×7) + dest (clipped 5 chars) + first time
+
+    Weather:
+      if board.weather is Some:
+        draw_weather(board)              // 1 static frame
+          header + large 16×16 icon + current temp + min/max + label + location
+      else:
+        fall back to Departures(0)
+
+    BirthdayJourJ(page):
+      draw_birthday_jour_j(board, page) // 1 static frame
+        header band: "Moments" (purple)
+        rows sorted by: birthdays_today (cake, gold) then jour_j_events (present/heart)
+        each entry: split label into L1(9 chars)+L2(10)+L3(10), row height 9/18/27px
+        paginated: greedy pack into 54px content area; page = index into pages[]
+
+  encode frame(s) as base64
+  update PNG preview in AppState::pixoo64_preview   // drives /api/pixoo64/preview
+  if not simulation:
+    POST Draw/SendHttpGif (one HTTP call per frame) to device
+```
 
 ### WebSocket connection (`web/ws.rs`)
 
@@ -325,9 +364,10 @@ The board JSON includes these as optional fields:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `pixoo64_enabled` | bool | `false` | Enable the Pixoo64 display renderer |
-| `pixoo64_address` | string? | — | Device IP address (e.g. `"192.168.1.42"`) |
+| `pixoo64_address` | string? | — | Device IP:port (e.g. `"192.168.1.42:80"`) |
 | `pixoo64_simulation` | bool | `false` | Render PNG preview only; no device calls |
-| `pixoo64_refresh_interval_seconds` | u64? | `1` | Display refresh rate |
+| `pixoo64_delay_between_screens` | u64? | `7` | Seconds each screen is shown before rotating to the next |
+| `pixoo64_brightness` | u8? | — | Screen brightness 0–100; sent once at startup via `Channel/SetBrightness` |
 
 ### Birthday keys
 
