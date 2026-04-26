@@ -2,830 +2,962 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Pixoo64 Mockup v3 — CTS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixoo64 — Mockup interactif</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: #06080f;
-  color: #bbc;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  padding: 24px 20px 48px;
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  height: 100%; background: #0a0e1a; color: #c8d0e0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px; overflow: hidden;
 }
-h1 { text-align: center; color: #fff; font-size: 21px; margin-bottom: 4px; letter-spacing: 0.03em; }
-.subtitle { text-align: center; color: #556; font-size: 12px; margin-bottom: 30px; }
 
-.layouts { display: flex; gap: 52px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
-.layout-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.layout-label { font-size: 13px; font-weight: 700; color: #ffc107; letter-spacing: 0.08em; text-transform: uppercase; }
+/* ── Layout ── */
+#app { display: flex; height: 100vh; }
 
-canvas {
-  border: 1px solid #1e2a40;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  box-shadow: 0 0 40px rgba(60,120,255,0.15), inset 0 0 0 1px #0a1020;
+/* ── Sidebar ── */
+#sidebar {
+  width: 300px; flex-shrink: 0; background: #0d1220;
+  border-right: 1px solid #1a2240; display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+#sidebar::-webkit-scrollbar { width: 5px; }
+#sidebar::-webkit-scrollbar-thumb { background: #1e2d50; border-radius: 3px; }
+.sidebar-header {
+  padding: 14px 16px 10px; border-bottom: 1px solid #1a2240;
+  font-size: 14px; font-weight: 700; color: #ffc107; letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.sidebar-header span { font-size: 11px; font-weight: 400; color: #556; letter-spacing: 0; }
+
+.section { border-bottom: 1px solid #141c30; padding: 10px 14px 12px; }
+.section-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #445; margin-bottom: 8px;
+}
+
+/* Controls */
+.ctrl { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; min-height: 26px; }
+.ctrl label { flex: 1; color: #99a; font-size: 12px; }
+.ctrl input[type=checkbox] { accent-color: #ffc107; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+.ctrl select, .ctrl input[type=number], .ctrl input[type=text] {
+  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
+  padding: 3px 7px; border-radius: 4px; font-size: 12px;
+  width: 70px; flex-shrink: 0;
+}
+.ctrl select { width: 80px; }
+.ctrl input[type=range] { flex: 1; accent-color: #ffc107; }
+.ctrl .val { color: #ffc107; font-weight: 700; min-width: 28px; text-align: right; font-size: 12px; }
+
+/* Stop blocks */
+.stop-block { margin-bottom: 8px; background: #0e1628; border-radius: 6px; padding: 8px 10px; border: 1px solid #1a2440; }
+.stop-block-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.stop-block-header label { font-weight: 600; color: #c0c8e0; font-size: 12px; flex: 1; }
+.stop-enable { accent-color: #4caf50; }
+.stop-field { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 11px; color: #667; }
+.stop-field input[type=text] { flex: 1; width: auto; font-size: 11px; padding: 2px 6px; }
+.stop-field select { width: 50px; font-size: 11px; }
+
+/* Events list */
+.event-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.event-row {
+  display: flex; align-items: center; gap: 4px;
+  background: #0d1525; border: 1px solid #1a2240; border-radius: 4px; padding: 4px 6px;
+}
+.event-row input[type=text] { flex: 1; width: auto; font-size: 11px; padding: 2px 5px; }
+.event-row input[type=number] { width: 44px; font-size: 11px; }
+.event-row select { width: 68px; font-size: 11px; }
+.event-del { background: none; border: 1px solid #2a1818; color: #885; border-radius: 3px;
+  cursor: pointer; padding: 2px 6px; font-size: 11px; flex-shrink: 0; }
+.event-del:hover { background: #2a0a0a; color: #f88; border-color: #f88; }
+.add-btn {
+  background: none; border: 1px dashed #1e3020; color: #4a8; border-radius: 4px;
+  cursor: pointer; padding: 4px 8px; font-size: 11px; width: 100%; text-align: center;
+}
+.add-btn:hover { background: #0e1e10; border-color: #4a8; }
+
+/* Play controls */
+.play-row { display: flex; gap: 6px; margin-top: 8px; }
+.play-btn {
+  flex: 1; background: #1a2e18; border: 1px solid #2e5a28; color: #6df083;
+  border-radius: 5px; padding: 6px; font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: background 0.15s;
+}
+.play-btn:hover { background: #243e22; }
+.play-btn.paused { background: #2e1a14; border-color: #5a3428; color: #f08060; }
+.nav-btn {
+  background: #0e1628; border: 1px solid #1e2e48; color: #88a;
+  border-radius: 5px; padding: 6px 12px; font-size: 14px; cursor: pointer;
+}
+.nav-btn:hover { background: #162038; }
+
+/* ── Main display area ── */
+#main {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 20px; min-width: 0;
+}
+
+/* Screen type label */
+#screen-label {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600; color: #8090b0;
+}
+#screen-name { color: #c8d8f8; font-size: 15px; font-weight: 700; }
+#screen-pos { color: #445; font-size: 12px; }
+
+/* Canvas wrapper — adds LED bezel */
+#canvas-wrap {
+  position: relative; display: inline-block;
+  background: #080c16;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 0 0 2px #1a2240, 0 8px 40px rgba(0,0,0,0.7),
+              inset 0 0 12px rgba(0,0,0,0.5);
+}
+#display {
+  display: block; image-rendering: pixelated; image-rendering: crisp-edges;
   border-radius: 4px;
 }
-.layout-desc { font-size: 11px; color: #556; max-width: 340px; text-align: center; line-height: 1.5; }
 
-.zone-log {
-  font-size: 10px; font-family: 'Courier New', monospace; color: #445;
-  max-width: 340px; min-height: 32px; text-align: left;
-  background: #0a0e1a; border: 1px solid #1a2234; border-radius: 4px;
-  padding: 5px 8px; line-height: 1.6;
+/* Progress bar */
+#progress-wrap { width: 100%; max-width: 520px; }
+#progress-track {
+  height: 3px; background: #1a2240; border-radius: 2px; overflow: hidden;
 }
-.zone-log span { color: #e0c060; }
-
-.controls { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 28px; }
-.ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.ctrl-label { font-size: 10px; color: #445; letter-spacing: 0.1em; text-transform: uppercase; }
-select, button {
-  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
-  padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
-  transition: background 0.12s;
+#progress-bar {
+  height: 100%; background: #ffc107; border-radius: 2px;
+  transition: width 0.1s linear; width: 0%;
 }
-select:hover, button:hover { background: #162038; border-color: #3a5070; }
-select:focus { outline: 1px solid #3a5a8a; }
 
-.info { text-align: center; margin-top: 28px; font-size: 11px; color: #334; line-height: 1.9;
-  border-top: 1px solid #0e1624; padding-top: 18px; }
-.info em { color: #557; font-style: normal; }
+/* Screen dots */
+#dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 520px; }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; cursor: pointer;
+  background: #1a2240; transition: background 0.2s, transform 0.15s;
+}
+.dot:hover { background: #334466; transform: scale(1.2); }
+.dot.active { background: #ffc107; transform: scale(1.1); }
+.dot.dep  { background: #1e4a6a; }
+.dot.dep.active { background: #4ab0f0; }
+.dot.wx   { background: #1a4428; }
+.dot.wx.active  { background: #4af090; }
+.dot.bday { background: #3a1e5a; }
+.dot.bday.active { background: #c070f0; }
+
+/* Screen type legend */
+#legend { display: flex; gap: 14px; font-size: 11px; color: #446; flex-wrap: wrap; justify-content: center; }
+.leg { display: flex; align-items: center; gap: 4px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
 </style>
 </head>
 <body>
-<h1>Pixoo64 — Maquette CTS v3</h1>
-<p class="subtitle">Affichage LED 64×64 px — zoom 8× — rafraîchissement 1 s</p>
+<div id="app">
 
-<div class="layouts">
-  <div class="layout-box">
-    <div class="layout-label">Mode Départs</div>
-    <canvas id="ca" width="512" height="512"></canvas>
-    <div class="zone-log" id="zoneLog">En attente du premier tick…</div>
-    <div class="layout-desc">
-      Défilement du nom de l'arrêt · Anniversaires et Compteur Jour J dans l'espace libre
+<!-- ── Sidebar ── -->
+<div id="sidebar">
+  <div class="sidebar-header">🖥 Pixoo64 <span>Mockup interactif</span></div>
+
+  <!-- Arrêts -->
+  <div class="section">
+    <div class="section-title">Arrêts</div>
+    <div id="stops-container"></div>
+  </div>
+
+  <!-- Météo -->
+  <div class="section">
+    <div class="section-title">Météo</div>
+    <div class="ctrl">
+      <input type="checkbox" id="wx-enabled" checked>
+      <label for="wx-enabled">Activer l'écran météo</label>
+    </div>
+    <div class="ctrl">
+      <label>Pictocode</label>
+      <select id="wx-pictocode">
+        <option value="1">1 – Soleil</option>
+        <option value="2">2 – Peu nuageux</option>
+        <option value="4">4 – Nuageux</option>
+        <option value="5">5 – Brouillard</option>
+        <option value="7">7 – Pluie</option>
+        <option value="14">14 – Neige</option>
+        <option value="20">20 – Orage</option>
+        <option value="101">101 – Nuit claire</option>
+        <option value="102">102 – Nuit nuageuse</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Temp actuelle</label>
+      <input type="number" id="wx-temp" value="18" style="width:56px">
+    </div>
+    <div class="ctrl">
+      <label>Min / Max</label>
+      <input type="number" id="wx-min" value="6" style="width:44px">
+      <input type="number" id="wx-max" value="22" style="width:44px">
+    </div>
+    <div class="ctrl">
+      <label>Lieu</label>
+      <input type="text" id="wx-loc" value="Strasbourg" style="width:100px">
     </div>
   </div>
-  <div class="layout-box">
-    <div class="layout-label">Mode Horloge (Hors-ligne)</div>
-    <canvas id="cb" width="512" height="512"></canvas>
-    <div class="layout-desc">
-      Grande horloge avec secondes · fond contextuel animé chaque seconde<br>
-      <em>Nuit : étoiles · Jour : selon météo (soleil / nuages / pluie / neige)</em>
+
+  <!-- Anniversaires / Jour J -->
+  <div class="section">
+    <div class="section-title">Anniversaires &amp; Jour J</div>
+    <div class="ctrl">
+      <input type="checkbox" id="bday-enabled" checked>
+      <label for="bday-enabled">Activer l'écran</label>
+    </div>
+    <div style="font-size:11px;color:#556;margin-bottom:5px;">Anniversaires du jour</div>
+    <div id="bday-list" class="event-list"></div>
+    <button class="add-btn" onclick="addBday()">+ Anniversaire</button>
+    <div style="font-size:11px;color:#556;margin-top:8px;margin-bottom:5px;">Événements Jour J</div>
+    <div id="event-list" class="event-list"></div>
+    <button class="add-btn" onclick="addEvent()">+ Événement</button>
+  </div>
+
+  <!-- Rotation -->
+  <div class="section">
+    <div class="section-title">Rotation</div>
+    <div class="ctrl">
+      <label>Durée écran</label>
+      <input type="range" id="dwell" min="2" max="20" value="7" oninput="dwellChange(this)">
+      <span class="val" id="dwell-val">7s</span>
+    </div>
+    <div class="play-row">
+      <button class="nav-btn" onclick="prevScreen()">◀</button>
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">⏸ Pause</button>
+      <button class="nav-btn" onclick="nextScreen()">▶</button>
     </div>
   </div>
 </div>
 
-<div class="controls">
-  <div class="ctrl-group">
-    <div class="ctrl-label">Lignes tram</div>
-    <select id="selRows">
-      <option value="1">1 ligne</option>
-      <option value="2">2 lignes</option>
-      <option value="3">3 lignes</option>
-      <option value="4" selected>4 lignes</option>
-    </select>
+<!-- ── Main ── -->
+<div id="main">
+  <div id="screen-label">
+    <span id="screen-name">Départ — Arrêt 1</span>
+    <span id="screen-pos">1 / 4</span>
   </div>
-  <div class="ctrl-group">
-    <div class="ctrl-label">Anniversaires</div>
-    <select id="selBirthday">
-      <option value="on" selected>Activés</option>
-      <option value="off">Désactivés</option>
-    </select>
+
+  <div id="canvas-wrap">
+    <canvas id="display"></canvas>
   </div>
-  <div class="ctrl-group">
-    <div class="ctrl-label">Compteur Jour J</div>
-    <select id="selJourJ">
-      <option value="on" selected>Activé</option>
-      <option value="off">Désactivé</option>
-    </select>
+
+  <div id="progress-wrap">
+    <div id="progress-track"><div id="progress-bar"></div></div>
   </div>
-  <div class="ctrl-group">
-    <div class="ctrl-label">Météo</div>
-    <select id="selWeather">
-      <option value="sunny">Ensoleillé 19°C</option>
-      <option value="cloudy" selected>Nuageux 14°C</option>
-      <option value="rain">Pluie 10°C</option>
-      <option value="snow">Neige −2°C</option>
-      <option value="thunder">Orage 11°C</option>
-      <option value="fog">Brouillard 8°C</option>
-      <option value="none">Météo désactivée</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
-    <div class="ctrl-label">Période</div>
-    <select id="selPeriod">
-      <option value="day" selected>Journée</option>
-      <option value="night">Nuit</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
-    <div class="ctrl-label">Arrivée imminente</div>
-    <select id="selArriving">
-      <option value="no" selected>Non</option>
-      <option value="yes">Oui — ligne C</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
-    <div class="ctrl-label">&nbsp;</div>
-    <button id="btnPause">⏸ Pause</button>
+
+  <div id="dots"></div>
+  <div id="legend">
+    <div class="leg"><div class="leg-dot" style="background:#4ab0f0"></div> Départs</div>
+    <div class="leg"><div class="leg-dot" style="background:#4af090"></div> Météo</div>
+    <div class="leg"><div class="leg-dot" style="background:#c070f0"></div> Moments</div>
   </div>
 </div>
-
-<p class="info">
-  Chaque LED = carré <em>7×7 px</em> avec grille <em>1 px</em> · Police bitmap <em>5×7 px</em> · Couleurs CTS officielles<br>
-  Défilement noms d'arrêt : 1 px/s · même vitesse pour Anniversaires et Compteur Jour J<br>
-  4 lignes → écran plein · 3 lignes → zone anniversaire · ≤2 lignes → anniversaire + Jour J
-</p>
+</div>
 
 <script>
-'use strict';
-
-// ══════════════════════════════════════════════════════════════════════════════
-// PIXEL FONT 5×7  (MSB = leftmost pixel of each row)
-// ══════════════════════════════════════════════════════════════════════════════
+// ── 5×7 Bitmap Font ──────────────────────────────────────────────────────────
 const FONT = {
-  '0':[0x0E,0x11,0x13,0x15,0x19,0x11,0x0E],'1':[0x04,0x0C,0x04,0x04,0x04,0x04,0x0E],
-  '2':[0x0E,0x11,0x01,0x06,0x08,0x10,0x1F],'3':[0x0E,0x11,0x01,0x06,0x01,0x11,0x0E],
-  '4':[0x02,0x06,0x0A,0x12,0x1F,0x02,0x02],'5':[0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
-  '6':[0x06,0x08,0x10,0x1E,0x11,0x11,0x0E],'7':[0x1F,0x01,0x02,0x04,0x08,0x08,0x08],
-  '8':[0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E],'9':[0x0E,0x11,0x11,0x0F,0x01,0x11,0x0E],
-  'A':[0x04,0x0A,0x11,0x11,0x1F,0x11,0x11],'B':[0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
-  'C':[0x0E,0x11,0x10,0x10,0x10,0x11,0x0E],'D':[0x1C,0x12,0x11,0x11,0x11,0x12,0x1C],
-  'E':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F],'F':[0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
-  'G':[0x0E,0x11,0x10,0x17,0x11,0x11,0x0F],'H':[0x11,0x11,0x11,0x1F,0x11,0x11,0x11],
-  'I':[0x0E,0x04,0x04,0x04,0x04,0x04,0x0E],'J':[0x07,0x02,0x02,0x02,0x12,0x12,0x0C],
-  'K':[0x11,0x12,0x14,0x18,0x14,0x12,0x11],'L':[0x10,0x10,0x10,0x10,0x10,0x10,0x1F],
-  'M':[0x11,0x1B,0x15,0x15,0x11,0x11,0x11],'N':[0x11,0x19,0x15,0x13,0x11,0x11,0x11],
-  'O':[0x0E,0x11,0x11,0x11,0x11,0x11,0x0E],'P':[0x1E,0x11,0x11,0x1E,0x10,0x10,0x10],
-  'Q':[0x0E,0x11,0x11,0x11,0x15,0x12,0x0D],'R':[0x1E,0x11,0x11,0x1E,0x14,0x12,0x11],
-  'S':[0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E],'T':[0x1F,0x04,0x04,0x04,0x04,0x04,0x04],
-  'U':[0x11,0x11,0x11,0x11,0x11,0x11,0x0E],'V':[0x11,0x11,0x11,0x11,0x0A,0x0A,0x04],
-  'W':[0x11,0x11,0x11,0x15,0x15,0x1B,0x11],'X':[0x11,0x11,0x0A,0x04,0x0A,0x11,0x11],
-  'Y':[0x11,0x11,0x0A,0x04,0x04,0x04,0x04],'Z':[0x1F,0x01,0x02,0x04,0x08,0x10,0x1F],
-  'a':[0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F],'b':[0x10,0x10,0x16,0x19,0x11,0x19,0x16],
-  'c':[0x00,0x00,0x0E,0x10,0x10,0x11,0x0E],'d':[0x01,0x01,0x0D,0x13,0x11,0x13,0x0D],
-  'e':[0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E],'f':[0x06,0x08,0x1E,0x08,0x08,0x08,0x08],
-  'g':[0x00,0x0D,0x13,0x11,0x0F,0x01,0x0E],'h':[0x10,0x10,0x16,0x19,0x11,0x11,0x11],
-  'i':[0x04,0x00,0x0C,0x04,0x04,0x04,0x0E],'j':[0x02,0x00,0x06,0x02,0x02,0x12,0x0C],
-  'k':[0x10,0x12,0x14,0x18,0x14,0x12,0x11],'l':[0x0C,0x04,0x04,0x04,0x04,0x04,0x0E],
-  'm':[0x00,0x00,0x1A,0x15,0x15,0x11,0x11],'n':[0x00,0x00,0x16,0x19,0x11,0x11,0x11],
-  'o':[0x00,0x00,0x0E,0x11,0x11,0x11,0x0E],'p':[0x00,0x16,0x19,0x11,0x19,0x16,0x10],
-  'q':[0x00,0x0D,0x13,0x11,0x13,0x0D,0x01],'r':[0x00,0x00,0x16,0x19,0x10,0x10,0x10],
-  's':[0x00,0x00,0x0E,0x10,0x0E,0x01,0x1E],'t':[0x08,0x08,0x1E,0x08,0x08,0x09,0x06],
-  'u':[0x00,0x00,0x11,0x11,0x11,0x13,0x0D],'v':[0x00,0x00,0x11,0x11,0x11,0x0A,0x04],
-  'w':[0x00,0x00,0x11,0x11,0x15,0x1B,0x11],'x':[0x00,0x00,0x11,0x0A,0x04,0x0A,0x11],
-  'y':[0x00,0x11,0x11,0x0F,0x01,0x11,0x0E],'z':[0x00,0x00,0x1F,0x02,0x04,0x08,0x1F],
-  ' ':[0,0,0,0,0,0,0],':':[0,0x04,0x04,0,0x04,0x04,0],'-':[0,0,0,0x1F,0,0,0],
-  '.':[0,0,0,0,0,0x04,0x04],'/':[0x01,0x02,0x04,0x04,0x08,0x10,0],
-  '<':[0x01,0x06,0x18,0x18,0x06,0x01,0],'\u00B0':[0x0C,0x12,0x12,0x0C,0,0,0],
-  '\u00B7':[0,0,0,0x04,0,0,0],'!':[0x04,0x04,0x04,0x04,0,0x04,0],
-  '~':[0,0x08,0x15,0x02,0,0,0],'+':[0,0x04,0x04,0x1F,0x04,0x04,0],
-  '\'':[0x04,0x04,0,0,0,0,0],
+  ' ':[0,0,0,0,0,0,0],'!':[0x20,0x20,0x20,0x20,0,0x20,0],
+  '"':[0x50,0x50,0,0,0,0,0],'#':[0x50,0xF8,0x50,0xF8,0x50,0,0],
+  '$':[0x20,0x78,0xA0,0x70,0x28,0xF0,0x20],'%':[0xC0,0xC8,0x10,0x20,0x40,0x98,0x18],
+  '&':[0x40,0xA0,0xA0,0x40,0xA8,0x90,0x68],"'":[0x60,0x20,0x40,0,0,0,0],
+  '(':[0x10,0x20,0x40,0x40,0x40,0x20,0x10],')':[0x40,0x20,0x10,0x10,0x10,0x20,0x40],
+  '*':[0,0x20,0xA8,0x70,0xA8,0x20,0],'+':[0,0x20,0x20,0xF8,0x20,0x20,0],
+  ',':[0,0,0,0,0x30,0x20,0x40],'-':[0,0,0,0xF8,0,0,0],
+  '.':[0,0,0,0,0,0x60,0x60],'/':[0x08,0x10,0x10,0x20,0x40,0x40,0x80],
+  '0':[0x70,0x88,0x98,0xA8,0xC8,0x88,0x70],'1':[0x20,0x60,0x20,0x20,0x20,0x20,0x70],
+  '2':[0x70,0x88,0x08,0x30,0x40,0x80,0xF8],'3':[0x70,0x88,0x08,0x30,0x08,0x88,0x70],
+  '4':[0x10,0x30,0x50,0x90,0xF8,0x10,0x10],'5':[0xF8,0x80,0xF0,0x08,0x08,0x88,0x70],
+  '6':[0x38,0x40,0x80,0xF0,0x88,0x88,0x70],'7':[0xF8,0x08,0x10,0x20,0x20,0x20,0x20],
+  '8':[0x70,0x88,0x88,0x70,0x88,0x88,0x70],'9':[0x70,0x88,0x88,0x78,0x08,0x10,0xE0],
+  ':':[0,0x60,0x60,0,0x60,0x60,0],';':[0,0x30,0x30,0,0x30,0x20,0x40],
+  '<':[0x10,0x20,0x40,0x80,0x40,0x20,0x10],'=':[0,0,0xF8,0,0xF8,0,0],
+  '>':[0x80,0x40,0x20,0x10,0x20,0x40,0x80],'?':[0x70,0x88,0x08,0x30,0x20,0,0x20],
+  '@':[0x70,0x88,0xB8,0xA8,0xB0,0x80,0x70],
+  'A':[0x20,0x50,0x88,0x88,0xF8,0x88,0x88],'B':[0xF0,0x88,0x88,0xF0,0x88,0x88,0xF0],
+  'C':[0x70,0x88,0x80,0x80,0x80,0x88,0x70],'D':[0xE0,0x90,0x88,0x88,0x88,0x90,0xE0],
+  'E':[0xF8,0x80,0x80,0xF0,0x80,0x80,0xF8],'F':[0xF8,0x80,0x80,0xF0,0x80,0x80,0x80],
+  'G':[0x70,0x88,0x80,0xB8,0x88,0x88,0x70],'H':[0x88,0x88,0x88,0xF8,0x88,0x88,0x88],
+  'I':[0x70,0x20,0x20,0x20,0x20,0x20,0x70],'J':[0x38,0x10,0x10,0x10,0x90,0x90,0x60],
+  'K':[0x88,0x90,0xA0,0xC0,0xA0,0x90,0x88],'L':[0x80,0x80,0x80,0x80,0x80,0x80,0xF8],
+  'M':[0x88,0xD8,0xA8,0xA8,0x88,0x88,0x88],'N':[0x88,0xC8,0xA8,0x98,0x88,0x88,0x88],
+  'O':[0x70,0x88,0x88,0x88,0x88,0x88,0x70],'P':[0xF0,0x88,0x88,0xF0,0x80,0x80,0x80],
+  'Q':[0x70,0x88,0x88,0x88,0xA8,0x90,0x68],'R':[0xF0,0x88,0x88,0xF0,0xA0,0x90,0x88],
+  'S':[0x70,0x88,0x80,0x70,0x08,0x88,0x70],'T':[0xF8,0x20,0x20,0x20,0x20,0x20,0x20],
+  'U':[0x88,0x88,0x88,0x88,0x88,0x88,0x70],'V':[0x88,0x88,0x88,0x88,0x50,0x50,0x20],
+  'W':[0x88,0x88,0x88,0xA8,0xA8,0xD8,0x88],'X':[0x88,0x88,0x50,0x20,0x50,0x88,0x88],
+  'Y':[0x88,0x88,0x50,0x20,0x20,0x20,0x20],'Z':[0xF8,0x08,0x10,0x20,0x40,0x80,0xF8],
+  '[':[0x40,0x40,0x40,0x40,0x40,0x40,0x40],'\\':[0x80,0x40,0x40,0x20,0x10,0x10,0x08],
+  ']':[0x10,0x10,0x10,0x10,0x10,0x10,0x10],'^':[0x20,0x50,0x88,0,0,0,0],
+  '_':[0,0,0,0,0,0,0xF8],'`':[0x40,0x20,0x10,0,0,0,0],
+  'a':[0,0x60,0x10,0x70,0x88,0x98,0x68],'b':[0x80,0x80,0xB0,0xC8,0x88,0xC8,0xB0],
+  'c':[0,0,0x70,0x80,0x80,0x80,0x70],'d':[0x08,0x08,0x68,0x98,0x88,0x98,0x68],
+  'e':[0,0,0x70,0x88,0xF8,0x80,0x70],'f':[0x30,0x40,0xF0,0x40,0x40,0x40,0x40],
+  'g':[0,0x68,0x98,0x88,0x78,0x08,0x70],'h':[0x80,0x80,0xB0,0xC8,0x88,0x88,0x88],
+  'i':[0x20,0,0x60,0x20,0x20,0x20,0x70],'j':[0x10,0,0x30,0x10,0x10,0x90,0x60],
+  'k':[0x80,0x90,0xA0,0xC0,0xA0,0x90,0x88],'l':[0x60,0x20,0x20,0x20,0x20,0x20,0x70],
+  'm':[0,0,0xD0,0xA8,0xA8,0xA8,0x88],'n':[0,0,0xB0,0xC8,0x88,0x88,0x88],
+  'o':[0,0,0x70,0x88,0x88,0x88,0x70],'p':[0,0xB0,0xC8,0x88,0xC8,0xB0,0x80],
+  'q':[0,0x68,0x98,0x88,0x98,0x68,0x08],'r':[0,0,0xB0,0xC8,0x80,0x80,0x80],
+  's':[0,0,0x70,0x80,0x70,0x08,0x70],'t':[0x40,0x40,0xF0,0x40,0x40,0x48,0x30],
+  'u':[0,0,0x88,0x88,0x88,0x98,0x68],'v':[0,0,0x88,0x88,0x88,0x50,0x20],
+  'w':[0,0,0x88,0xA8,0xA8,0xD8,0x88],'x':[0,0,0x88,0x50,0x20,0x50,0x88],
+  'y':[0,0x88,0x88,0x78,0x08,0x88,0x70],'z':[0,0,0xF8,0x10,0x20,0x40,0xF8],
+  '{':[0x30,0x40,0x40,0x80,0x40,0x40,0x30],'|':[0x20,0x20,0x20,0,0x20,0x20,0x20],
+  '}':[0xC0,0x20,0x20,0x10,0x20,0x20,0xC0],'~':[0x40,0xA0,0x10,0,0,0,0],
+  '°':[0x60,0x90,0x90,0x60,0,0,0],
 };
 
-// ══════════════════════════════════════════════════════════════════════════════
-// FRAMEBUFFER  (64×64 × 3 bytes RGB)
-// ══════════════════════════════════════════════════════════════════════════════
-const W = 64, H = 64;
-const fbA = new Uint8Array(W * H * 3);
-const fbB = new Uint8Array(W * H * 3);
-const GRID = [8, 12, 22];
-
-// ── Clipping support ──────────────────────────────────────────────────────────
-let _clip = null; // {x1,y1,x2,y2} inclusive
-
-function setClip(x1, y1, x2, y2) { _clip = {x1, y1, x2, y2}; }
-function clearClip() { _clip = null; }
-
-function ps(fb, x, y, r, g, b) {
-  if (x < 0 || x >= W || y < 0 || y >= H) return;
-  if (_clip && (x < _clip.x1 || x > _clip.x2 || y < _clip.y1 || y > _clip.y2)) return;
-  const i = (y*W+x)*3; fb[i]=r; fb[i+1]=g; fb[i+2]=b;
-}
-
-// fr() does NOT use clip — use for backgrounds and areas that don't need clipping
-function fr(fb, x, y, w, h, r, g, b) {
-  const x1=Math.max(0,x), y1=Math.max(0,y);
-  const x2=Math.min(W,x+w), y2=Math.min(H,y+h);
-  for (let py=y1; py<y2; py++)
-    for (let px=x1; px<x2; px++) { const i=(py*W+px)*3; fb[i]=r;fb[i+1]=g;fb[i+2]=b; }
-}
-
-function blend(fb, x, y, r, g, b, alpha) {
-  if (x<0||x>=W||y<0||y>=H) return;
-  const i=(y*W+x)*3;
-  fb[i  ] = (fb[i  ]*(256-alpha)+r*alpha)>>8;
-  fb[i+1] = (fb[i+1]*(256-alpha)+g*alpha)>>8;
-  fb[i+2] = (fb[i+2]*(256-alpha)+b*alpha)>>8;
-}
-
-// dc() uses ps() at scale=1 so it respects clip; uses fr() at scale>1 (no clip needed for clock)
-function dc(fb, x, y, ch, r, g, b, sc) {
-  sc = sc||1;
-  const rows = FONT[ch.toUpperCase ? ch : ch]||FONT[' '];
-  const glyph = FONT[ch] || FONT[ch.toUpperCase?.()] || FONT[' '];
-  for (let row=0; row<7; row++) {
-    const bits = glyph[row];
-    for (let col=0; col<5; col++) {
-      if (bits&(1<<(4-col))) {
-        if (sc === 1) ps(fb, x+col, y+row, r, g, b);
-        else fr(fb, x+col*sc, y+row*sc, sc, sc, r, g, b);
+// ── Framebuffer ───────────────────────────────────────────────────────────────
+class Fb {
+  constructor() { this.px = new Uint8Array(64 * 64 * 3); }
+  set(x, y, r, g, b) {
+    if (x < 0 || y < 0 || x >= 64 || y >= 64) return;
+    const i = (y * 64 + x) * 3;
+    this.px[i] = r; this.px[i+1] = g; this.px[i+2] = b;
+  }
+  fillRect(x, y, w, h, r, g, b) {
+    for (let dy = 0; dy < h; dy++)
+      for (let dx = 0; dx < w; dx++) this.set(x+dx, y+dy, r, g, b);
+  }
+  blend(x, y, r, g, b, a) {
+    if (x < 0 || y < 0 || x >= 64 || y >= 64) return;
+    const i = (y * 64 + x) * 3;
+    const f = a / 255;
+    this.px[i]   = Math.round(this.px[i]   * (1-f) + r * f);
+    this.px[i+1] = Math.round(this.px[i+1] * (1-f) + g * f);
+    this.px[i+2] = Math.round(this.px[i+2] * (1-f) + b * f);
+  }
+  glyph(ch) { return FONT[ch] || FONT[' ']; }
+  drawChar(x, y, ch, r, g, b, sc=1) {
+    const gl = this.glyph(ch);
+    for (let row = 0; row < 7; row++) {
+      const mask = gl[row];
+      for (let col = 0; col < 5; col++) {
+        if (mask & (0x80 >> col))
+          for (let sy = 0; sy < sc; sy++)
+            for (let sx = 0; sx < sc; sx++)
+              this.set(x + col*sc + sx, y + row*sc + sy, r, g, b);
       }
     }
+    return x + 6 * sc;
   }
-}
-
-function dt(fb, x, y, text, r, g, b, sc) {
-  sc=sc||1; let cx=x;
-  for (const ch of text) {
-    const glyph = FONT[ch] || FONT[' '];
-    if (sc === 1) {
-      for (let row=0; row<7; row++) {
-        const bits = glyph[row];
-        for (let col=0; col<5; col++)
-          if (bits&(1<<(4-col))) ps(fb, cx+col, y+row, r, g, b);
-      }
-    } else {
-      for (let row=0; row<7; row++) {
-        const bits = glyph[row];
-        for (let col=0; col<5; col++)
-          if (bits&(1<<(4-col))) fr(fb, cx+col*sc, y+row*sc, sc, sc, r, g, b);
-      }
-    }
-    cx+=(5+1)*sc;
+  drawText(x, y, text, r, g, b, sc=1) {
+    let cx = x;
+    for (const ch of String(text)) cx = this.drawChar(cx, y, ch, r, g, b, sc);
+    return cx;
   }
-  return cx;
-}
-
-function tw(str, sc) { sc=sc||1; if(!str||str.length===0)return 0; return str.length*(5+1)*sc - sc; }
-function dtR(fb, rx, y, str, r, g, b, sc) { dt(fb,rx-tw(str,sc),y,str,r,g,b,sc); }
-function dtC(fb, cx, y, str, r, g, b, sc) {
-  dt(fb, cx-Math.round(tw(str,sc)/2), y, str, r, g, b, sc);
-}
-
-// ── Temperature helpers: narrow minus (3 px wide, 4 px advance) ──────────────
-function twTmp(str) {
-  if (!str || str.length === 0) return 0;
-  let w = 0;
-  for (let i = 0; i < str.length; i++) w += (str[i] === '-') ? 4 : 6;
-  return w - 1; // subtract trailing gap
-}
-function dtTmp(fb, x, y, str, r, g, b) {
-  let cx = x;
-  for (const ch of str) {
-    if (ch === '-') {
-      // 3 pixels at cols 1, 2, 3 of a 5-px cell, centred on row 3
-      ps(fb, cx+1, y+3, r, g, b); ps(fb, cx+2, y+3, r, g, b); ps(fb, cx+3, y+3, r, g, b);
-      cx += 4;
-    } else {
-      const glyph = FONT[ch] || FONT[' '];
+  drawTextRight(xr, y, text, r, g, b, sc=1) {
+    const n = [...String(text)].length;
+    const w = n === 0 ? 0 : n * 6 * sc - sc;
+    this.drawText(xr - w + 1, y, text, r, g, b, sc);
+  }
+  drawTextCenter(cx, y, text, r, g, b, sc=1) {
+    const n = [...String(text)].length;
+    const w = n === 0 ? 0 : n * 6 * sc - sc;
+    this.drawText(cx - Math.floor(w / 2), y, text, r, g, b, sc);
+  }
+  drawTextClipped(x, y, text, r, g, b, sc, c1, c2) {
+    let cx = x;
+    for (const ch of String(text)) {
+      const gl = this.glyph(ch);
       for (let row = 0; row < 7; row++) {
-        const bits = glyph[row];
-        for (let col = 0; col < 5; col++)
-          if (bits & (1 << (4-col))) ps(fb, cx+col, y+row, r, g, b);
-      }
-      cx += 6;
-    }
-  }
-  return cx;
-}
-function dtRTmp(fb, rx, y, str, r, g, b) { dtTmp(fb, rx - twTmp(str), y, str, r, g, b); }
-
-// ── Draw text clipped to [cx1..cx2] starting at logical x (may be negative for scroll) ──
-function dtScrolled(fb, drawX, textY, str, r, g, b, cx1, cx2) {
-  setClip(cx1, textY, cx2, textY+6);
-  dt(fb, drawX, textY, str, r, g, b, 1);
-  clearClip();
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// FLUSH FRAMEBUFFER → CANVAS  (LED grid: 7×7 pixel in 8×8 cell)
-// ══════════════════════════════════════════════════════════════════════════════
-function flush(canvas, fb) {
-  const ctx = canvas.getContext('2d');
-  const out = ctx.createImageData(512, 512);
-  const d = out.data;
-  for (let i = 0; i < d.length; i += 4) {
-    d[i]=GRID[0]; d[i+1]=GRID[1]; d[i+2]=GRID[2]; d[i+3]=255;
-  }
-  for (let py = 0; py < H; py++) {
-    for (let px = 0; px < W; px++) {
-      const fi = (py*W+px)*3;
-      const r=fb[fi], g=fb[fi+1], b=fb[fi+2];
-      if ((r|g|b) === 0) continue;
-      for (let dy = 0; dy < 7; dy++) {
-        const row = (py*8+dy)*512;
-        for (let dx = 0; dx < 7; dx++) {
-          const si = (row + px*8+dx)*4;
-          d[si]=r; d[si+1]=g; d[si+2]=b; d[si+3]=255;
+        const mask = gl[row];
+        for (let col = 0; col < 5; col++) {
+          if (mask & (0x80 >> col))
+            for (let sy = 0; sy < sc; sy++)
+              for (let sx = 0; sx < sc; sx++) {
+                const px = cx + col*sc + sx;
+                if (px >= c1 && px <= c2) this.set(px, y + row*sc + sy, r, g, b);
+              }
         }
       }
+      cx += 6 * sc;
     }
   }
-  ctx.putImageData(out, 0, 0);
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// CTS LINE COLOURS
-// ══════════════════════════════════════════════════════════════════════════════
-const LC = {
-  A:[200,16,46],B:[123,45,139],C:[224,123,16],D:[46,139,60],
-  E:[111,44,145],F:[197,20,91],G:[92,107,192],
-};
-function lc(line) { return LC[line[0]]||[69,90,100]; }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// PIXEL-ART ICONS
-// ══════════════════════════════════════════════════════════════════════════════
-
-// Present/gift icon 7×7
-function drawPresent(fb, x, y) {
-  // Ribbon bow (top, 3 rows)
-  fr(fb, x+2, y,   3, 1, 255, 200, 80);  // bow top
-  fr(fb, x+1, y+1, 2, 1, 255, 180, 60);  fr(fb, x+4, y+1, 2, 1, 255, 180, 60); // bow sides
-  fr(fb, x,   y+2, 7, 1, 200, 130, 40);  // box top
-  // Vertical ribbon on box
-  fr(fb, x+3, y+2, 1, 5, 255, 200, 80);
-  // Box sides
-  fr(fb, x,   y+2, 1, 5, 160, 100, 30);  fr(fb, x+6, y+2, 1, 5, 160, 100, 30);
-  // Box bottom
-  fr(fb, x,   y+6, 7, 1, 200, 130, 40);
-}
-
-// Party popper icon 7×7
-function drawParty(fb, x, y) {
-  // Cone (bottom-left)
-  fr(fb, x,   y+5, 4, 2, 255, 160, 40);   // base
-  fr(fb, x+1, y+4, 3, 1, 255, 160, 40);
-  fr(fb, x+2, y+3, 2, 1, 255, 160, 40);   // tip
-  fr(fb, x+3, y+2, 1, 1, 220, 140, 30);   // point
-  // Sparkles / confetti
-  ps(fb, x+5, y,   255, 240, 80);    // yellow star
-  ps(fb, x+6, y+2, 80,  200, 255);   // cyan dot
-  ps(fb, x+4, y+1, 255, 100, 160);   // pink
-  ps(fb, x+6, y+4, 80,  255, 120);   // green
-  ps(fb, x+5, y+5, 255, 210, 60);    // yellow
-  ps(fb, x+6, y+6, 200, 100, 255);   // purple
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// SMALL WEATHER ICONS (6×5)
-// ══════════════════════════════════════════════════════════════════════════════
-function wicon_sm(fb, x, y, type) {
-  const f=(dx,dy,w,h,r,g,b)=>fr(fb,x+dx,y+dy,w,h,r,g,b);
-  const p=(dx,dy,r,g,b)=>ps(fb,x+dx,y+dy,r,g,b);
-  if (type==='sunny') {
-    f(2,1,2,2,255,210,0); f(1,2,4,1,255,210,0); f(3,0,1,1,255,190,0);
-    p(0,1,255,190,0); p(5,1,255,190,0);
-  } else if (type==='cloudy'||type==='fog') {
-    f(2,0,2,1,110,130,160); f(1,1,4,1,120,140,170); f(0,2,6,2,120,140,170);
-    f(1,4,4,1,110,130,160);
-  } else if (type==='rain') {
-    f(2,0,2,1,80,100,130); f(1,1,4,1,90,110,140); f(0,2,6,2,80,100,130);
-    p(1,4,80,160,220); p(3,4,80,160,220); p(5,4,80,160,220);
-  } else if (type==='snow') {
-    f(2,0,2,1,100,120,150); f(1,1,4,1,110,130,160); f(0,2,6,2,100,120,150);
-    p(0,4,200,220,255); p(3,4,200,220,255); p(5,4,200,220,255);
-  } else if (type==='thunder') {
-    f(2,0,2,1,60,70,80); f(1,1,4,1,70,80,90); f(0,2,6,2,60,70,80);
-    f(3,4,1,2,255,230,0);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// CONTEXTUAL BACKGROUNDS (clock mode)
-// ══════════════════════════════════════════════════════════════════════════════
-function mulberry32(seed) {
-  let a = seed;
-  return () => { a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
-    t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
-}
-const _rng = mulberry32(12345);
-const STARS = Array.from({length:50}, () => ({
-  x: Math.floor(_rng()*64), y: Math.floor(_rng()*55),
-  r: 140+Math.floor(_rng()*80), g: 140+Math.floor(_rng()*80),
-  b: 180+Math.floor(_rng()*75),
-  cycle: 2+Math.floor(_rng()*8),
-}));
-const RAIN_DROPS = Array.from({length:18}, (_,i) => ({
-  x: (i*7+2)%64, delay: (i*5)%22, len: 4+i%3,
-}));
-const SNOW_FLAKES = Array.from({length:22}, (_,i) => ({
-  x: (i*11+3)%64, phase: i*3, speed: 0.6+((i%3)*0.2),
-}));
-const CLOUD_BLOBS = [
-  {y:4, speed:1, size:12},{y:16,speed:0.7,size:10},{y:28,speed:1.2,size:8},
-];
-function drawCloud(fb, x, y, size, brightness) {
-  const hw=Math.round(size/2), hh=Math.round(size*0.35);
-  for (let dy=-hh;dy<=hh;dy++) {
-    const span=Math.round(hw*Math.sqrt(1-(dy/hh)*(dy/hh)));
-    for (let dx=-span;dx<=span;dx++) {
-      const fade=1-Math.sqrt(dx*dx/(hw*hw)+dy*dy/(hh*hh))*0.5;
-      const c=Math.round(brightness*fade);
-      const px=x+dx,py=y+dy;
-      if(px>=0&&px<64&&py>=0&&py<55) ps(fb,px,py,c,c+8,c+18);
-    }
-  }
-}
-function bgNight(fb,frame) {
-  fr(fb,0,0,64,55,2,5,16);
-  fr(fb,50,3,6,6,180,180,130);fr(fb,48,4,10,4,180,180,130);fr(fb,50,9,6,1,180,180,130);
-  fr(fb,52,3,6,7,2,5,16);fr(fb,54,4,5,5,2,5,16);
-  STARS.forEach((s,i) => {
-    const dim=(frame%s.cycle)===0;
-    const r=dim?s.r>>3:s.r, g=dim?s.g>>3:s.g, b=dim?s.b>>3:s.b;
-    ps(fb,s.x,s.y,r,g,b);
-    if(!dim&&s.cycle>6) {
-      if(s.x>0)ps(fb,s.x-1,s.y,r>>1,g>>1,b>>1);
-      if(s.x<63)ps(fb,s.x+1,s.y,r>>1,g>>1,b>>1);
-      if(s.y>0)ps(fb,s.x,s.y-1,r>>1,g>>1,b>>1);
-      if(s.y<54)ps(fb,s.x,s.y+1,r>>1,g>>1,b>>1);
-    }
-  });
-}
-function bgSunny(fb,frame) {
-  fr(fb,0,0,64,55,4,9,28);
-  for(let y=40;y<55;y++){const a=(y-40)/15*60;for(let x=0;x<64;x++)blend(fb,x,y,180,60,0,Math.round(a));}
-  const SX=54,SY=7;
-  for(let i=0;i<8;i++){const ang=((i*45+frame*15)%360)*Math.PI/180;for(let d=5;d<=12;d++){const rx=Math.round(SX+d*Math.cos(ang)),ry=Math.round(SY+d*Math.sin(ang));const alpha=Math.round((1-(d-5)/7)*180);if(rx>=0&&rx<64&&ry>=0&&ry<55)blend(fb,rx,ry,255,200,0,alpha);}}
-  fr(fb,SX-3,SY-3,7,7,255,215,0);fr(fb,SX-1,SY-4,3,9,255,215,0);fr(fb,SX-4,SY-1,9,3,255,215,0);
-}
-function bgCloudy(fb,frame) {
-  fr(fb,0,0,64,55,5,9,22);
-  CLOUD_BLOBS.forEach((blob,i)=>{const x=Math.round((64+20-(frame*blob.speed+i*26)%(64+20))-10);drawCloud(fb,x,blob.y,blob.size,45+i*8);drawCloud(fb,x+blob.size+4,blob.y+2,blob.size-2,38+i*7);});
-}
-function bgFog(fb,frame) {
-  fr(fb,0,0,64,55,10,13,20);
-  for(let band=0;band<6;band++){const y=(frame*1+band*9)%55;const br=25+band*5;for(let x=0;x<64;x++)blend(fb,x,y,br,br+5,br+12,120);if(y+1<55)for(let x=0;x<64;x++)blend(fb,x,y+1,br,br+5,br+12,60);}
-}
-function bgRain(fb,frame) {
-  fr(fb,0,0,64,55,3,6,16);
-  for(let y=0;y<14;y++){const a=(14-y)/14*180;for(let x=0;x<64;x++)blend(fb,x,y,30,40,55,Math.round(a));}
-  RAIN_DROPS.forEach(d=>{for(let l=0;l<d.len;l++){const y=(frame*2+d.delay*4+l*2)%56,x=Math.min(63,d.x+Math.floor(y*0.25))%64;if(y<55)blend(fb,x,y,50,120,220,200-l*40);}});
-  for(let i=0;i<4;i++){const x=(frame*3+i*18)%64;for(let y=0;y<55;y+=3)blend(fb,x,y,40,100,180,60);}
-}
-function bgSnow(fb,frame) {
-  fr(fb,0,0,64,55,3,7,20);
-  SNOW_FLAKES.forEach(f=>{const y=Math.floor((frame*f.speed+f.phase)%55),drift=Math.round(Math.sin((frame*0.4+f.phase)*0.5)*2),x=(f.x+drift+64)%64;ps(fb,x,y,210,230,255);if(x>0)ps(fb,x-1,y,100,120,180);if(x<63)ps(fb,x+1,y,100,120,180);if(y>0)ps(fb,x,y-1,100,120,180);if(y<54)ps(fb,x,y+1,100,120,180);});
-}
-function bgThunder(fb,frame) {
-  fr(fb,0,0,64,55,5,6,10);
-  const flash=(frame%17===0)||(frame%23===0);
-  if(flash)fr(fb,0,0,64,55,200,210,230);
-  else{for(let y=0;y<30;y++){const a=(30-y)/30*120;for(let x=0;x<64;x++)blend(fb,x,y,40,45,55,Math.round(a));}
-    const lx=28+(frame%5)*4;fr(fb,lx,18,3,1,255,240,80);fr(fb,lx-1,20,3,1,255,240,80);fr(fb,lx,22,3,1,255,240,80);fr(fb,lx-2,24,3,1,255,240,80);}
-}
-function drawBg(fb,weatherType,isNight,frame) {
-  if(isNight){bgNight(fb,frame);return;}
-  switch(weatherType){
-    case'sunny':bgSunny(fb,frame);break;case'cloudy':bgCloudy(fb,frame);break;
-    case'rain':bgRain(fb,frame);break;case'snow':bgSnow(fb,frame);break;
-    case'thunder':bgThunder(fb,frame);break;case'fog':bgFog(fb,frame);break;
-    default:bgCloudy(fb,frame);break;
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// DEPARTURE DATA  (full destination names for scrolling demo)
-// ══════════════════════════════════════════════════════════════════════════════
-const BASE = Date.now();
-const LINES = [
-  { line:'C',  dest:'Gare Centrale',       base: 150000 },
-  { line:'D',  dest:'Poteries',            base: 450000 },
-  { line:'10', dest:'Campus Esplanade',    base: 210000 },
-  { line:'A',  dest:'Illkirch-Lixenbuhl', base: 510000 },
-];
-
-// ── Birthday data (demo — today's birthdays) ──────────────────────────────────
-const BIRTHDAY_NAMES = ['Jean Martin', 'Claire Dupont'];
-const BIRTHDAY_TEXT  = BIRTHDAY_NAMES.join(' \u00B7 '); // "Jean Martin · Claire Dupont"
-
-// ── Jour J data (demo) ────────────────────────────────────────────────────────
-const JOUR_J_DAYS  = 42;
-const JOUR_J_LABEL = 'Anniversaire mariage';
-
-function getMinutes(baseOffset, arriving) {
-  if (arriving) return 'arr.';
-  const ms = BASE + baseOffset - Date.now();
-  if (ms < 60000) return 'arr.';
-  return String(Math.max(0, Math.floor(ms/60000))) + 'm';
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// SCROLL STATE
-// ══════════════════════════════════════════════════════════════════════════════
-const destScroll   = [0, 0, 0, 0];   // per-row destination scroll offset
-let   bdayScroll   = 0;              // birthday text scroll offset
-let   jourJScroll  = 0;              // Jour J event label scroll offset
-const SCROLL_PAUSE = 12;             // extra pixels of pause at end before reset
-
-function advanceScroll(current, textW, visibleW) {
-  if (textW <= visibleW) return 0;
-  const max = textW - visibleW + SCROLL_PAUSE;
-  return (current >= max) ? 0 : current + 1;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ZONE HIGHLIGHT (diff visualisation)
-// ══════════════════════════════════════════════════════════════════════════════
-let prevA = {
-  clockHHMM: null, weatherKey: null,
-  times: [null,null,null,null],
-  lineSet: null, nRows: null,
-  bdayOn: null, jourJOn: null,
-};
-
-// ══════════════════════════════════════════════════════════════════════════════
-// LAYOUT HELPER
-// ══════════════════════════════════════════════════════════════════════════════
-function getLayout(nRows, bdayOn, jourJOn) {
-  const tramEnd = 10 + nRows * 13; // last y pixel of last tram row
-  if (nRows >= 4 || (!bdayOn && !jourJOn)) {
-    return { tramEnd, sepY: null, bdayY: null, jourJY: null };
-  }
-  const sepY = tramEnd + 1;       // gray separator line
-  const afterSep = tramEnd + 3;   // first content row after separator
-
-  if (nRows === 3) {
-    // 53..63 = 11px for birthday (no Jour J — not enough space)
-    return { tramEnd, sepY, bdayY: bdayOn ? afterSep : null, jourJY: null };
-  } else {
-    // 2 or 1 row: split remaining space between birthday and Jour J
-    // Each zone gets 12px
-    const bdayY  = bdayOn  ? afterSep      : null;
-    const jourJY = jourJOn ? afterSep + (bdayOn ? 12 : 0) : null;
-    return { tramEnd, sepY, bdayY, jourJY };
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// DRAW DEPARTURE MODE
-// ══════════════════════════════════════════════════════════════════════════════
-function drawDepartures(fb) {
-  const nRows  = parseInt(document.getElementById('selRows').value, 10);
-  const wx     = document.getElementById('selWeather').value;
-  const arr    = document.getElementById('selArriving').value === 'yes';
-  const bdayOn = document.getElementById('selBirthday').value === 'on';
-  const jourJOn= document.getElementById('selJourJ').value === 'on';
-  const now    = new Date();
-  const hhmm   = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  const wxData = WX_PRESETS[wx] || null;
-  const wxKey  = wx + ':' + (wxData ? wxData.temp : '');
-  const layout = getLayout(nRows, bdayOn, jourJOn);
-
-  // ── Detect changes ──────────────────────────────────────────────────────────
-  const changed = new Set();
-  const needFull = (prevA.lineSet === null || prevA.nRows !== nRows || prevA.bdayOn !== bdayOn || prevA.jourJOn !== jourJOn);
-  if (needFull || prevA.clockHHMM !== hhmm) changed.add('CLOCK');
-  if (needFull || prevA.weatherKey !== wxKey) changed.add('WEATHER');
-  const curTimes = LINES.slice(0,4).map((l,i) => getMinutes(l.base, arr && i===0));
-  curTimes.forEach((t,i) => { if (prevA.times[i] !== t) changed.add('ROW_TIME_'+i); });
-  const lineSet = nRows + '|' + LINES.slice(0,nRows).map(l=>l.line).join(',');
-  if (needFull || prevA.lineSet !== lineSet) changed.add('ROWS_STATIC');
-
-  // ── Full background clear on structural change ──────────────────────────────
-  if (needFull) {
-    fr(fb, 0, 0, 64, 64, 6, 10, 20);
-  }
-
-  // ── Header (y=0..10) ────────────────────────────────────────────────────────
-  if (needFull || changed.has('CLOCK') || changed.has('WEATHER')) {
-    fr(fb, 0, 0, 64, 10, 20, 32, 60);
-    fr(fb, 0, 10, 64, 1, 28, 44, 75); // header separator
-  }
-  if (needFull || changed.has('CLOCK')) {
-    fr(fb, 1, 1, 34, 8, 20, 32, 60);
-    dt(fb, 2, 1, hhmm, 255, 255, 255);
-  }
-  if (needFull || changed.has('WEATHER')) {
-    fr(fb, 36, 1, 27, 8, 20, 32, 60);
-    if (wxData) {
-      wicon_sm(fb, 37, 2, wx);
-      dtR(fb, 62, 2, wxData.temp+'\u00B0', 180, 220, 255);
-    }
-  }
-
-  // ── Tram rows ────────────────────────────────────────────────────────────────
-  for (let i = 0; i < 4; i++) {
-    const ry = 11 + i * 13;
-    const rowBg = i%2===0 ? [16,26,52] : [12,20,44];
-
-    if (needFull || changed.has('ROWS_STATIC')) {
-      fr(fb, 0, ry, 64, 13, ...rowBg);
-      if (i < nRows) {
-        const line = LINES[i];
-        const [lr,lg,lb] = lc(line.line);
-        // Badge 11×9
-        fr(fb, 1, ry+2, 11, 9, lr, lg, lb);
-        // Badge text (centred)
-        const bw = tw(line.line.slice(0,2));
-        const bx = 1 + Math.max(0, Math.round((11 - bw) / 2));
-        dt(fb, bx, ry+3, line.line.slice(0,2), 255, 255, 255);
-        // Bottom micro-separator
-        if (i < nRows-1) fr(fb, 0, ry+12, 64, 1, 4, 8, 16);
+  paint(canvas, scale) {
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const img = ctx.createImageData(64 * scale, 64 * scale);
+    const d = img.data;
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 64; x++) {
+        const si = (y * 64 + x) * 3;
+        const r = this.px[si], g = this.px[si+1], b = this.px[si+2];
+        for (let sy = 0; sy < scale; sy++)
+          for (let sx = 0; sx < scale; sx++) {
+            const di = ((y*scale+sy) * 64*scale + (x*scale+sx)) * 4;
+            d[di] = r; d[di+1] = g; d[di+2] = b; d[di+3] = 255;
+          }
       }
     }
-
-    // Destination text (scrolling, clipped)
-    if (i < nRows && (needFull || changed.has('ROWS_STATIC') || true)) {
-      // true: always redraw destination because scroll offset changes
-      const line    = LINES[i];
-      const arriving = arr && i === 0;
-      const destClipX2 = arriving ? 37 : 44;   // right boundary of dest area
-      const destAreaW  = destClipX2 - 13 + 1;
-      const destTextW  = tw(line.dest);
-
-      // Clear destination + time area
-      fr(fb, 13, ry+1, 51, 11, ...rowBg);
-
-      // Advance and draw destination scroll
-      destScroll[i] = advanceScroll(destScroll[i], destTextW, destAreaW);
-      const destDrawX = 13 - destScroll[i];
-      dtScrolled(fb, destDrawX, ry+3, line.dest, 180, 205, 240, 13, destClipX2);
-
-      // Time
-      const timeStr = curTimes[i];
-      const [tr,tg,tb] = timeStr === 'arr.' ? [255,130,0] : [255,200,50];
-      if (arriving) {
-        dtR(fb, 62, ry+3, 'arr.', tr, tg, tb);
-      } else {
-        dtR(fb, 62, ry+3, timeStr, tr, tg, tb);
-      }
-
-    }
-  }
-
-  // ── Separator + birthday + Jour J zones ──────────────────────────────────────
-  if (needFull || changed.has('ROWS_STATIC')) {
-    // Clear area below tram rows
-    const clearStart = layout.tramEnd + 1;
-    if (clearStart < 64) fr(fb, 0, clearStart, 64, 64 - clearStart, 6, 10, 20);
-
-    if (layout.sepY !== null) {
-      // Separator: blank + gray + blank
-      fr(fb, 0, layout.sepY - 1, 64, 1, 6, 10, 20);   // blank above
-      fr(fb, 0, layout.sepY,     64, 1, 38, 44, 55);   // gray line
-      fr(fb, 0, layout.sepY + 1, 64, 1, 6, 10, 20);   // blank below
-    }
-
-    // Birthday zone background
-    if (layout.bdayY !== null) {
-      fr(fb, 0, layout.bdayY, 64, 12, 8, 32, 38);
-    }
-
-    // Jour J zone background
-    if (layout.jourJY !== null) {
-      fr(fb, 0, layout.jourJY, 64, 12, 22, 18, 52);
-    }
-  }
-
-  // ── Birthday content (scrolling) ─────────────────────────────────────────────
-  if (layout.bdayY !== null) {
-    const zy  = layout.bdayY;
-    const ty  = zy + 3;   // text baseline (12px zone, 7px font → margin (12-7)/2=2.5→3)
-    const icy = zy + 4;   // icon y (7px tall icon, (12-7)/2=2.5→4 from zone top)
-
-    // Present icon (7px wide)
-    drawPresent(fb, 1, icy);
-
-    // Scrolling birthday text
-    const bTextW    = tw(BIRTHDAY_TEXT);
-    const bVisibleW = 63 - 9;  // x=9..63 = 54px
-    bdayScroll = advanceScroll(bdayScroll, bTextW, bVisibleW);
-    const bdrawX = 9 - bdayScroll;
-    fr(fb, 9, ty, 55, 7, 8, 32, 38); // clear text area
-    dtScrolled(fb, bdrawX, ty, BIRTHDAY_TEXT, 230, 215, 160, 9, 63);
-
-  }
-
-  // ── Jour J content ────────────────────────────────────────────────────────────
-  if (layout.jourJY !== null) {
-    const zy  = layout.jourJY;
-    const ty  = zy + 3;
-    const icy = zy + 4;
-
-    // Party icon
-    drawParty(fb, 1, icy);
-
-    // Fixed J-N label
-    const jnStr = 'J-' + JOUR_J_DAYS;
-    dt(fb, 9, ty, jnStr, 240, 200, 55);
-    const jnEndX = 9 + tw(jnStr) + 3;  // gap after J-N
-
-    // Scrolling event label
-    const jLabelW   = tw(JOUR_J_LABEL);
-    const jVisibleW = 63 - jnEndX;
-    if (jVisibleW > 0) {
-      jourJScroll = advanceScroll(jourJScroll, jLabelW, jVisibleW);
-      const jDrawX = jnEndX - jourJScroll;
-      fr(fb, jnEndX, ty, 64 - jnEndX, 7, 22, 18, 52); // clear label area
-      dtScrolled(fb, jDrawX, ty, JOUR_J_LABEL, 100, 200, 220, jnEndX, 63);
-    }
-  }
-
-  // ── Update prev state ─────────────────────────────────────────────────────────
-  prevA = { clockHHMM:hhmm, weatherKey:wxKey, times:curTimes, lineSet, nRows, bdayOn, jourJOn };
-
-  // ── Zone log ──────────────────────────────────────────────────────────────────
-  const names = [...changed];
-  const el = document.getElementById('zoneLog');
-  if (names.length || true) {
-    const scrollInfo = LINES.slice(0,nRows).map((l,i)=>`R${i}:+${destScroll[i]}`).join(' ');
-    const extras = [];
-    if (layout.bdayY !== null) extras.push('bday:+'+bdayScroll);
-    if (layout.jourJY !== null) extras.push('jourj:+'+jourJScroll);
-    el.innerHTML = names.length
-      ? 'Zones redessinées: ' + names.map(n=>`<span>${n}</span>`).join(', ') + '<br><em style="color:#336">Défilement: '+scrollInfo+(extras.length?' · '+extras.join(' '):'')+'</em>'
-      : '<span style="color:#333">Aucun changement — défilement: '+scrollInfo+(extras.length?' · '+extras.join(' '):'')+'</span>';
+    ctx.putImageData(img, 0, 0);
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// DRAW CLOCK MODE  (offline — unchanged)
-// ══════════════════════════════════════════════════════════════════════════════
-let bgFrame = 0;
-function drawClock(fb) {
-  const wx      = document.getElementById('selWeather').value;
-  const isNight = document.getElementById('selPeriod').value === 'night';
-  const wxData  = WX_PRESETS[wx] || null;
-  const now     = new Date();
-  const hh      = now.getHours().toString().padStart(2,'0');
-  const mm      = now.getMinutes().toString().padStart(2,'0');
-  const ss      = now.getSeconds().toString().padStart(2,'0');
+// ── Line colors & tints ────────────────────────────────────────────────────────
+function lineColor(l) {
+  return ({A:[200,16,46],B:[123,45,139],C:[224,123,16],D:[46,139,60],
+           E:[111,44,145],F:[197,20,91],G:[92,107,192]})[l] || [84,110,122];
+}
+function rowTint(lr,lg,lb) {
+  return [Math.min(255,Math.floor(lr*12/100)+5),
+          Math.min(255,Math.floor(lg*12/100)+9),
+          Math.min(255,Math.floor(lb*12/100)+16)];
+}
 
-  drawBg(fb, wx, isNight, bgFrame);
-
-  const clockStr = hh+':'+mm;
-  const cw = tw(clockStr, 2);
-  const cx = Math.round((64-cw)/2);
-  dt(fb, cx+1, 3, clockStr, 10, 20, 50, 2);
-  dt(fb, cx,   2, clockStr, 255, 255, 255, 2);
-
-  const ssStr = ':'+ss;
-  const sw = tw(ssStr, 1);
-  const scx = Math.round((64-sw)/2);
-  dt(fb, scx, 19, ssStr, 120, 130, 160, 1);
-
-  // Weather footer (y=53..63)
-  fr(fb, 0, 53, 64, 11, 10, 16, 34);
-  fr(fb, 0, 53, 64, 1,  18, 26, 50);
-  if (wxData) {
-    wicon_sm(fb, 1, 55, wx);
-    // Narrow minus (-) = 3 px wide, advance 4; reduce gap before '/' by 2 px
-    let tx = dtTmp(fb, 9, 55, wxData.min+'\u00B0', 100, 150, 255);
-    tx -= 2;
-    tx = dt(fb, tx, 55, '/', 50, 60, 80);
-    dtTmp(fb, tx, 55, wxData.max+'\u00B0', 255, 140, 60);
-    dtRTmp(fb, 62, 55, wxData.temp+'\u00B0', 200, 200, 180);
+// ── Small weather icon 6×5 ────────────────────────────────────────────────────
+function drawWeatherIconSm(fb, x, y, pc) {
+  const night = pc > 100; const c = night ? pc - 100 : pc;
+  if (night && c <= 3) {
+    fb.fillRect(x+1,y,4,2,220,220,180); fb.fillRect(x,y+2,2,2,220,220,180); return;
+  }
+  if (c===1) {
+    fb.fillRect(x+2,y,2,1,255,220,0); fb.fillRect(x+1,y+1,4,3,255,220,0); fb.fillRect(x+2,y+4,2,1,255,220,0);
+  } else if (c<=3) {
+    fb.set(x+4,y,255,200,0); fb.fillRect(x+1,y+1,2,1,255,200,0); fb.fillRect(x,y+2,6,3,200,200,210);
+  } else if (c<=4||c===31||c===34) {
+    fb.fillRect(x+1,y,4,2,180,180,200); fb.fillRect(x,y+2,6,3,200,200,210);
+  } else if (c<=6) {
+    for(let r=0;r<5;r++){const xo=r%2?1:0;fb.fillRect(x+xo,y+r,5,1,160,160,180);}
+  } else if (c<=11||c===19||c===33||c===35) {
+    fb.fillRect(x,y,6,2,100,140,200);
+    [1,3,5].forEach(dx=>fb.set(x+dx,y+3,100,160,255));
+    [0,2,4].forEach(dx=>fb.set(x+dx,y+4,100,160,255));
+  } else if (c<=18) {
+    fb.fillRect(x,y,6,2,160,180,220);
+    [1,3,5].forEach(dx=>fb.set(x+dx,y+3,220,240,255));
+    [0,2,4].forEach(dx=>fb.set(x+dx,y+4,220,240,255));
+  } else if (c<=28) {
+    fb.fillRect(x,y,6,2,80,80,120); fb.fillRect(x+2,y+2,2,2,255,240,0); fb.fillRect(x+1,y+4,2,1,255,240,0);
   } else {
-    dtC(fb, 32, 55, 'HORS-LIGNE', 80, 90, 110);
+    fb.fillRect(x+1,y,4,2,160,160,180); fb.fillRect(x,y+2,6,3,180,180,200);
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// WEATHER PRESETS
-// ══════════════════════════════════════════════════════════════════════════════
-const WX_PRESETS = {
-  sunny:  {temp:19, min:12, max:19},
-  cloudy: {temp:14, min:7,  max:13},
-  rain:   {temp:10, min:6,  max:11},
-  snow:   {temp:-2, min:-4, max:2 },
-  thunder:{temp:11, min:8,  max:13},
-  fog:    {temp:8,  min:5,  max:10},
-};
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ANIMATION LOOP
-// ══════════════════════════════════════════════════════════════════════════════
-let paused = false;
-
-function tick() {
-  if (paused) return;
-  drawDepartures(fbA);
-  flush(document.getElementById('ca'), fbA);
-  drawClock(fbB);
-  flush(document.getElementById('cb'), fbB);
-  bgFrame++;
+// ── Large weather icon 16×16 ──────────────────────────────────────────────────
+function drawWeatherIconLg(fb, x, y, pc) {
+  const night = pc > 100; const c = night ? pc - 100 : pc;
+  if (night && c <= 3) {
+    for(let py=0;py<16;py++) for(let px=0;px<16;px++) {
+      const dx=px-8,dy=py-8;
+      if(dx*dx+dy*dy<=64&&!((dx-3)**2+(dy-2)**2<=25)) fb.set(x+px,y+py,220,220,180);
+    }
+    return;
+  }
+  if (c===1) {
+    fb.fillRect(x+4,y+4,8,8,255,220,0);
+    fb.fillRect(x+7,y,2,3,255,195,0);fb.fillRect(x+7,y+13,2,3,255,195,0);
+    fb.fillRect(x,y+7,3,2,255,195,0);fb.fillRect(x+13,y+7,3,2,255,195,0);
+    fb.fillRect(x+2,y+2,2,2,240,175,0);fb.fillRect(x+12,y+2,2,2,240,175,0);
+    fb.fillRect(x+2,y+12,2,2,240,175,0);fb.fillRect(x+12,y+12,2,2,240,175,0);
+  } else if (c<=3) {
+    fb.fillRect(x+5,y+1,6,4,240,200,60);fb.fillRect(x+3,y+6,10,4,190,190,210);fb.fillRect(x+1,y+8,14,5,210,210,220);
+  } else if (c<=4||c===31||c===34) {
+    fb.fillRect(x+3,y+1,10,4,180,180,200);fb.fillRect(x+1,y+4,14,5,200,200,210);fb.fillRect(x,y+8,16,5,210,210,220);
+  } else if (c<=6) {
+    for(let r=0;r<8;r++){const xo=r%2?1:0;fb.fillRect(x+xo,y+r*2,15,1,160,160,180);}
+  } else if (c<=11||c===19||c===33||c===35) {
+    fb.fillRect(x,y,16,5,100,140,200);fb.fillRect(x+2,y+3,12,3,80,120,190);
+    for(let col=0;col<4;col++){fb.fillRect(x+1+col*4,y+7,1,3,100,160,255);fb.fillRect(x+3+col*4,y+10,1,3,100,160,255);}
+  } else if (c<=18) {
+    fb.fillRect(x,y,16,5,160,180,220);fb.fillRect(x+2,y+3,12,3,140,165,215);
+    for(let col=0;col<4;col++){fb.set(x+2+col*4,y+8,220,240,255);fb.set(x+4+col*4,y+10,220,240,255);fb.set(x+2+col*4,y+12,220,240,255);fb.set(x+4+col*4,y+14,220,240,255);}
+  } else if (c<=28) {
+    fb.fillRect(x,y,16,5,80,80,120);fb.fillRect(x+2,y+3,12,3,60,60,100);
+    fb.fillRect(x+8,y+7,3,4,255,240,0);fb.fillRect(x+6,y+9,3,4,255,240,0);fb.fillRect(x+5,y+12,2,3,255,240,0);
+  } else {
+    fb.fillRect(x+2,y+2,12,6,160,160,180);fb.fillRect(x,y+6,16,8,180,180,200);
+  }
 }
 
-setInterval(tick, 1000);
-tick();
+// ── Birthday icons 6×7 ────────────────────────────────────────────────────────
+function drawIconCake(fb,x,y){
+  fb.set(x+2,y,255,220,80);fb.fillRect(x+2,y+1,1,2,200,200,220);
+  fb.fillRect(x,y+3,6,1,210,190,240);fb.fillRect(x,y+4,6,3,190,155,220);
+  fb.set(x+1,y+5,255,100,100);fb.set(x+3,y+5,100,200,100);fb.set(x+5,y+5,100,100,255);
+}
+function drawIconPresent(fb,x,y){
+  fb.fillRect(x,y+3,6,3,91,142,238);fb.fillRect(x,y+2,6,1,122,170,245);
+  fb.fillRect(x+2,y+2,2,4,230,220,168);fb.fillRect(x,y+3,6,1,230,220,168);
+  fb.fillRect(x+1,y,2,2,232,112,112);fb.fillRect(x+3,y,2,2,232,112,112);
+}
+function drawIconHeart(fb,x,y){
+  fb.fillRect(x+1,y,2,1,220,60,60);fb.fillRect(x+4,y,2,1,220,60,60);
+  fb.fillRect(x,y+1,6,2,220,60,60);fb.fillRect(x+1,y+3,4,2,220,60,60);fb.fillRect(x+2,y+5,2,1,220,60,60);
+}
 
-document.getElementById('btnPause').addEventListener('click', function() {
-  paused = !paused;
-  this.textContent = paused ? '▶ Reprendre' : '⏸ Pause';
-  if (!paused) tick();
-});
+// ── Weather label ─────────────────────────────────────────────────────────────
+function weatherLabel(pc) {
+  const c = pc > 100 ? pc - 100 : pc;
+  const night = pc > 100;
+  if (c===1) return night ? 'Ciel clair' : 'Ensoleille';
+  if (c<=3)  return 'Peu nuageu';
+  if (c===4) return 'Nuageux';
+  if (c<=6)  return 'Brouillard';
+  if (c<=9)  return 'Pluie';
+  if (c<=11) return 'Forte pluie';
+  if (c<=15) return 'Neige';
+  if (c<=18) return 'Forte neige';
+  if ([19,33,35].includes(c)) return 'Pluie';
+  if (c<=22) return 'Orage';
+  if (c<=28) return 'Orage fort';
+  if ([31,34].includes(c)) return 'Nuageux';
+  return 'Variable';
+}
 
-['selWeather','selPeriod','selRows','selArriving','selBirthday','selJourJ'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    prevA = {clockHHMM:null,weatherKey:null,times:[null,null,null,null],lineSet:null,nRows:null,bdayOn:null,jourJOn:null};
-    Object.keys(highlightFrames).forEach(k=>delete highlightFrames[k]);
-    for(let i=0;i<4;i++) destScroll[i]=0;
-    bdayScroll=0; jourJScroll=0;
-    tick();
+// ── Shared header (y=0..9) ────────────────────────────────────────────────────
+function drawHeader(fb, weather) {
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  fb.fillRect(0,0,64,9,14,20,40);
+  fb.drawText(1,1,hhmm,255,255,255,1);
+  if (weather) {
+    const temp = `${Math.round(weather.temp_now)}°`;
+    fb.drawTextRight(63,1,temp,180,220,255,1);
+    drawWeatherIconSm(fb, 37, 2, weather.pictocode);
+  }
+  fb.fillRect(0,9,64,1,30,50,80);
+}
+
+// ── Departure screen ───────────────────────────────────────────────────────────
+function drawDepartures(fb, stop, weather) {
+  fb.fillRect(0,0,64,64,6,10,20);
+  drawHeader(fb, weather);
+  const lines = stop.lines || [];
+  const n = Math.min(lines.length, 4);
+  if (!n) return;
+  const rowH = n <= 2 ? 27 : n === 3 ? 18 : 13;
+
+  for (let i = 0; i < n; i++) {
+    const line = lines[i];
+    const rowY = 10 + i * rowH;
+    const [lr,lg,lb] = lineColor(line.line);
+    const [br,bg,bb] = rowTint(lr,lg,lb);
+    fb.fillRect(0,rowY,64,rowH,br,bg,bb);
+    fb.fillRect(0,rowY,5,rowH,lr,lg,lb);
+
+    const t1 = String(line.departures[0] ?? 0);
+    const t2 = line.departures[1] != null ? String(line.departures[1]) : null;
+
+    if (rowH >= 27) {
+      // Zone 1: badge + first time
+      fb.fillRect(6,rowY,9,9,lr,lg,lb);
+      const lw = [...line.line].length * 6 - 1;
+      fb.drawText(6 + Math.floor((9-lw)/2), rowY+1, line.line, 255,255,255,1);
+      fb.drawTextRight(63, rowY+1, t1, 255,220,80,1);
+      // Zone 2: destination
+      fb.drawTextClipped(6, rowY+10, line.destination, 200,212,235,1, 6,63);
+      // Zone 3: second time
+      if (t2) fb.drawTextRight(63, rowY+19, t2, 220,170,50,1);
+
+    } else if (rowH === 18) {
+      fb.fillRect(6,rowY,9,9,lr,lg,lb);
+      const lw = [...line.line].length * 6 - 1;
+      fb.drawText(6 + Math.floor((9-lw)/2), rowY+1, line.line, 255,255,255,1);
+      fb.drawTextRight(63, rowY+1, t1, 255,220,80,1);
+      // dest split at 5 word-boundary
+      const [l1,l2] = splitDestLines(line.destination, 5);
+      fb.drawTextClipped(17, rowY+1, l1, 200,212,235,1, 17,51);
+      const l2end = t2 ? 50 : 83;
+      if (l2) fb.drawTextClipped(6, rowY+10, l2, 150,160,185,1, 6,l2end);
+      if (t2) fb.drawTextRight(63, rowY+10, t2, 200,155,40,1);
+
+    } else {
+      // row_h=13 compact
+      const ty = rowY + Math.floor((13 - 7) / 2);
+      fb.fillRect(6,ty,7,7,lr,lg,lb);
+      const lw = [...line.line].length * 6 - 1;
+      fb.drawText(6 + Math.floor((7-lw)/2), ty, line.line, 255,255,255,1);
+      const dest5 = [...line.destination].slice(0,5).join('');
+      fb.drawTextClipped(15, ty, dest5, 200,212,235,1, 15,50);
+      fb.drawTextRight(63, ty, t1, 255,220,80,1);
+    }
+  }
+  if (n === 4) fb.fillRect(0,62,64,2,6,10,20);
+}
+
+// ── Destination word-boundary split ──────────────────────────────────────────
+function splitDestLines(dest, maxChars) {
+  const chars = [...dest];
+  if (chars.length <= maxChars) return [dest, ''];
+  let split = maxChars;
+  for (let i = Math.min(maxChars, chars.length-1); i >= 0; i--) {
+    if (chars[i]===' '||chars[i]==='-') { split = chars[i]==='-' ? i+1 : i; break; }
+  }
+  split = Math.min(split, chars.length);
+  const l1 = chars.slice(0,split).join('');
+  const l2start = split < chars.length && chars[split]===' ' ? split+1 : split;
+  const l2 = chars.slice(l2start, l2start+maxChars).join('');
+  return [l1, l2];
+}
+
+// ── Weather screen ────────────────────────────────────────────────────────────
+function drawWeather(fb, weather) {
+  fb.fillRect(0,0,64,64,8,12,26);
+  drawHeader(fb, weather);
+  if (!weather) return;
+  drawWeatherIconLg(fb, 24, 10, weather.pictocode);
+  fb.drawTextCenter(31,28,`${Math.round(weather.temp_now)}°`,255,220,80,1);
+  fb.drawText(2,37,`${Math.round(weather.temp_min)}°`,100,150,255,1);
+  fb.drawTextCenter(31,37,'-',60,70,110,1);
+  fb.drawTextRight(62,37,`${Math.round(weather.temp_max)}°`,255,140,60,1);
+  fb.drawTextCenter(31,47,weatherLabel(weather.pictocode),170,210,170,1);
+  fb.fillRect(0,55,64,1,22,32,58);
+  fb.drawTextClipped(1,57,weather.location,150,140,160,1,1,62);
+}
+
+// ── Birthday/Jour-J screen ────────────────────────────────────────────────────
+function splitBdayLabel(label) {
+  const chars = [...label];
+  const l1 = chars.slice(0,9).join('');
+  if (chars.length <= 9) return [l1,'',''];
+  const l2 = chars.slice(9,19).join('');
+  if (chars.length <= 19) return [l1,l2,''];
+  const l3 = chars.slice(19,29).join('');
+  return [l1,l2,l3];
+}
+
+function buildBdayRows(board) {
+  const rows = [];
+  for (const name of (board.birthdays || [])) {
+    const [l1,l2,l3] = splitBdayLabel(name);
+    rows.push({accent:[220,200,80],icon:'cake',text:[255,240,160],l1,l2,l3});
+  }
+  for (const ev of (board.events || [])) {
+    const label = ev.icon === 'present'
+      ? `+${ev.days}j ${ev.label}`
+      : `J-${ev.days} ${ev.label}`;
+    const [icon,accent,text] = ev.icon === 'present'
+      ? ['present',[100,120,240],[180,200,255]]
+      : ['heart',[180,80,220],[220,170,255]];
+    const [l1,l2,l3] = splitBdayLabel(label);
+    rows.push({accent,icon,text,l1,l2,l3});
+  }
+  return rows;
+}
+
+function rowHeight(row) {
+  return row.l3 ? 27 : row.l2 ? 18 : 9;
+}
+
+function paginateBday(rows) {
+  const pages = [];
+  let start = 0, used = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const h = rowHeight(rows[i]);
+    if (used + h > 54 && i > start) { pages.push([start,i]); start = i; used = 0; }
+    used += h;
+  }
+  if (start < rows.length) pages.push([start, rows.length]);
+  return pages;
+}
+
+function computeBirthdayPages(board) {
+  const rows = buildBdayRows(board);
+  if (!rows.length) return 1;
+  return Math.max(1, paginateBday(rows).length);
+}
+
+function drawBirthdayJourJ(fb, board, page) {
+  fb.fillRect(0,0,64,64,14,10,30);
+  fb.fillRect(0,0,64,9,42,18,62);
+  fb.drawText(1,1,'Moments',230,200,255,1);
+  fb.fillRect(0,9,64,1,65,35,85);
+
+  const rows = buildBdayRows(board);
+  if (!rows.length) {
+    fb.drawTextCenter(31,30,'Aucun',80,70,100,1);
+    fb.drawTextCenter(31,39,'evenement',80,70,100,1);
+    return;
+  }
+  const pages = paginateBday(rows);
+  const p = Math.min(page, pages.length - 1);
+  const [start, end] = pages[p];
+
+  let y = 10;
+  for (let s = 0; s < end - start; s++) {
+    const row = rows[start + s];
+    const h = rowHeight(row);
+    const [br,bg,bb] = s%2===0 ? [18,13,34] : [14,10,28];
+    fb.fillRect(0,y,64,h,br,bg,bb);
+    fb.fillRect(0,y,2,h,...row.accent);
+    if (row.icon==='cake')    drawIconCake(fb,3,y+1);
+    else if(row.icon==='present') drawIconPresent(fb,3,y+1);
+    else                      drawIconHeart(fb,3,y+1);
+    fb.drawText(11,y+1,row.l1,...row.text,1);
+    if (row.l2) fb.drawTextClipped(3,y+10,row.l2,...row.text,1,3,63);
+    if (row.l3) fb.drawTextClipped(3,y+19,row.l3,...row.text,1,3,63);
+    y += h;
+  }
+}
+
+// ── App state ─────────────────────────────────────────────────────────────────
+const SCALE = 8;
+const canvas = document.getElementById('display');
+canvas.width  = 64 * SCALE;
+canvas.height = 64 * SCALE;
+
+const fb = new Fb();
+let playing = true;
+let screenIdx = 0;
+let screens = [];
+let dwellMs = 7000;
+let progressStart = Date.now();
+let rafId = null;
+let lastSecond = -1;
+
+// Demo stops config
+const stopConfigs = [
+  { enabled: true, ref: '298B', name: 'Jean Jaurès',
+    lines: [
+      { line:'A', destination:'Hautepierre', departures:[3,11] },
+      { line:'B', destination:'Illkirch Lixenbuhl', departures:[7,18] },
+    ]},
+  { enabled: false, ref: '298A', name: 'Jean Jaurès',
+    lines: [
+      { line:'C', destination:'Elsau', departures:[2,9] },
+      { line:'D', destination:'Aristide Briand', departures:[5,14] },
+      { line:'E', destination:'Baggersee Plage', departures:[8,20] },
+    ]},
+  { enabled: false, ref: '233A', name: "Homme de Fer",
+    lines: [
+      { line:'A', destination:'Lingolsheim', departures:[1,8] },
+      { line:'B', destination:'Hoenheim', departures:[4,13] },
+      { line:'C', destination:'Neuhof', departures:[6,17] },
+      { line:'D', destination:'Poteries', departures:[9,22] },
+    ]},
+];
+
+let wxConfig = { enabled: true, pictocode: 1, temp_now: 18, temp_min: 6, temp_max: 22, location: 'Strasbourg' };
+let bdayConfig = { enabled: true };
+let bdayNames = ['Marie-Helene'];
+let eventList = [
+  { label: 'Voyage en Irlande', days: 1, icon: 'present' },
+  { label: 'Anniversaire Mariage', days: 15, icon: 'heart' },
+  { label: 'Noel en famille', days: 243, icon: 'heart' },
+];
+
+function getBoard() {
+  return {
+    birthdays: bdayNames,
+    events: eventList,
+  };
+}
+
+function buildScreens() {
+  const list = [];
+  stopConfigs.forEach((stop, i) => {
+    if (stop.enabled) list.push({ type: 'dep', stop });
   });
-});
+  if (wxConfig.enabled) list.push({ type: 'wx' });
+  if (bdayConfig.enabled) {
+    const board = getBoard();
+    const n = computeBirthdayPages(board);
+    for (let p = 0; p < n; p++) list.push({ type: 'bday', page: p });
+  }
+  if (!list.length) list.push({ type: 'dep', stop: stopConfigs[0] });
+  screens = list;
+  if (screenIdx >= screens.length) screenIdx = 0;
+}
+
+function screenLabel(s) {
+  if (s.type === 'dep') return `Départs — ${s.stop.ref}`;
+  if (s.type === 'wx')  return 'Météo';
+  return `Moments ${screens.filter(x=>x.type==='bday').indexOf(s)+1}/${screens.filter(x=>x.type==='bday').length}`;
+}
+
+function screenClass(s) {
+  if (s.type === 'dep') return 'dep';
+  if (s.type === 'wx')  return 'wx';
+  return 'bday';
+}
+
+function renderScreen() {
+  const s = screens[screenIdx];
+  fb.px.fill(0);
+  const wx = wxConfig.enabled ? wxConfig : null;
+  if (s.type === 'dep') {
+    drawDepartures(fb, s.stop, wx);
+  } else if (s.type === 'wx') {
+    drawWeather(fb, wxConfig);
+  } else {
+    drawBirthdayJourJ(fb, getBoard(), s.page);
+  }
+  fb.paint(canvas, SCALE);
+  document.getElementById('screen-name').textContent = screenLabel(s);
+  document.getElementById('screen-pos').textContent = `${screenIdx+1} / ${screens.length}`;
+  updateDots();
+}
+
+function updateDots() {
+  const wrap = document.getElementById('dots');
+  if (wrap.children.length !== screens.length) {
+    wrap.innerHTML = '';
+    screens.forEach((s,i) => {
+      const d = document.createElement('div');
+      d.className = 'dot ' + screenClass(s);
+      d.title = screenLabel(s);
+      d.onclick = () => { screenIdx = i; progressStart = Date.now(); renderScreen(); };
+      wrap.appendChild(d);
+    });
+  }
+  [...wrap.children].forEach((d,i) => {
+    d.classList.toggle('active', i === screenIdx);
+  });
+}
+
+function loop(ts) {
+  // Rebuild dots if screen count changed
+  if (document.getElementById('dots').children.length !== screens.length) updateDots();
+
+  // Re-render every second for live clock
+  const sec = Math.floor(Date.now() / 1000);
+  if (sec !== lastSecond) { lastSecond = sec; renderScreen(); }
+
+  // Progress bar
+  const elapsed = Date.now() - progressStart;
+  const pct = Math.min(100, elapsed / dwellMs * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+
+  // Auto-advance
+  if (playing && elapsed >= dwellMs) {
+    screenIdx = (screenIdx + 1) % screens.length;
+    progressStart = Date.now();
+    renderScreen();
+  }
+
+  rafId = requestAnimationFrame(loop);
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById('play-btn');
+  btn.textContent = playing ? '⏸ Pause' : '▶ Play';
+  btn.classList.toggle('paused', !playing);
+  if (playing) progressStart = Date.now();
+}
+function nextScreen() { screenIdx=(screenIdx+1)%screens.length; progressStart=Date.now(); renderScreen(); }
+function prevScreen() { screenIdx=(screenIdx-1+screens.length)%screens.length; progressStart=Date.now(); renderScreen(); }
+function dwellChange(el) { dwellMs=el.value*1000; document.getElementById('dwell-val').textContent=el.value+'s'; }
+
+// ── Stop blocks UI ────────────────────────────────────────────────────────────
+function buildLineSel(stopIdx, lineIdx) {
+  const lines = ['A','B','C','D','E','F','G'];
+  const sel = document.createElement('select');
+  sel.style.cssText = 'width:40px;font-size:11px;';
+  lines.forEach(l => { const o=document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o); });
+  sel.value = stopConfigs[stopIdx].lines[lineIdx].line;
+  sel.onchange = () => { stopConfigs[stopIdx].lines[lineIdx].line = sel.value; buildScreens(); renderScreen(); };
+  return sel;
+}
+
+function buildStopsUI() {
+  const cont = document.getElementById('stops-container');
+  cont.innerHTML = '';
+  stopConfigs.forEach((stop, si) => {
+    const blk = document.createElement('div'); blk.className = 'stop-block';
+    // Header
+    const hdr = document.createElement('div'); hdr.className = 'stop-block-header';
+    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=stop.enabled; cb.className='stop-enable';
+    cb.onchange = () => { stop.enabled=cb.checked; buildScreens(); renderScreen(); };
+    const lbl = document.createElement('label'); lbl.textContent = `Arrêt ${si+1}`;
+    hdr.appendChild(cb); hdr.appendChild(lbl); blk.appendChild(hdr);
+    // Ref / Name
+    const f1 = document.createElement('div'); f1.className='stop-field';
+    f1.innerHTML='<span>Réf</span>'; const ri=document.createElement('input'); ri.type='text'; ri.value=stop.ref;
+    ri.oninput=()=>{stop.ref=ri.value;buildScreens();renderScreen();}; f1.appendChild(ri);
+    const f2=document.createElement('div'); f2.className='stop-field';
+    f2.innerHTML='<span>Nom</span>'; const ni=document.createElement('input'); ni.type='text'; ni.value=stop.name;
+    ni.oninput=()=>{stop.name=ni.value;buildScreens();renderScreen();}; f2.appendChild(ni);
+    blk.appendChild(f1); blk.appendChild(f2);
+    // Lines
+    const f3=document.createElement('div'); f3.className='stop-field';
+    f3.innerHTML='<span>Lignes</span>';
+    const nsel=document.createElement('select'); nsel.style.cssText='width:50px;font-size:11px;';
+    [1,2,3,4].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;nsel.appendChild(o);});
+    nsel.value=stop.lines.length;
+    nsel.onchange=()=>{
+      const n=+nsel.value;
+      const tpl=[{line:'A',destination:'Terminus A',departures:[3,11]},{line:'B',destination:'Terminus B',departures:[7,18]},
+                 {line:'C',destination:'Terminus C',departures:[2,9]},{line:'D',destination:'Terminus D',departures:[5,14]}];
+      while(stop.lines.length<n) stop.lines.push(tpl[stop.lines.length]||tpl[3]);
+      stop.lines=stop.lines.slice(0,n);
+      buildStopsUI(); buildScreens(); renderScreen();
+    };
+    f3.appendChild(nsel); blk.appendChild(f3);
+    // Per-line config
+    stop.lines.forEach((line, li) => {
+      const lf=document.createElement('div'); lf.className='stop-field';
+      const ls=buildLineSel(si,li); lf.appendChild(ls);
+      const di=document.createElement('input'); di.type='text'; di.value=line.destination; di.style.cssText='flex:1;font-size:11px;';
+      di.oninput=()=>{line.destination=di.value;renderScreen();};
+      lf.appendChild(di);
+      const t1=document.createElement('input'); t1.type='number'; t1.value=line.departures[0]; t1.style.cssText='width:34px;font-size:11px;';
+      t1.oninput=()=>{line.departures[0]=+t1.value;renderScreen();};
+      const t2=document.createElement('input'); t2.type='number'; t2.value=line.departures[1]; t2.style.cssText='width:34px;font-size:11px;';
+      t2.oninput=()=>{line.departures[1]=+t2.value;renderScreen();};
+      lf.appendChild(t1); lf.appendChild(t2); blk.appendChild(lf);
+    });
+    cont.appendChild(blk);
+  });
+}
+
+// ── Event/Birthday list UI ────────────────────────────────────────────────────
+function renderBdayList() {
+  const el = document.getElementById('bday-list'); el.innerHTML='';
+  bdayNames.forEach((name,i) => {
+    const row=document.createElement('div'); row.className='event-row';
+    const inp=document.createElement('input'); inp.type='text'; inp.value=name;
+    inp.oninput=()=>{bdayNames[i]=inp.value;buildScreens();renderScreen();};
+    const del=document.createElement('button'); del.className='event-del'; del.textContent='✕';
+    del.onclick=()=>{bdayNames.splice(i,1);renderBdayList();buildScreens();renderScreen();};
+    row.appendChild(inp); row.appendChild(del); el.appendChild(row);
+  });
+}
+function addBday() { bdayNames.push('Prénom'); renderBdayList(); buildScreens(); renderScreen(); }
+
+function renderEventList() {
+  const el=document.getElementById('event-list'); el.innerHTML='';
+  eventList.forEach((ev,i) => {
+    const row=document.createElement('div'); row.className='event-row';
+    const li=document.createElement('input'); li.type='text'; li.value=ev.label; li.placeholder='Label';
+    li.oninput=()=>{ev.label=li.value;buildScreens();renderScreen();};
+    const di=document.createElement('input'); di.type='number'; di.value=ev.days; di.style.width='44px'; di.title='Jours';
+    di.oninput=()=>{ev.days=+di.value;buildScreens();renderScreen();};
+    const ic=document.createElement('select'); ic.style.width='70px';
+    ['present','heart'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;ic.appendChild(o);});
+    ic.value=ev.icon; ic.onchange=()=>{ev.icon=ic.value;buildScreens();renderScreen();};
+    const del=document.createElement('button'); del.className='event-del'; del.textContent='✕';
+    del.onclick=()=>{eventList.splice(i,1);renderEventList();buildScreens();renderScreen();};
+    row.appendChild(li); row.appendChild(di); row.appendChild(ic); row.appendChild(del); el.appendChild(row);
+  });
+}
+function addEvent() {
+  eventList.push({label:'Nouvel événement',days:30,icon:'heart'});
+  renderEventList(); buildScreens(); renderScreen();
+}
+
+// ── Weather controls binding ──────────────────────────────────────────────────
+function bindWx() {
+  document.getElementById('wx-enabled').onchange = e => { wxConfig.enabled=e.target.checked; buildScreens(); renderScreen(); };
+  document.getElementById('wx-pictocode').onchange = e => { wxConfig.pictocode=+e.target.value; renderScreen(); };
+  document.getElementById('wx-temp').oninput = e => { wxConfig.temp_now=+e.target.value; renderScreen(); };
+  document.getElementById('wx-min').oninput  = e => { wxConfig.temp_min=+e.target.value; renderScreen(); };
+  document.getElementById('wx-max').oninput  = e => { wxConfig.temp_max=+e.target.value; renderScreen(); };
+  document.getElementById('wx-loc').oninput  = e => { wxConfig.location=e.target.value; renderScreen(); };
+  document.getElementById('bday-enabled').onchange = e => { bdayConfig.enabled=e.target.checked; buildScreens(); renderScreen(); };
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildStopsUI();
+renderBdayList();
+renderEventList();
+bindWx();
+buildScreens();
+renderScreen();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
