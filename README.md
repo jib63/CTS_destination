@@ -10,7 +10,7 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 |:---:|:---:|
 | ![Status CTS](docs/screenshots/status-cts.png) | ![Status Météoblue](docs/screenshots/status-meteoblue.png) |
 
-![Pixoo64 simulator](docs/screenshots/pixoo64.png)
+![Pixoo64](docs/screenshots/pixoo64.gif)
 
 | Config — Arrêt | Config — Recherche | Config — Compteur J |
 |:---:|:---:|:---:|
