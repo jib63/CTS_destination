@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
         let mut pixoo_screens: Vec<ScreenType> =
             (0..n_stops).map(ScreenType::Departures).collect();
         if weather_enabled  { pixoo_screens.push(ScreenType::Weather); }
-        if birthday_jour_j  { pixoo_screens.push(ScreenType::BirthdayJourJ); }
+        if birthday_jour_j  { pixoo_screens.push(ScreenType::BirthdayJourJ(0)); }
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Box<crate::departure::model::BoardPayload>>();
         renderers.push(Box::new(Pixoo64Renderer::new(tx)));

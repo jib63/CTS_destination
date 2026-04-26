@@ -7,7 +7,8 @@ use crate::departure::model::{BoardPayload, DepartureBoard};
 use crate::display::DisplayRenderer;
 use crate::web::AppState;
 use crate::pixoo64::draw::{
-    fb_to_png, render_frames, render_weather_frame, render_birthday_frame, Fb,
+    fb_to_png, render_frames, render_weather_frame, render_birthday_frame,
+    compute_birthday_pages, Fb,
 };
 
 // ── Screen types ──────────────────────────────────────────────────────────────
@@ -18,8 +19,17 @@ pub enum ScreenType {
     Departures(usize),
     /// Full-screen weather display (reads from `payload.boards[0].weather`).
     Weather,
-    /// Birthday / Jour-J countdown display.
-    BirthdayJourJ,
+    /// Birthday / Jour-J countdown, page index.
+    BirthdayJourJ(usize),
+}
+
+// Expand BirthdayJourJ(0) placeholders into one screen per page.
+fn build_active_screens(base: &[ScreenType], board: &crate::departure::model::DepartureBoard) -> Vec<ScreenType> {
+    let n = compute_birthday_pages(board);
+    base.iter().flat_map(|&s| match s {
+        ScreenType::BirthdayJourJ(_) => (0..n).map(ScreenType::BirthdayJourJ).collect::<Vec<_>>(),
+        other => vec![other],
+    }).collect()
 }
 
 // ── Pixoo64Renderer ───────────────────────────────────────────────────────────
@@ -88,6 +98,9 @@ pub async fn pixoo_worker(
         stop_rotation_secs: None,
     });
 
+    // Expanded screen list (birthday pages filled in from live data).
+    let mut active_screens = screens.clone();
+
     // Clock/offline mode: 10 fps, up to 40 frames (firmware safe limit).
     const ANIM_FPS: u64 = 10;
     const PIC_SPEED_MS: u64 = 1000 / ANIM_FPS;
@@ -96,10 +109,18 @@ pub async fn pixoo_worker(
     if let (Some(host), Some(level), false) = (&addr, brightness, simulation) {
         let url  = format!("http://{}/post", host);
         let body = serde_json::json!({
-            "Command":    "Device/SetBrightness",
+            "Command":    "Channel/SetBrightness",
             "Brightness": level,
         });
-        let _ = state.http_client.post(&url).json(&body).send().await;
+        info!(brightness = level, "Pixoo64 setting brightness");
+        match state.http_client.post(&url).json(&body).send().await {
+            Ok(resp) if resp.status().is_success() =>
+                info!(brightness = level, "Pixoo64 brightness set OK"),
+            Ok(resp) =>
+                warn!(brightness = level, status = %resp.status(), "Pixoo64 brightness command rejected"),
+            Err(e) =>
+                warn!(brightness = level, error = %e, "Pixoo64 brightness request failed"),
+        }
     }
 
     let tick = std::time::Duration::from_secs(screen_dwell_secs);
@@ -122,8 +143,8 @@ pub async fn pixoo_worker(
                 match maybe {
                     Some(p) => {
                         payload = p;
-                        // Re-render current screen with fresh data, reset timer.
-                        let screen = screens[screen_idx % screens.len()];
+                        active_screens = build_active_screens(&screens, &payload.boards[0]);
+                        let screen = active_screens[screen_idx % active_screens.len()];
                         render_and_send(
                             &mut fb, &mut bg_frame, &payload,
                             &state, &addr, simulation, n_frames, PIC_SPEED_MS, screen,
@@ -137,8 +158,8 @@ pub async fn pixoo_worker(
             _ = interval.tick() => {
                 // Advance to next screen, then render.
                 screen_idx = screen_idx.wrapping_add(1);
-                let screen = screens[screen_idx % screens.len()];
-                info!(screen = ?screen, idx = screen_idx % screens.len(), "Pixoo64 screen rotation");
+                let screen = active_screens[screen_idx % active_screens.len()];
+                info!(screen = ?screen, idx = screen_idx % active_screens.len(), "Pixoo64 screen rotation");
                 render_and_send(
                     &mut fb, &mut bg_frame, &payload,
                     &state, &addr, simulation, n_frames, PIC_SPEED_MS, screen,
@@ -179,8 +200,8 @@ async fn render_and_send(
                 render_frames(fb, board(0), *bg_frame, n_frames)
             }
         }
-        ScreenType::BirthdayJourJ => {
-            vec![render_birthday_frame(fb, board(0))]
+        ScreenType::BirthdayJourJ(page) => {
+            vec![render_birthday_frame(fb, board(0), page)]
         }
     };
 

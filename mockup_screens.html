@@ -274,8 +274,8 @@ function screen2trams() {
   drawHeader(ctx);
 
   const rows = [
-    { letter:'A', dest:'Hautepierre', time:'3' },
-    { letter:'B', dest:'Illkirch',    time:'7' },
+    { letter:'A', dest:'Hautepierre', time:'3',  time2:'11' },
+    { letter:'B', dest:'Illkirch',    time:'7',  time2:'18' },
   ];
 
   rows.forEach((row, i) => {
@@ -283,14 +283,14 @@ function screen2trams() {
     const [br,bg,bb] = tint(lr,lg,lb);
     const y = 10 + i * 27;
 
-    fr(ctx, 0, y, 64, 27, br, bg, bb);  // tinted bg
-    fr(ctx, 0, y,  5, 27, lr, lg, lb);  // accent bar full height
-    badge(ctx, 6, y, 9, row.letter, lr, lg, lb);  // 9×9 badge in zone 1
-    drawTextR(ctx, 63, y+1, row.time, 255, 220, 80, 1);  // time yellow right
+    fr(ctx, 0, y, 64, 27, br, bg, bb);
+    fr(ctx, 0, y,  5, 27, lr, lg, lb);
+    badge(ctx, 6, y, 9, row.letter, lr, lg, lb);
+    drawTextR(ctx, 63, y+1, row.time, 255, 220, 80, 1);   // zone 1: first time
 
-    const [l1, l2] = splitDest(row.dest, 9);
-    drawText(ctx, 6, y+10, l1, 200, 212, 235, 1);         // dest L1
-    if (l2) drawText(ctx, 6, y+19, l2, 140, 150, 175, 1); // dest L2
+    drawText(ctx, 6, y+10, row.dest, 200, 212, 235, 1);   // zone 2: destination
+
+    if (row.time2) drawTextR(ctx, 63, y+19, row.time2, 220, 170, 50, 1); // zone 3: second time
   });
 
   drawGrid(ctx); return c;
@@ -304,9 +304,9 @@ function screen3trams() {
   drawHeader(ctx);
 
   const rows = [
-    { letter:'C', dest:'Elsau',      time:'5'  },
-    { letter:'D', dest:'Robertsau',  time:'12' },
-    { letter:'E', dest:'Illkirch',   time:'3'  },
+    { letter:'C', dest:'Elsau',      time:'5',  time2:'24' },
+    { letter:'D', dest:'Robertsau',  time:'12', time2:'25' },
+    { letter:'E', dest:'Illkirch',   time:'3',  time2:'9'  },
   ];
 
   rows.forEach((row, i) => {
@@ -319,10 +319,14 @@ function screen3trams() {
     badge(ctx, 6, y, 9, row.letter, lr, lg, lb);
     drawTextR(ctx, 63, y+1, row.time, 255, 220, 80, 1);
 
-    // L1: right of badge (x=17), clip before time (max 5 chars)
+    // Zone 1: L1 right of badge, clipped
     const [l1, l2] = splitDest(row.dest, 5, 7);
-    drawText(ctx, 17, y+1, l1, 200, 212, 235, 1, 35);   // clipW=35 → lim=52
-    if (l2) drawText(ctx, 6, y+10, l2, 140, 150, 175, 1); // L2 full width in zone 2
+    drawText(ctx, 17, y+1, l1, 200, 212, 235, 1, 35);
+
+    // Zone 2: L2 (clipped if time2) + second time dimmer yellow
+    const l2Clip = row.time2 ? 44 : 57;
+    if (l2) drawText(ctx, 6, y+10, l2, 140, 150, 175, 1, l2Clip);
+    if (row.time2) drawTextR(ctx, 63, y+10, row.time2, 200, 155, 40, 1);
   });
 
   drawGrid(ctx); return c;
