@@ -11,11 +11,13 @@
 # already installed at ~/.local/zig-0.13.0.
 #
 # Usage:
-#   chmod +x build_freebox.sh
-#   ./build_freebox.sh
+#   ./build_freebox.sh            # build + create zip, then deploy via scp
+#   DEPLOY=0 ./build_freebox.sh   # build + create zip only (no scp)
+#   REMOTE=jib@freebox ./build_freebox.sh
 #
-# The resulting binary is a fully static ELF (no glibc dependency) — just
-# copy it to the Freebox and run it.
+# Outputs:
+#   dist-freebox/cts-departures   — binary ready for the Freebox
+#   dist-freebox.zip              — zip archive of dist-freebox/ for manual transfer
 
 set -eu
 
@@ -24,11 +26,14 @@ BINARY_NAME="cts-departures"
 ZIG_VER="0.13.0"
 ZIG_DIR="$HOME/.local/zig-${ZIG_VER}"
 DIST_DIR="dist-freebox"
+ZIP_NAME="dist-freebox.zip"
 
 # ── Remote deploy target ──────────────────────────────────────────────────────
 # Override with:  REMOTE=myuser@192.168.1.1 ./build_freebox.sh
+# Set DEPLOY=0 to skip the scp step and only produce the zip.
 REMOTE="${REMOTE:-user@freebox}"
 REMOTE_INSTANCES=(cts-gallia cts-jaures cts-portehop)
+DEPLOY="${DEPLOY:-1}"
 
 # ── 1. Ensure Zig is available ────────────────────────────────────────────────
 if ! command -v zig &>/dev/null; then
@@ -101,12 +106,24 @@ SIZE=$(du -h "$DIST_DIR/$BINARY_NAME" | cut -f1)
 echo ""
 echo "==> Done!  $DIST_DIR/$BINARY_NAME  ($SIZE)"
 
-# ── 6. Deploy binary to each instance on the Freebox ─────────────────────────
+# ── 6. Create zip archive ─────────────────────────────────────────────────────
 echo ""
-echo "==> Deploying to ${REMOTE}..."
-for INSTANCE in "${REMOTE_INSTANCES[@]}"; do
-    echo "    scp -r $DIST_DIR/$BINARY_NAME ${REMOTE}:~/${INSTANCE}/"
-    scp -r "$DIST_DIR/$BINARY_NAME" "${REMOTE}:~/${INSTANCE}/"
-done
-echo "==> Deploy complete."
+echo "==> Creating $ZIP_NAME..."
+rm -f "$ZIP_NAME"
+(cd "$DIST_DIR" && zip -r "../$ZIP_NAME" .)
+echo "    $(du -h "$ZIP_NAME" | cut -f1)  $ZIP_NAME"
+
+# ── 7. Deploy binary to each instance on the Freebox ─────────────────────────
+if [ "$DEPLOY" = "1" ]; then
+    echo ""
+    echo "==> Deploying to ${REMOTE}..."
+    for INSTANCE in "${REMOTE_INSTANCES[@]}"; do
+        echo "    scp $DIST_DIR/$BINARY_NAME ${REMOTE}:~/${INSTANCE}/"
+        scp "$DIST_DIR/$BINARY_NAME" "${REMOTE}:~/${INSTANCE}/"
+    done
+    echo "==> Deploy complete."
+else
+    echo ""
+    echo "==> Skipping deploy (DEPLOY=0). Transfer $ZIP_NAME manually."
+fi
 echo ""
