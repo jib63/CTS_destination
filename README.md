@@ -29,7 +29,7 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 - **Ornamental canvas** — arabesque SVG animations progress slowly in the empty zone below the weather banner, cycling through several designs
 - **Birthday of the day** — reads a JSON file of contacts and displays today's birthdays with age, when board space permits; J-0 birthdays are excluded from the Jour J row to avoid duplication
 - **Jour J countdown** — shows a scrolling marquee of multiple upcoming countdown events, each with a label and icon; events within N days of today are merged with upcoming birthdays in the same row; events at **J-0** (today) blink with a party animation
-- **Pixoo64 LED display** — renders a multi-screen rotation on a Divoom Pixoo64 64×64 LED matrix: one departure screen per monitored stop, an optional weather screen, and an optional birthday/Jour-J screen; screens rotate every configurable interval with a shared animated clock when offline
+- **Pixoo64 LED display** — renders an *Ambient Hub* on a Divoom Pixoo64 64×64 LED matrix: each screen has a permanent header (big clock + weather strip), the body cycles through one departure board per stop (tram lines as full-width tinted color-block rows) and compact moment screens for birthdays and Jour-J events; all timing is hot-reloadable at runtime
 - **Stop picker** — browse all CTS stops and switch at runtime without restarting the server
 - **Crontab-style query windows** — restrict API polling to specific hours or days using 5-field crontab expressions, supporting different schedules for weekdays vs. weekends
 - **Independent simulation modes** — CTS and weather can each be simulated independently; no API keys needed for either
@@ -173,9 +173,11 @@ cts_query_intervals = "* 6-9,14-17,22-23 * * 1-5; * 6-23 * * 0,6"
 
 # pixoo64_enabled = true
 # pixoo64_address = "192.168.1.42"
-# pixoo64_simulation = true         # render PNG preview only, no device calls
-# pixoo64_delay_between_screens = 7 # seconds each screen is shown before rotating to the next
-# pixoo64_brightness = 80           # screen brightness 0–100 (sent once at startup via Channel/SetBrightness)
+# pixoo64_simulation = true               # render PNG preview only, no device calls
+# pixoo64_brightness = 80                 # screen brightness 0–100 (sent once at startup)
+# pixoo64_tram_screen_seconds   = 6       # seconds each departure screen is shown (1–60)
+# pixoo64_moment_screen_seconds = 1       # seconds each birthday/Jour-J screen is shown (1–30)
+# pixoo64_lines_per_screen      = 4       # departure rows per screen (1–4)
 
 # ── Birthday feature (optional) ───────────────────────────────────────────────
 
@@ -365,33 +367,43 @@ The empty zone below the weather banner contains a slow ornamental animation: ar
 
 ## Pixoo64 LED display
 
-When `pixoo64_enabled = true`, the display cycles through a sequence of full-screen panels on a Divoom Pixoo64 64×64 LED matrix. Each panel is shown for `pixoo64_delay_between_screens` seconds (default 7) before rotating to the next.
+When `pixoo64_enabled = true`, the display renders the **Ambient Hub** design on a Divoom Pixoo64 64×64 LED matrix.
 
-**Screen rotation order:**
+### Layout
 
-1. **Departure screen** — one screen per `cts_monitoring_ref` entry. Shows all tram lines simultaneously in a static layout. Row height adapts to the number of lines:
-   - 1–2 lines: three 9px zones — badge + first time | full destination | second time (amber)
-   - 3 lines: two 9px zones — badge + destination L1 + first time | destination L2 + second time
-   - 4 lines: single compact row with clipped destination
-   - When offline or no departures: animated clock with weather footer and contextual background (stars/sun/rain/snow/thunder)
-2. **Weather screen** *(when `meteoblue_enabled = true`)* — large 16×16 weather icon, current temperature, daily min/max, condition label, location name
-3. **Birthday / Jour-J screen** *(when `birthday_enabled` or `jour_j_enabled`)* — upcoming birthdays (cake icon) and countdown events (present/heart icon); entries up to 3 lines of text; paginated when more entries than fit on one screen
+Every screen shares a permanent **header band** (y=0–28):
+- Large `HH:MM` clock (scale 2, white)
+- Weather icon + current temperature (yellow) + min/max (muted blue)
+- 1px divider
 
-All screens share a common 9px header band showing the current time and temperature.
+The **body** (y=29–63) cycles through:
 
-**Config keys:**
+1. **Hub screen** — one per `cts_monitoring_ref` entry. Departure rows are rendered as full-width tinted color-block bands, one per tram line, using each line's brand color:
+   - **4-line mode** — 4 rows of 8px, no stop name
+   - **3-line mode** — stop name + 3 rows of 8px
+   - **2-line mode** — stop name + 2 rows of 13px
+   - **1-line mode** — stop name + 1 row of 18px
+   - Row content: line letter (full brand color) | destination 4 chars (white) | next time right-aligned (yellow, or **hot orange** if < 2 min) | second time right-aligned (amber)
+   - Stops with no live lines and no offline message are skipped in the cycle
+2. **Moment screen** — compact clock header + tinted hero band (icon + event label) + wrapped body text; one per birthday and Jour-J event
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `pixoo64_enabled` | `false` | Enable the Pixoo64 renderer |
-| `pixoo64_address` | — | Device IP:port (e.g. `"192.168.1.42:80"`) |
-| `pixoo64_simulation` | `false` | Render PNG preview only; no device calls |
-| `pixoo64_delay_between_screens` | `7` | Seconds each screen is shown before rotating |
-| `pixoo64_brightness` | — | Screen brightness 0–100, sent once at startup |
+### Config keys
 
-- **Simulation mode** — set `pixoo64_simulation = true` to render a PNG preview served at `/api/pixoo64/preview` without sending anything to the device. Useful for layout development.
-- **Brightness** — uses the `Channel/SetBrightness` command (the `Device/SetBrightness` command is not supported by current Pixoo64 firmware). Sent once at startup; a log message confirms success or reports the error.
-- **Diagnostic tool** — `cargo run --bin pixoo_test -- <ip:port>` tests the device HTTP API and reports the raw response for each command variant.
+| Key | Default | Range | Hot-reload |
+|-----|---------|-------|-----------|
+| `pixoo64_enabled` | `false` | — | No |
+| `pixoo64_address` | — | — | No |
+| `pixoo64_simulation` | `false` | — | No |
+| `pixoo64_brightness` | — | 0–100 | No (startup only) |
+| `pixoo64_tram_screen_seconds` | `6` | 1–60 | Yes |
+| `pixoo64_moment_screen_seconds` | `1` | 1–30 | Yes |
+| `pixoo64_lines_per_screen` | `4` | 1–4 | Yes |
+
+Hot-reload: `POST /api/config {"pixoo64_lines_per_screen": 2}` takes effect on the next rendered frame.
+
+- **Simulation mode** — set `pixoo64_simulation = true` to render frames as PNG previews at `/api/pixoo64/preview` without sending anything to the device.
+- **Brightness** — uses `Channel/SetBrightness`; sent once at startup.
+- **Mockup** — open `mockup_pixoo64.html` in a browser for a 512×512 interactive preview with editable stops, weather, moments, and live rotation controls.
 
 ---
 
@@ -449,9 +461,9 @@ src/
 │   ├── model.rs         Meteoblue API types and WeatherSnapshot
 │   └── simulation.rs    Fixed offline weather values
 ├── pixoo64/
-│   ├── draw.rs          Frame renderer (departures, weather, birthday, Jour J)
+│   ├── draw.rs          Ambient Hub frame renderer (hub + moment screens, color palette)
 │   ├── font.rs          Embedded 5×7 bitmap font
-│   └── renderer.rs      Pixoo64 HTTP client and DisplayRenderer impl
+│   └── renderer.rs      Cycle state machine, pixoo_worker, DisplayRenderer impl
 └── web/
     ├── mod.rs           AppState, CronMatcher, interval parsing
     ├── router.rs        Axum routes and REST handlers

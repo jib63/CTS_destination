@@ -72,6 +72,12 @@ pub struct AppState {
     pub pixoo64_enabled: bool,
     /// Latest rendered frame as PNG bytes; served at /api/pixoo64/preview.
     pub pixoo64_preview: RwLock<Option<Vec<u8>>>,
+    /// Seconds each tram hub screen is shown (hot-reloadable).
+    pub pixoo64_tram_screen_seconds: AtomicU32,
+    /// Seconds each moment screen is shown (hot-reloadable).
+    pub pixoo64_moment_screen_seconds: AtomicU32,
+    /// Departure rows per hub screen, 1–4 (hot-reloadable).
+    pub pixoo64_lines_per_screen: AtomicU32,
 
     // ── Weather widget ──────────────────────────────────────────────────
     /// When true the weather widget is enabled.
@@ -137,6 +143,9 @@ impl AppState {
         weather_always_query: bool,
         weather_query_intervals_str: Option<String>,
         pixoo_enabled: bool,
+        pixoo_tram_secs: u32,
+        pixoo_moment_secs: u32,
+        pixoo_lines_per_screen: u8,
         birthday_enabled: bool,
         birthday_file: Option<String>,
         jour_j_enabled: bool,
@@ -192,6 +201,9 @@ impl AppState {
             meteoblue_polling_interval_minutes: weather_polling_interval_minutes,
             pixoo64_enabled: pixoo_enabled,
             pixoo64_preview: RwLock::new(None),
+            pixoo64_tram_screen_seconds:   AtomicU32::new(pixoo_tram_secs),
+            pixoo64_moment_screen_seconds: AtomicU32::new(pixoo_moment_secs),
+            pixoo64_lines_per_screen:      AtomicU32::new(pixoo_lines_per_screen as u32),
             birthday_enabled,
             birthday_file,
             jour_j_enabled,

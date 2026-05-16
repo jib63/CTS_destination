@@ -100,7 +100,7 @@ pub async fn poll_loop(
                 ))
                 .collect();
 
-            // Birthday + Jour J + weather only on boards[0]
+            // Birthday + Jour J on boards[0]; weather on all boards
             if let Some(first) = boards.first_mut() {
                 if state.birthday_enabled {
                     let path = state.birthday_file.as_deref().unwrap_or("data/birthdays.json");
@@ -111,6 +111,12 @@ pub async fn poll_loop(
                 }
                 if state.meteoblue_enabled {
                     first.weather = state.meteoblue_latest.read().await.clone();
+                }
+            }
+            if state.meteoblue_enabled && boards.len() > 1 {
+                let weather = boards[0].weather.clone();
+                for b in boards.iter_mut().skip(1) {
+                    b.weather = weather.clone();
                 }
             }
 
@@ -167,7 +173,7 @@ pub async fn poll_loop(
                 next_poll = tokio::time::Instant::now() + Duration::from_secs(30);
                 state.cts_next_poll_at.store(Utc::now().timestamp() + 30, Ordering::Relaxed);
             } else {
-                // Birthday + Jour J + weather only on boards[0]
+                // Birthday + Jour J on boards[0]; weather on all boards
                 if let Some(first) = boards.first_mut() {
                     if state.meteoblue_enabled {
                         first.weather = state.meteoblue_latest.read().await.clone();
@@ -178,6 +184,12 @@ pub async fn poll_loop(
                     }
                     if state.jour_j_enabled {
                         first.jour_j_events = build_jour_j_display(&state).await;
+                    }
+                }
+                if state.meteoblue_enabled && boards.len() > 1 {
+                    let weather = boards[0].weather.clone();
+                    for b in boards.iter_mut().skip(1) {
+                        b.weather = weather.clone();
                     }
                 }
 

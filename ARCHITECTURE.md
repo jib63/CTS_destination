@@ -65,9 +65,9 @@ src/
 │
 ├── pixoo64/
 │   ├── mod.rs
-│   ├── draw.rs           Frame composition: departures, weather, birthday/Jour-J, clock backgrounds
+│   ├── draw.rs           Ambient Hub frame renderer: hub header, dep-row color blocks, moment screens
 │   ├── font.rs           Embedded 5×7 pixel bitmap font
-│   └── renderer.rs       Multi-screen rotation worker, ScreenType enum, Pixoo64 HTTP client
+│   └── renderer.rs       Cycle state machine (ScreenSlot/MomentItem), pixoo_worker, HTTP client
 ├── bin/
 │   └── pixoo_test.rs     Standalone diagnostic binary for Pixoo64 HTTP API testing
 │
@@ -148,65 +148,84 @@ The `store_and_rebroadcast` step ensures the weather footer updates immediately 
 
 ### Pixoo64 renderer (`pixoo64/renderer.rs`, `pixoo64/draw.rs`)
 
-The renderer uses a multi-screen rotation driven by a `tokio::time::interval_at` timer. Screens are defined as a `Vec<ScreenType>` built at startup from config; `BirthdayJourJ(0)` placeholders are expanded into `N` consecutive `BirthdayJourJ(0..N)` entries on every new `BoardPayload` (because the page count depends on live data).
+The renderer implements the **Ambient Hub** design: every screen shares a permanent header band
+(large clock + weather strip), and the body cycles through Hub screens (one per stop) and Moment
+screens (one per birthday / Jour-J event). Always exactly **one static frame** per render.
 
 ```
 startup:
   if brightness configured and not simulation:
-    POST Channel/SetBrightness → device   (logs success/failure)
-  start interval_at(now + 15 s, dwell_secs)   // 15 s grace for first CTS data
+    POST Channel/SetBrightness → device
 
 loop (tokio::select!):
 
+  1-second tick:
+    elapsed += 1
+    rebuild cycle from current payload + atomics
+    if elapsed >= slot.duration_secs:
+      pos += 1; elapsed = 0; render new slot
+    elif minute changed:
+      render current slot (clock refresh)
+
   new BoardPayload from channel:
-    update payload cache
-    rebuild active_screens   // expand BirthdayJourJ(0) into N pages
-    render current screen immediately
-    reset interval timer
+    update payload cache; elapsed = 0; render current slot
 
-  interval tick:
-    screen_idx += 1
-    render active_screens[screen_idx % len]
+render_slot(slot):
+  match slot.kind:
+    Hub { stop_idx }:
+      board = boards[stop_idx] (or boards[0])
+      draw_hub(fb, board, lines_per_screen, now)
+        fill BG_NAVY
+        draw_hub_header(fb, now, board.weather)   // y=0..28
+          big HH:MM (scale 2, white) at x=2, y=2
+          weather icon at x=2, y=20
+          temp now (yellow) at x=10, y=19
+          temp min/max (text_mid) at x=32, y=19
+          divider at y=28
+        actual_count = min(board.lines.len(), lines_per_screen)
+        if actual_count < 4: draw stop name at y=30 (text_dim)
+        draw departure rows:
+          4 lines: y=30+i*8, h=8 each (no stop name)
+          3 lines: y=39+i*8, h=8
+          2 lines: y=[38,51], h=13
+          1 line:  y=42, h=18
+        each row: tinted bg, line letter (brand), dest 4 chars (white),
+                  next time right@49 (yellow or hot_orange if <2 min),
+                  after time right@63 (amber_dim)
+        if board.lines empty: "no data" centered at y=42
 
-render_screen(screen, board):
-  match screen:
-    Departures(i):
-      board = boards[i] (or boards[0] if i out of range)
-      if offline or no lines:
-        draw_clock(bg_frame, n_frames)   // animated, up to 40 frames
-      else:
-        draw_departures(board)           // 1 static frame
-          shared header: HH:MM clock + current temp + small weather icon
-          rows adapt to line count:
-            n=1,2  row_h=27  3 sub-zones of 9px each:
-                   zone1: line badge (9×9) + first time (yellow, right)
-                   zone2: destination full width
-                   zone3: second time (amber, right)
-            n=3    row_h=18  2 sub-zones:
-                   zone1: badge + dest L1 (clipped) + first time
-                   zone2: dest L2 + second time
-            n=4    row_h=13  single compact line:
-                   badge (7×7) + dest (clipped 5 chars) + first time
+    Moment { moment_idx }:
+      m = moments[moment_idx]
+      draw_moment(fb, kind, prefix, body, color, now)
+        fill BG_NAVY
+        draw_moment_header: HH:MM centered (scale 1, text_mid), divider y=9
+        hero band y=11..28: tint_block(color) background
+          if birthday: cake icon centered at x=29
+          else: kind icon at x=4, prefix text at x=14 y=13 (scale 2, brand color)
+        body: chunked 10 chars/line, 4 lines max, y=31+i*9, white
 
-    Weather:
-      if board.weather is Some:
-        draw_weather(board)              // 1 static frame
-          header + large 16×16 icon + current temp + min/max + label + location
-      else:
-        fall back to Departures(0)
-
-    BirthdayJourJ(page):
-      draw_birthday_jour_j(board, page) // 1 static frame
-        header band: "Moments" (purple)
-        rows sorted by: birthdays_today (cake, gold) then jour_j_events (present/heart)
-        each entry: split label into L1(9 chars)+L2(10)+L3(10), row height 9/18/27px
-        paginated: greedy pack into 54px content area; page = index into pages[]
-
-  encode frame(s) as base64
-  update PNG preview in AppState::pixoo64_preview   // drives /api/pixoo64/preview
+  encode as base64
+  fb_to_png → AppState::pixoo64_preview   // drives /api/pixoo64/preview
   if not simulation:
-    POST Draw/SendHttpGif (one HTTP call per frame) to device
+    POST Draw/SendHttpGif to device
+
+build_cycle(payload, moments, tram_secs, moment_secs):
+  one Hub slot per board that has lines or an offline message
+  if no Hub slots: keep one Hub for boards[0]
+  append one Moment slot per moment
+  each slot has a duration_secs (tram_secs or moment_secs)
+
+extract_moments(payload):
+  from boards[0]: birthdays_today → MomentItem(cake, prefix="", body=name)
+                  jour_j_events   → MomentItem(icon, prefix="J-N", body=label)
 ```
+
+**Hot-reload:** `tram_secs`, `moment_secs`, and `lines_per_screen` are `AtomicU32` fields on
+`AppState`. The worker reads them on every tick — `POST /api/config` with the new values takes
+effect on the next rendered frame without a restart.
+
+**Weather on all stops:** after assembling boards, `client.rs` clones the weather snapshot from
+`boards[0]` to all remaining boards so every Hub screen displays the weather strip.
 
 ### WebSocket connection (`web/ws.rs`)
 
@@ -294,6 +313,7 @@ The board JSON includes these as optional fields:
 | `RwLock<Option<Vec<u8>>>` | Latest Pixoo64 frame PNG (simulation preview) |
 | `AtomicI64` | `cts_next_poll_at` timestamp — lock-free reads from status endpoint |
 | `AtomicU32` | `birthday_days_ahead` — mutable without restart |
+| `AtomicU32` (×3) | `pixoo64_tram_screen_seconds`, `pixoo64_moment_screen_seconds`, `pixoo64_lines_per_screen` — hot-reload via `POST /api/config` |
 | `Notify` | `poll_trigger` — zero-overhead wakeup from config changes |
 | `tokio::select!` | Time-based or event-based poll wakeup; WS send/recv race |
 
@@ -361,13 +381,15 @@ The board JSON includes these as optional fields:
 
 ### Pixoo64 keys
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `pixoo64_enabled` | bool | `false` | Enable the Pixoo64 display renderer |
-| `pixoo64_address` | string? | — | Device IP:port (e.g. `"192.168.1.42:80"`) |
-| `pixoo64_simulation` | bool | `false` | Render PNG preview only; no device calls |
-| `pixoo64_delay_between_screens` | u64? | `7` | Seconds each screen is shown before rotating to the next |
-| `pixoo64_brightness` | u8? | — | Screen brightness 0–100; sent once at startup via `Channel/SetBrightness` |
+| Key | Type | Default | Hot-reload | Description |
+|-----|------|---------|-----------|-------------|
+| `pixoo64_enabled` | bool | `false` | No | Enable the Pixoo64 display renderer |
+| `pixoo64_address` | string? | — | No | Device IP (e.g. `"192.168.1.42"`) |
+| `pixoo64_simulation` | bool | `false` | No | Render PNG preview only; no device calls |
+| `pixoo64_brightness` | u8? | — | No | Screen brightness 0–100; sent once at startup |
+| `pixoo64_tram_screen_seconds` | u32 | `6` | Yes | Seconds each Hub (departure) screen is shown (1–60) |
+| `pixoo64_moment_screen_seconds` | u32 | `1` | Yes | Seconds each Moment (birthday/Jour-J) screen is shown (1–30) |
+| `pixoo64_lines_per_screen` | u8 | `4` | Yes | Max departure rows per Hub screen (1–4) |
 
 ### Birthday keys
 

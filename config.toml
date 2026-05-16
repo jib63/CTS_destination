@@ -55,7 +55,10 @@ listen_addr = "0.0.0.0:3000"
 # pixoo64_enabled = true
 # pixoo64_address = "192.168.1.42"
 # pixoo64_simulation = true           # render PNG preview only, no device calls
-# pixoo64_refresh_interval_seconds = 5
+# pixoo64_brightness = 80             # screen brightness 0–100 (omit to leave unchanged)
+# pixoo64_tram_screen_seconds   = 6   # seconds each stop screen is shown (range: 1..60)
+# pixoo64_moment_screen_seconds = 1   # seconds each moment screen is shown (range: 1..30)
+# pixoo64_lines_per_screen      = 4   # departure rows per screen (range: 1..4)
 
 # ── Meteoblue weather widget (optional) ──────────────────────────────────────
 # Set meteoblue_enabled = true to display weather information in the board footer.

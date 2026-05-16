@@ -86,9 +86,16 @@ pub struct AppConfig {
     /// at /api/pixoo64/preview instead.
     #[serde(default)]
     pub pixoo64_simulation: bool,
-    /// How many seconds each screen is shown before rotating to the next (default: 7).
-    /// Applies to all screen types: departures, weather, and birthday/Jour-J.
-    pub pixoo64_delay_between_screens: Option<u64>,
+    /// Seconds each tram (departures) hub screen is shown before rotating to the next.
+    /// Range: 1..=60. Default: 6.
+    #[serde(default = "default_tram_screen_seconds")]
+    pub pixoo64_tram_screen_seconds: u32,
+    /// Seconds each moment (birthday / J-N) screen is shown. Range: 1..=30. Default: 1.
+    #[serde(default = "default_moment_screen_seconds")]
+    pub pixoo64_moment_screen_seconds: u32,
+    /// How many departure rows to render per tram screen. Range: 1..=4. Default: 4.
+    #[serde(default = "default_lines_per_screen")]
+    pub pixoo64_lines_per_screen: u8,
     /// Screen brightness 0–100. Sent once at startup via Device/SetBrightness.
     /// Omit to leave the device brightness unchanged.
     pub pixoo64_brightness: Option<u8>,
@@ -140,9 +147,10 @@ pub struct AppConfig {
     pub cts_demo_lines: Option<u8>,
 }
 
-fn default_max_visits() -> u32 {
-    10
-}
+fn default_max_visits() -> u32 { 10 }
+fn default_tram_screen_seconds() -> u32 { 6 }
+fn default_moment_screen_seconds() -> u32 { 1 }
+fn default_lines_per_screen() -> u8 { 4 }
 
 fn default_listen_addr() -> String {
     "0.0.0.0:3000".to_string()
@@ -161,10 +169,14 @@ impl AppConfig {
         let content =
             fs::read_to_string(path).with_context(|| format!("Cannot read config file: {path}"))?;
 
-        let config: AppConfig =
+        let mut config: AppConfig =
             toml::from_str(&content).with_context(|| format!("Invalid config file: {path}"))?;
 
         let token = config.resolve_cts_token()?;
+
+        config.pixoo64_tram_screen_seconds   = config.pixoo64_tram_screen_seconds.clamp(1, 60);
+        config.pixoo64_moment_screen_seconds = config.pixoo64_moment_screen_seconds.clamp(1, 30);
+        config.pixoo64_lines_per_screen      = config.pixoo64_lines_per_screen.clamp(1, 4);
 
         Ok((config, token))
     }

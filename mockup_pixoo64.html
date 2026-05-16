@@ -3,17 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pixoo64 — Mockup interactif</title>
+<title>Pixoo64 — Ambient Hub Mockup</title>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   height: 100%; background: #0a0e1a; color: #c8d0e0;
   font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 13px; overflow: hidden;
+  font-size: 13px;
 }
-
-/* ── Layout ── */
-#app { display: flex; height: 100vh; }
+#app { display: flex; min-height: 100vh; }
 
 /* ── Sidebar ── */
 #sidebar {
@@ -28,123 +26,81 @@ html, body {
   font-size: 14px; font-weight: 700; color: #ffc107; letter-spacing: 0.05em;
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
-.sidebar-header span { font-size: 11px; font-weight: 400; color: #556; letter-spacing: 0; }
-
+.sidebar-header span { font-size: 11px; font-weight: 400; color: #556; }
 .section { border-bottom: 1px solid #141c30; padding: 10px 14px 12px; }
 .section-title {
   font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
   color: #445; margin-bottom: 8px;
 }
-
-/* Controls */
 .ctrl { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; min-height: 26px; }
 .ctrl label { flex: 1; color: #99a; font-size: 12px; }
-.ctrl input[type=checkbox] { accent-color: #ffc107; width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
-.ctrl select, .ctrl input[type=number], .ctrl input[type=text] {
-  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
-  padding: 3px 7px; border-radius: 4px; font-size: 12px;
-  width: 70px; flex-shrink: 0;
-}
-.ctrl select { width: 80px; }
 .ctrl input[type=range] { flex: 1; accent-color: #ffc107; }
 .ctrl .val { color: #ffc107; font-weight: 700; min-width: 28px; text-align: right; font-size: 12px; }
-
-/* Stop blocks */
+.ctrl input[type=number], .ctrl input[type=text], .ctrl select {
+  background: #0e1628; border: 1px solid #1e2e48; color: #aab;
+  padding: 3px 7px; border-radius: 4px; font-size: 12px; width: 70px; flex-shrink: 0;
+}
+.ctrl select { width: 80px; }
 .stop-block { margin-bottom: 8px; background: #0e1628; border-radius: 6px; padding: 8px 10px; border: 1px solid #1a2440; }
 .stop-block-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.stop-block-header label { font-weight: 600; color: #c0c8e0; font-size: 12px; flex: 1; }
-.stop-enable { accent-color: #4caf50; }
-.stop-field { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 11px; color: #667; }
-.stop-field input[type=text] { flex: 1; width: auto; font-size: 11px; padding: 2px 6px; }
-.stop-field select { width: 50px; font-size: 11px; }
-
-/* Events list */
+.stop-name-input { background: #0d1525; border: 1px solid #1a2240; color: #c0c8e0;
+  padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; flex: 1; width: auto; }
+.dep-row { display: flex; gap: 4px; align-items: center; margin-bottom: 3px; }
+.dep-row input { background: #0d1525; border: 1px solid #1a2240; color: #aab;
+  padding: 2px 5px; border-radius: 3px; font-size: 11px; }
+.dep-row .dep-line { width: 32px; font-weight: 700; }
+.dep-row .dep-dest { width: 56px; }
+.dep-row .dep-t { width: 36px; }
 .event-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
 .event-row {
   display: flex; align-items: center; gap: 4px;
   background: #0d1525; border: 1px solid #1a2240; border-radius: 4px; padding: 4px 6px;
 }
-.event-row input[type=text] { flex: 1; width: auto; font-size: 11px; padding: 2px 5px; }
-.event-row input[type=number] { width: 44px; font-size: 11px; }
-.event-row select { width: 68px; font-size: 11px; }
+.event-row input[type=text] { flex: 1; width: auto; font-size: 11px; padding: 2px 5px;
+  background: #0a1020; border: 1px solid #1a2240; color: #aab; border-radius: 3px; }
+.event-row select { width: 74px; font-size: 11px; background: #0a1020; border: 1px solid #1a2240; color: #aab; border-radius: 3px; padding: 2px 4px; }
 .event-del { background: none; border: 1px solid #2a1818; color: #885; border-radius: 3px;
   cursor: pointer; padding: 2px 6px; font-size: 11px; flex-shrink: 0; }
 .event-del:hover { background: #2a0a0a; color: #f88; border-color: #f88; }
-.add-btn {
-  background: none; border: 1px dashed #1e3020; color: #4a8; border-radius: 4px;
-  cursor: pointer; padding: 4px 8px; font-size: 11px; width: 100%; text-align: center;
-}
+.add-btn { background: none; border: 1px dashed #1e3020; color: #4a8; border-radius: 4px;
+  cursor: pointer; padding: 4px 8px; font-size: 11px; width: 100%; text-align: center; }
 .add-btn:hover { background: #0e1e10; border-color: #4a8; }
-
-/* Play controls */
+.bday-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+.bday-row input { flex: 1; font-size: 11px; background: #0a1020; border: 1px solid #1a2240; color: #aab; padding: 2px 5px; border-radius: 3px; }
+.slider-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.slider-row label { display: flex; justify-content: space-between; align-items: baseline; }
+.slider-row label span { color: #9aa3b6; font-size: 12px; }
+.slider-val { font-family: monospace; font-size: 14px; color: #ffd23f; font-weight: 700; }
+.slider-row input[type=range] { width: 100%; accent-color: #ffd23f; height: 4px; }
 .play-row { display: flex; gap: 6px; margin-top: 8px; }
-.play-btn {
-  flex: 1; background: #1a2e18; border: 1px solid #2e5a28; color: #6df083;
-  border-radius: 5px; padding: 6px; font-size: 12px; font-weight: 700; cursor: pointer;
-  transition: background 0.15s;
-}
+.play-btn { flex: 1; background: #1a2e18; border: 1px solid #2e5a28; color: #6df083;
+  border-radius: 5px; padding: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .play-btn:hover { background: #243e22; }
 .play-btn.paused { background: #2e1a14; border-color: #5a3428; color: #f08060; }
-.nav-btn {
-  background: #0e1628; border: 1px solid #1e2e48; color: #88a;
-  border-radius: 5px; padding: 6px 12px; font-size: 14px; cursor: pointer;
-}
+.nav-btn { background: #0e1628; border: 1px solid #1e2e48; color: #88a;
+  border-radius: 5px; padding: 6px 12px; font-size: 14px; cursor: pointer; }
 .nav-btn:hover { background: #162038; }
 
-/* ── Main display area ── */
-#main {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; padding: 20px; min-width: 0;
+/* ── Main display ── */
+#main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; }
+#screen-label { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #8090b0; }
+#screen-name { color: #c8d8f8; font-size: 14px; font-weight: 700; }
+#screen-remaining { color: #ffd23f; font-family: monospace; font-size: 12px; }
+#canvas-wrap { background: #080c16; border-radius: 12px; padding: 14px;
+  box-shadow: 0 0 0 2px #1a2240, 0 8px 40px rgba(0,0,0,0.7); }
+#display { display: block; image-rendering: pixelated; border-radius: 4px; }
+#progress-wrap { width: 100%; max-width: 540px; }
+#cycle-bar { display: flex; gap: 3px; height: 28px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.cycle-slot {
+  display: flex; align-items: center; justify-content: center;
+  font-family: monospace; font-size: 10px; letter-spacing: 0.5px;
+  cursor: pointer; transition: outline 0.1s;
 }
-
-/* Screen type label */
-#screen-label {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 13px; font-weight: 600; color: #8090b0;
-}
-#screen-name { color: #c8d8f8; font-size: 15px; font-weight: 700; }
-#screen-pos { color: #445; font-size: 12px; }
-
-/* Canvas wrapper — adds LED bezel */
-#canvas-wrap {
-  position: relative; display: inline-block;
-  background: #080c16;
-  border-radius: 12px;
-  padding: 14px;
-  box-shadow: 0 0 0 2px #1a2240, 0 8px 40px rgba(0,0,0,0.7),
-              inset 0 0 12px rgba(0,0,0,0.5);
-}
-#display {
-  display: block; image-rendering: pixelated; image-rendering: crisp-edges;
-  border-radius: 4px;
-}
-
-/* Progress bar */
-#progress-wrap { width: 100%; max-width: 520px; }
-#progress-track {
-  height: 3px; background: #1a2240; border-radius: 2px; overflow: hidden;
-}
-#progress-bar {
-  height: 100%; background: #ffc107; border-radius: 2px;
-  transition: width 0.1s linear; width: 0%;
-}
-
-/* Screen dots */
-#dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 520px; }
-.dot {
-  width: 8px; height: 8px; border-radius: 50%; cursor: pointer;
-  background: #1a2240; transition: background 0.2s, transform 0.15s;
-}
-.dot:hover { background: #334466; transform: scale(1.2); }
-.dot.active { background: #ffc107; transform: scale(1.1); }
-.dot.dep  { background: #1e4a6a; }
-.dot.dep.active { background: #4ab0f0; }
-.dot.wx   { background: #1a4428; }
-.dot.wx.active  { background: #4af090; }
-.dot.bday { background: #3a1e5a; }
-.dot.bday.active { background: #c070f0; }
-
-/* Screen type legend */
+.cycle-slot.hub   { background: #1a2e40; color: #9cc8ff; }
+.cycle-slot.moment { background: #2a1e36; color: #e5b8ff; }
+.cycle-slot.active { outline: 2px solid #ffd23f; outline-offset: -2px; }
+#progress-track { height: 3px; background: #1a2240; border-radius: 2px; overflow: hidden; }
+#progress-bar { height: 100%; background: #ffc107; border-radius: 2px; transition: width 0.1s linear; width: 0%; }
 #legend { display: flex; gap: 14px; font-size: 11px; color: #446; flex-wrap: wrap; justify-content: center; }
 .leg { display: flex; align-items: center; gap: 4px; }
 .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -155,7 +111,7 @@ html, body {
 
 <!-- ── Sidebar ── -->
 <div id="sidebar">
-  <div class="sidebar-header">🖥 Pixoo64 <span>Mockup interactif</span></div>
+  <div class="sidebar-header">Pixoo64 <span>Ambient Hub</span></div>
 
   <!-- Arrêts -->
   <div class="section">
@@ -167,60 +123,53 @@ html, body {
   <div class="section">
     <div class="section-title">Météo</div>
     <div class="ctrl">
-      <input type="checkbox" id="wx-enabled" checked>
-      <label for="wx-enabled">Activer l'écran météo</label>
-    </div>
-    <div class="ctrl">
       <label>Pictocode</label>
       <select id="wx-pictocode">
+        <option value="0">Aucune</option>
         <option value="1">1 – Soleil</option>
-        <option value="2">2 – Peu nuageux</option>
+        <option value="2" selected>2 – Peu nuageux</option>
         <option value="4">4 – Nuageux</option>
         <option value="5">5 – Brouillard</option>
         <option value="7">7 – Pluie</option>
         <option value="14">14 – Neige</option>
         <option value="20">20 – Orage</option>
-        <option value="101">101 – Nuit claire</option>
-        <option value="102">102 – Nuit nuageuse</option>
+        <option value="101">101 – Nuit</option>
       </select>
     </div>
     <div class="ctrl">
-      <label>Temp actuelle</label>
-      <input type="number" id="wx-temp" value="18" style="width:56px">
-    </div>
-    <div class="ctrl">
-      <label>Min / Max</label>
-      <input type="number" id="wx-min" value="6" style="width:44px">
-      <input type="number" id="wx-max" value="22" style="width:44px">
-    </div>
-    <div class="ctrl">
-      <label>Lieu</label>
-      <input type="text" id="wx-loc" value="Strasbourg" style="width:100px">
+      <label>Temp°</label>
+      <input type="number" id="wx-temp" value="14" style="width:50px">
+      <label style="flex:none;margin-left:6px">Min/Max</label>
+      <input type="number" id="wx-min" value="8" style="width:44px">
+      <input type="number" id="wx-max" value="19" style="width:44px">
     </div>
   </div>
 
   <!-- Anniversaires / Jour J -->
   <div class="section">
-    <div class="section-title">Anniversaires &amp; Jour J</div>
-    <div class="ctrl">
-      <input type="checkbox" id="bday-enabled" checked>
-      <label for="bday-enabled">Activer l'écran</label>
-    </div>
+    <div class="section-title">Moments</div>
     <div style="font-size:11px;color:#556;margin-bottom:5px;">Anniversaires du jour</div>
-    <div id="bday-list" class="event-list"></div>
+    <div id="bday-list"></div>
     <button class="add-btn" onclick="addBday()">+ Anniversaire</button>
     <div style="font-size:11px;color:#556;margin-top:8px;margin-bottom:5px;">Événements Jour J</div>
     <div id="event-list" class="event-list"></div>
     <button class="add-btn" onclick="addEvent()">+ Événement</button>
   </div>
 
-  <!-- Rotation -->
+  <!-- Paramètres -->
   <div class="section">
-    <div class="section-title">Rotation</div>
-    <div class="ctrl">
-      <label>Durée écran</label>
-      <input type="range" id="dwell" min="2" max="20" value="7" oninput="dwellChange(this)">
-      <span class="val" id="dwell-val">7s</span>
+    <div class="section-title">Paramètres</div>
+    <div class="slider-row">
+      <label><span>Durée écran stop</span><span class="slider-val" id="tram-val">6s</span></label>
+      <input type="range" id="tram-secs" min="1" max="20" value="6" oninput="updateSliders()">
+    </div>
+    <div class="slider-row">
+      <label><span>Durée écran moment</span><span class="slider-val" id="moment-val">1s</span></label>
+      <input type="range" id="moment-secs" min="1" max="10" value="1" oninput="updateSliders()">
+    </div>
+    <div class="slider-row" style="margin-bottom:0">
+      <label><span>Lignes par écran</span><span class="slider-val" id="lines-val" style="color:#b4dcff">4</span></label>
+      <input type="range" id="lines-count" min="1" max="4" value="4" oninput="updateSliders()" style="accent-color:#b4dcff">
     </div>
     <div class="play-row">
       <button class="nav-btn" onclick="prevScreen()">◀</button>
@@ -233,29 +182,25 @@ html, body {
 <!-- ── Main ── -->
 <div id="main">
   <div id="screen-label">
-    <span id="screen-name">Départ — Arrêt 1</span>
-    <span id="screen-pos">1 / 4</span>
+    <span id="screen-name">Hub · Stop 1</span>
+    <span id="screen-remaining">—</span>
   </div>
-
   <div id="canvas-wrap">
     <canvas id="display"></canvas>
   </div>
-
   <div id="progress-wrap">
+    <div id="cycle-bar"></div>
     <div id="progress-track"><div id="progress-bar"></div></div>
   </div>
-
-  <div id="dots"></div>
   <div id="legend">
-    <div class="leg"><div class="leg-dot" style="background:#4ab0f0"></div> Départs</div>
-    <div class="leg"><div class="leg-dot" style="background:#4af090"></div> Météo</div>
-    <div class="leg"><div class="leg-dot" style="background:#c070f0"></div> Moments</div>
+    <div class="leg"><div class="leg-dot" style="background:#9cc8ff"></div> Hub (arrêt)</div>
+    <div class="leg"><div class="leg-dot" style="background:#e5b8ff"></div> Moment</div>
   </div>
 </div>
 </div>
 
 <script>
-// ── 5×7 Bitmap Font ──────────────────────────────────────────────────────────
+// ── 5×7 Bitmap Font ────────────────────────────────────────────────────────────
 const FONT = {
   ' ':[0,0,0,0,0,0,0],'!':[0x20,0x20,0x20,0x20,0,0x20,0],
   '"':[0x50,0x50,0,0,0,0,0],'#':[0x50,0xF8,0x50,0xF8,0x50,0,0],
@@ -287,9 +232,6 @@ const FONT = {
   'U':[0x88,0x88,0x88,0x88,0x88,0x88,0x70],'V':[0x88,0x88,0x88,0x88,0x50,0x50,0x20],
   'W':[0x88,0x88,0x88,0xA8,0xA8,0xD8,0x88],'X':[0x88,0x88,0x50,0x20,0x50,0x88,0x88],
   'Y':[0x88,0x88,0x50,0x20,0x20,0x20,0x20],'Z':[0xF8,0x08,0x10,0x20,0x40,0x80,0xF8],
-  '[':[0x40,0x40,0x40,0x40,0x40,0x40,0x40],'\\':[0x80,0x40,0x40,0x20,0x10,0x10,0x08],
-  ']':[0x10,0x10,0x10,0x10,0x10,0x10,0x10],'^':[0x20,0x50,0x88,0,0,0,0],
-  '_':[0,0,0,0,0,0,0xF8],'`':[0x40,0x20,0x10,0,0,0,0],
   'a':[0,0x60,0x10,0x70,0x88,0x98,0x68],'b':[0x80,0x80,0xB0,0xC8,0x88,0xC8,0xB0],
   'c':[0,0,0x70,0x80,0x80,0x80,0x70],'d':[0x08,0x08,0x68,0x98,0x88,0x98,0x68],
   'e':[0,0,0x70,0x88,0xF8,0x80,0x70],'f':[0x30,0x40,0xF0,0x40,0x40,0x40,0x40],
@@ -303,124 +245,107 @@ const FONT = {
   'u':[0,0,0x88,0x88,0x88,0x98,0x68],'v':[0,0,0x88,0x88,0x88,0x50,0x20],
   'w':[0,0,0x88,0xA8,0xA8,0xD8,0x88],'x':[0,0,0x88,0x50,0x20,0x50,0x88],
   'y':[0,0x88,0x88,0x78,0x08,0x88,0x70],'z':[0,0,0xF8,0x10,0x20,0x40,0xF8],
-  '{':[0x30,0x40,0x40,0x80,0x40,0x40,0x30],'|':[0x20,0x20,0x20,0,0x20,0x20,0x20],
-  '}':[0xC0,0x20,0x20,0x10,0x20,0x20,0xC0],'~':[0x40,0xA0,0x10,0,0,0,0],
-  '°':[0x60,0x90,0x90,0x60,0,0,0],
+  '°':[0x60,0x90,0x90,0x60,0,0,0],'-':[0,0,0,0xF8,0,0,0],
 };
 
 // ── Framebuffer ───────────────────────────────────────────────────────────────
 class Fb {
   constructor() { this.px = new Uint8Array(64 * 64 * 3); }
   set(x, y, r, g, b) {
-    if (x < 0 || y < 0 || x >= 64 || y >= 64) return;
-    const i = (y * 64 + x) * 3;
-    this.px[i] = r; this.px[i+1] = g; this.px[i+2] = b;
+    if (x<0||y<0||x>=64||y>=64) return;
+    const i = (y*64+x)*3; this.px[i]=r; this.px[i+1]=g; this.px[i+2]=b;
   }
   fillRect(x, y, w, h, r, g, b) {
-    for (let dy = 0; dy < h; dy++)
-      for (let dx = 0; dx < w; dx++) this.set(x+dx, y+dy, r, g, b);
+    for (let dy=0;dy<h;dy++) for (let dx=0;dx<w;dx++) this.set(x+dx,y+dy,r,g,b);
   }
-  blend(x, y, r, g, b, a) {
-    if (x < 0 || y < 0 || x >= 64 || y >= 64) return;
-    const i = (y * 64 + x) * 3;
-    const f = a / 255;
-    this.px[i]   = Math.round(this.px[i]   * (1-f) + r * f);
-    this.px[i+1] = Math.round(this.px[i+1] * (1-f) + g * f);
-    this.px[i+2] = Math.round(this.px[i+2] * (1-f) + b * f);
-  }
-  glyph(ch) { return FONT[ch] || FONT[' ']; }
   drawChar(x, y, ch, r, g, b, sc=1) {
-    const gl = this.glyph(ch);
-    for (let row = 0; row < 7; row++) {
-      const mask = gl[row];
-      for (let col = 0; col < 5; col++) {
-        if (mask & (0x80 >> col))
-          for (let sy = 0; sy < sc; sy++)
-            for (let sx = 0; sx < sc; sx++)
-              this.set(x + col*sc + sx, y + row*sc + sy, r, g, b);
+    const gl = FONT[ch] || FONT[' '];
+    for (let row=0;row<7;row++) {
+      const mask=gl[row];
+      for (let col=0;col<5;col++) {
+        if (mask&(0x80>>col))
+          for (let sy=0;sy<sc;sy++) for (let sx=0;sx<sc;sx++)
+            this.set(x+col*sc+sx, y+row*sc+sy, r, g, b);
       }
     }
-    return x + 6 * sc;
+    return x+6*sc;
   }
   drawText(x, y, text, r, g, b, sc=1) {
-    let cx = x;
-    for (const ch of String(text)) cx = this.drawChar(cx, y, ch, r, g, b, sc);
+    let cx=x; for (const ch of String(text)) cx=this.drawChar(cx,y,ch,r,g,b,sc);
     return cx;
   }
   drawTextRight(xr, y, text, r, g, b, sc=1) {
-    const n = [...String(text)].length;
-    const w = n === 0 ? 0 : n * 6 * sc - sc;
-    this.drawText(xr - w + 1, y, text, r, g, b, sc);
+    const n=[...String(text)].length;
+    const w=n===0?0:n*6*sc-sc;
+    this.drawText(xr-w+1, y, text, r, g, b, sc);
   }
   drawTextCenter(cx, y, text, r, g, b, sc=1) {
-    const n = [...String(text)].length;
-    const w = n === 0 ? 0 : n * 6 * sc - sc;
-    this.drawText(cx - Math.floor(w / 2), y, text, r, g, b, sc);
-  }
-  drawTextClipped(x, y, text, r, g, b, sc, c1, c2) {
-    let cx = x;
-    for (const ch of String(text)) {
-      const gl = this.glyph(ch);
-      for (let row = 0; row < 7; row++) {
-        const mask = gl[row];
-        for (let col = 0; col < 5; col++) {
-          if (mask & (0x80 >> col))
-            for (let sy = 0; sy < sc; sy++)
-              for (let sx = 0; sx < sc; sx++) {
-                const px = cx + col*sc + sx;
-                if (px >= c1 && px <= c2) this.set(px, y + row*sc + sy, r, g, b);
-              }
-        }
-      }
-      cx += 6 * sc;
-    }
+    const n=[...String(text)].length;
+    const w=n===0?0:n*6*sc-sc;
+    this.drawText(cx-Math.floor(w/2), y, text, r, g, b, sc);
   }
   paint(canvas, scale) {
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const img = ctx.createImageData(64 * scale, 64 * scale);
-    const d = img.data;
-    for (let y = 0; y < 64; y++) {
-      for (let x = 0; x < 64; x++) {
-        const si = (y * 64 + x) * 3;
-        const r = this.px[si], g = this.px[si+1], b = this.px[si+2];
-        for (let sy = 0; sy < scale; sy++)
-          for (let sx = 0; sx < scale; sx++) {
-            const di = ((y*scale+sy) * 64*scale + (x*scale+sx)) * 4;
-            d[di] = r; d[di+1] = g; d[di+2] = b; d[di+3] = 255;
-          }
+    const ctx=canvas.getContext('2d');
+    const img=ctx.createImageData(64*scale, 64*scale);
+    const d=img.data;
+    for (let y=0;y<64;y++) for (let x=0;x<64;x++) {
+      const si=(y*64+x)*3;
+      const r=this.px[si],g=this.px[si+1],b=this.px[si+2];
+      for (let sy=0;sy<scale;sy++) for (let sx=0;sx<scale;sx++) {
+        const di=((y*scale+sy)*64*scale+(x*scale+sx))*4;
+        d[di]=r; d[di+1]=g; d[di+2]=b; d[di+3]=255;
       }
     }
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(img,0,0);
   }
 }
 
-// ── Line colors & tints ────────────────────────────────────────────────────────
-function lineColor(l) {
-  return ({A:[200,16,46],B:[123,45,139],C:[224,123,16],D:[46,139,60],
-           E:[111,44,145],F:[197,20,91],G:[92,107,192]})[l] || [84,110,122];
+// ── Color palette ─────────────────────────────────────────────────────────────
+const BG_NAVY   = [14,20,40];
+const DIVIDER   = [30,50,80];
+const WHITE     = [255,255,255];
+const YELLOW    = [255,220,80];
+const AMBER_DIM = [160,122,40];
+const TEXT_DIM  = [94,111,142];
+const TEXT_MID  = [143,160,187];
+const CAKE_GOLD = [255,224,144];
+const GIFT_BLUE = [180,200,255];
+const HEART_LIL = [220,171,255];
+const STAR_GOLD = [255,210,63];
+
+const LINE_COLORS = {
+  A:[200,16,46], B:[123,45,139], C:[224,123,16], D:[46,139,60],
+  E:[111,44,145], F:[197,20,91], G:[92,107,192]
+};
+function lineColorRgb(l) { return LINE_COLORS[l] || [84,110,122]; }
+
+function tintBlock(r, g, b) {
+  const blend = (l, base) => Math.round(l*0.42 + base*0.58);
+  return [blend(r,26), blend(g,38), blend(b,66)];
 }
-function rowTint(lr,lg,lb) {
-  return [Math.min(255,Math.floor(lr*12/100)+5),
-          Math.min(255,Math.floor(lg*12/100)+9),
-          Math.min(255,Math.floor(lb*12/100)+16)];
+
+function momentColor(icon) {
+  if (icon==='present'||icon==='party') return GIFT_BLUE;
+  if (icon==='heart') return HEART_LIL;
+  if (icon==='star'||icon==='skull') return STAR_GOLD;
+  return CAKE_GOLD;
 }
 
 // ── Small weather icon 6×5 ────────────────────────────────────────────────────
 function drawWeatherIconSm(fb, x, y, pc) {
-  const night = pc > 100; const c = night ? pc - 100 : pc;
-  if (night && c <= 3) {
+  const night=pc>100; const c=night?pc-100:pc;
+  if (night&&c<=3) {
     fb.fillRect(x+1,y,4,2,220,220,180); fb.fillRect(x,y+2,2,2,220,220,180); return;
   }
   if (c===1) {
     fb.fillRect(x+2,y,2,1,255,220,0); fb.fillRect(x+1,y+1,4,3,255,220,0); fb.fillRect(x+2,y+4,2,1,255,220,0);
   } else if (c<=3) {
     fb.set(x+4,y,255,200,0); fb.fillRect(x+1,y+1,2,1,255,200,0); fb.fillRect(x,y+2,6,3,200,200,210);
-  } else if (c<=4||c===31||c===34) {
+  } else if (c<=4) {
     fb.fillRect(x+1,y,4,2,180,180,200); fb.fillRect(x,y+2,6,3,200,200,210);
   } else if (c<=6) {
-    for(let r=0;r<5;r++){const xo=r%2?1:0;fb.fillRect(x+xo,y+r,5,1,160,160,180);}
-  } else if (c<=11||c===19||c===33||c===35) {
+    for (let r=0;r<5;r++) { const xo=r%2?1:0; fb.fillRect(x+xo,y+r,5,1,160,160,180); }
+  } else if (c<=11||c===19) {
     fb.fillRect(x,y,6,2,100,140,200);
     [1,3,5].forEach(dx=>fb.set(x+dx,y+3,100,160,255));
     [0,2,4].forEach(dx=>fb.set(x+dx,y+4,100,160,255));
@@ -435,529 +360,349 @@ function drawWeatherIconSm(fb, x, y, pc) {
   }
 }
 
-// ── Large weather icon 16×16 ──────────────────────────────────────────────────
-function drawWeatherIconLg(fb, x, y, pc) {
-  const night = pc > 100; const c = night ? pc - 100 : pc;
-  if (night && c <= 3) {
-    for(let py=0;py<16;py++) for(let px=0;px<16;px++) {
-      const dx=px-8,dy=py-8;
-      if(dx*dx+dy*dy<=64&&!((dx-3)**2+(dy-2)**2<=25)) fb.set(x+px,y+py,220,220,180);
-    }
-    return;
-  }
-  if (c===1) {
-    fb.fillRect(x+4,y+4,8,8,255,220,0);
-    fb.fillRect(x+7,y,2,3,255,195,0);fb.fillRect(x+7,y+13,2,3,255,195,0);
-    fb.fillRect(x,y+7,3,2,255,195,0);fb.fillRect(x+13,y+7,3,2,255,195,0);
-    fb.fillRect(x+2,y+2,2,2,240,175,0);fb.fillRect(x+12,y+2,2,2,240,175,0);
-    fb.fillRect(x+2,y+12,2,2,240,175,0);fb.fillRect(x+12,y+12,2,2,240,175,0);
-  } else if (c<=3) {
-    fb.fillRect(x+5,y+1,6,4,240,200,60);fb.fillRect(x+3,y+6,10,4,190,190,210);fb.fillRect(x+1,y+8,14,5,210,210,220);
-  } else if (c<=4||c===31||c===34) {
-    fb.fillRect(x+3,y+1,10,4,180,180,200);fb.fillRect(x+1,y+4,14,5,200,200,210);fb.fillRect(x,y+8,16,5,210,210,220);
-  } else if (c<=6) {
-    for(let r=0;r<8;r++){const xo=r%2?1:0;fb.fillRect(x+xo,y+r*2,15,1,160,160,180);}
-  } else if (c<=11||c===19||c===33||c===35) {
-    fb.fillRect(x,y,16,5,100,140,200);fb.fillRect(x+2,y+3,12,3,80,120,190);
-    for(let col=0;col<4;col++){fb.fillRect(x+1+col*4,y+7,1,3,100,160,255);fb.fillRect(x+3+col*4,y+10,1,3,100,160,255);}
-  } else if (c<=18) {
-    fb.fillRect(x,y,16,5,160,180,220);fb.fillRect(x+2,y+3,12,3,140,165,215);
-    for(let col=0;col<4;col++){fb.set(x+2+col*4,y+8,220,240,255);fb.set(x+4+col*4,y+10,220,240,255);fb.set(x+2+col*4,y+12,220,240,255);fb.set(x+4+col*4,y+14,220,240,255);}
-  } else if (c<=28) {
-    fb.fillRect(x,y,16,5,80,80,120);fb.fillRect(x+2,y+3,12,3,60,60,100);
-    fb.fillRect(x+8,y+7,3,4,255,240,0);fb.fillRect(x+6,y+9,3,4,255,240,0);fb.fillRect(x+5,y+12,2,3,255,240,0);
+// ── Moment icons 6×7 ─────────────────────────────────────────────────────────
+function drawIconCake(fb, x, y) {
+  fb.set(x+2,y,255,220,80); fb.fillRect(x+2,y+1,1,2,200,200,220);
+  fb.fillRect(x,y+3,6,1,210,190,240); fb.fillRect(x,y+4,6,3,190,155,220);
+  fb.set(x+1,y+5,255,100,100); fb.set(x+3,y+5,100,200,100); fb.set(x+5,y+5,100,100,255);
+}
+function drawIconPresent(fb, x, y) {
+  fb.fillRect(x,y+3,6,3,91,142,238); fb.fillRect(x,y+2,6,1,122,170,245);
+  fb.fillRect(x+2,y+2,2,4,230,220,168); fb.fillRect(x,y+3,6,1,230,220,168);
+  fb.fillRect(x+1,y,2,2,232,112,112); fb.fillRect(x+3,y,2,2,232,112,112);
+}
+function drawIconHeart(fb, x, y) {
+  fb.fillRect(x+1,y,2,1,220,60,60); fb.fillRect(x+4,y,2,1,220,60,60);
+  fb.fillRect(x,y+1,6,2,220,60,60); fb.fillRect(x+1,y+3,4,2,220,60,60); fb.fillRect(x+2,y+5,2,1,220,60,60);
+}
+function drawIconStar(fb, x, y) {
+  const [r,g,b]=STAR_GOLD;
+  fb.fillRect(x+2,y,2,7,r,g,b); fb.fillRect(x,y+2,6,3,r,g,b);
+  fb.set(x+1,y+1,r,g,b); fb.set(x+4,y+1,r,g,b);
+  fb.set(x+1,y+5,r,g,b); fb.set(x+4,y+5,r,g,b);
+}
+function drawMomentIcon(fb, icon, x, y) {
+  if (icon==='present'||icon==='party') { drawIconPresent(fb,x,y); return; }
+  if (icon==='heart') { drawIconHeart(fb,x,y); return; }
+  if (icon==='star'||icon==='skull') { drawIconStar(fb,x,y); return; }
+  drawIconCake(fb,x,y);
+}
+
+// ── Ambient Hub header (y=0..28) ──────────────────────────────────────────────
+function drawHubHeader(fb, hours, mins, weather) {
+  fb.fillRect(0,0,64,28,...BG_NAVY);
+  const hhmm=String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0');
+  fb.drawText(2,2,hhmm,...WHITE,2);
+  if (weather && weather.pictocode > 0) {
+    drawWeatherIconSm(fb, 2, 20, weather.pictocode);
+    fb.drawText(10,19,Math.round(weather.temp_now)+'°',...YELLOW,1);
+    fb.drawText(32,19,Math.round(weather.temp_min)+'/'+Math.round(weather.temp_max)+'°',...TEXT_MID,1);
   } else {
-    fb.fillRect(x+2,y+2,12,6,160,160,180);fb.fillRect(x,y+6,16,8,180,180,200);
+    fb.drawText(32,19,'--/--°',...TEXT_DIM,1);
   }
+  fb.fillRect(0,28,64,1,...DIVIDER);
 }
 
-// ── Birthday icons 6×7 ────────────────────────────────────────────────────────
-function drawIconCake(fb,x,y){
-  fb.set(x+2,y,255,220,80);fb.fillRect(x+2,y+1,1,2,200,200,220);
-  fb.fillRect(x,y+3,6,1,210,190,240);fb.fillRect(x,y+4,6,3,190,155,220);
-  fb.set(x+1,y+5,255,100,100);fb.set(x+3,y+5,100,200,100);fb.set(x+5,y+5,100,100,255);
-}
-function drawIconPresent(fb,x,y){
-  fb.fillRect(x,y+3,6,3,91,142,238);fb.fillRect(x,y+2,6,1,122,170,245);
-  fb.fillRect(x+2,y+2,2,4,230,220,168);fb.fillRect(x,y+3,6,1,230,220,168);
-  fb.fillRect(x+1,y,2,2,232,112,112);fb.fillRect(x+3,y,2,2,232,112,112);
-}
-function drawIconHeart(fb,x,y){
-  fb.fillRect(x+1,y,2,1,220,60,60);fb.fillRect(x+4,y,2,1,220,60,60);
-  fb.fillRect(x,y+1,6,2,220,60,60);fb.fillRect(x+1,y+3,4,2,220,60,60);fb.fillRect(x+2,y+5,2,1,220,60,60);
+// ── Departure row block ───────────────────────────────────────────────────────
+function drawDepRowBlock(fb, y, h, line, dest, nextMin, afterMin) {
+  const [lr,lg,lb]=lineColorRgb(line);
+  const [br,bg,bb]=tintBlock(lr,lg,lb);
+  fb.fillRect(0,y,64,h,br,bg,bb);
+  const ty=y+Math.floor((h-8)/2);
+  fb.drawChar(2,ty,line,lr,lg,lb,1);
+  const dest4=String(dest).substring(0,4).toUpperCase();
+  fb.drawText(10,ty,dest4,...WHITE,1);
+  if (nextMin!=null) fb.drawTextRight(49,ty,String(Math.min(nextMin,99)),...YELLOW,1);
+  if (afterMin!=null) fb.drawTextRight(63,ty,String(Math.min(afterMin,99)),...AMBER_DIM,1);
 }
 
-// ── Weather label ─────────────────────────────────────────────────────────────
-function weatherLabel(pc) {
-  const c = pc > 100 ? pc - 100 : pc;
-  const night = pc > 100;
-  if (c===1) return night ? 'Ciel clair' : 'Ensoleille';
-  if (c<=3)  return 'Peu nuageu';
-  if (c===4) return 'Nuageux';
-  if (c<=6)  return 'Brouillard';
-  if (c<=9)  return 'Pluie';
-  if (c<=11) return 'Forte pluie';
-  if (c<=15) return 'Neige';
-  if (c<=18) return 'Forte neige';
-  if ([19,33,35].includes(c)) return 'Pluie';
-  if (c<=22) return 'Orage';
-  if (c<=28) return 'Orage fort';
-  if ([31,34].includes(c)) return 'Nuageux';
-  return 'Variable';
-}
-
-// ── Shared header (y=0..9) ────────────────────────────────────────────────────
-function drawHeader(fb, weather) {
-  const now = new Date();
-  const hhmm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  fb.fillRect(0,0,64,9,14,20,40);
-  fb.drawText(1,1,hhmm,255,255,255,1);
-  if (weather) {
-    const temp = `${Math.round(weather.temp_now)}°`;
-    fb.drawTextRight(63,1,temp,180,220,255,1);
-    drawWeatherIconSm(fb, 37, 2, weather.pictocode);
-  }
-  fb.fillRect(0,9,64,1,30,50,80);
-}
-
-// ── Departure screen ───────────────────────────────────────────────────────────
-function drawDepartures(fb, stop, weather) {
-  fb.fillRect(0,0,64,64,6,10,20);
-  drawHeader(fb, weather);
-  const lines = stop.lines || [];
-  const n = Math.min(lines.length, 4);
-  if (!n) return;
-  const rowH = n <= 2 ? 27 : n === 3 ? 18 : 13;
-
-  for (let i = 0; i < n; i++) {
-    const line = lines[i];
-    const rowY = 10 + i * rowH;
-    const [lr,lg,lb] = lineColor(line.line);
-    const [br,bg,bb] = rowTint(lr,lg,lb);
-    fb.fillRect(0,rowY,64,rowH,br,bg,bb);
-    fb.fillRect(0,rowY,5,rowH,lr,lg,lb);
-
-    const t1 = String(line.departures[0] ?? 0);
-    const t2 = line.departures[1] != null ? String(line.departures[1]) : null;
-
-    if (rowH >= 27) {
-      // Zone 1: badge + first time
-      fb.fillRect(6,rowY,9,9,lr,lg,lb);
-      const lw = [...line.line].length * 6 - 1;
-      fb.drawText(6 + Math.floor((9-lw)/2), rowY+1, line.line, 255,255,255,1);
-      fb.drawTextRight(63, rowY+1, t1, 255,220,80,1);
-      // Zone 2: destination
-      fb.drawTextClipped(6, rowY+10, line.destination, 200,212,235,1, 6,63);
-      // Zone 3: second time
-      if (t2) fb.drawTextRight(63, rowY+19, t2, 220,170,50,1);
-
-    } else if (rowH === 18) {
-      fb.fillRect(6,rowY,9,9,lr,lg,lb);
-      const lw = [...line.line].length * 6 - 1;
-      fb.drawText(6 + Math.floor((9-lw)/2), rowY+1, line.line, 255,255,255,1);
-      fb.drawTextRight(63, rowY+1, t1, 255,220,80,1);
-      // dest split at 5 word-boundary
-      const [l1,l2] = splitDestLines(line.destination, 5);
-      fb.drawTextClipped(17, rowY+1, l1, 200,212,235,1, 17,51);
-      const l2end = t2 ? 50 : 83;
-      if (l2) fb.drawTextClipped(6, rowY+10, l2, 150,160,185,1, 6,l2end);
-      if (t2) fb.drawTextRight(63, rowY+10, t2, 200,155,40,1);
-
-    } else {
-      // row_h=13 compact
-      const ty = rowY + Math.floor((13 - 7) / 2);
-      fb.fillRect(6,ty,7,7,lr,lg,lb);
-      const lw = [...line.line].length * 6 - 1;
-      fb.drawText(6 + Math.floor((7-lw)/2), ty, line.line, 255,255,255,1);
-      const dest5 = [...line.destination].slice(0,5).join('');
-      fb.drawTextClipped(15, ty, dest5, 200,212,235,1, 15,50);
-      fb.drawTextRight(63, ty, t1, 255,220,80,1);
-    }
-  }
-  if (n === 4) fb.fillRect(0,62,64,2,6,10,20);
-}
-
-// ── Destination word-boundary split ──────────────────────────────────────────
-function splitDestLines(dest, maxChars) {
-  const chars = [...dest];
-  if (chars.length <= maxChars) return [dest, ''];
-  let split = maxChars;
-  for (let i = Math.min(maxChars, chars.length-1); i >= 0; i--) {
-    if (chars[i]===' '||chars[i]==='-') { split = chars[i]==='-' ? i+1 : i; break; }
-  }
-  split = Math.min(split, chars.length);
-  const l1 = chars.slice(0,split).join('');
-  const l2start = split < chars.length && chars[split]===' ' ? split+1 : split;
-  const l2 = chars.slice(l2start, l2start+maxChars).join('');
-  return [l1, l2];
-}
-
-// ── Weather screen ────────────────────────────────────────────────────────────
-function drawWeather(fb, weather) {
-  fb.fillRect(0,0,64,64,8,12,26);
-  drawHeader(fb, weather);
-  if (!weather) return;
-  drawWeatherIconLg(fb, 24, 10, weather.pictocode);
-  fb.drawTextCenter(31,28,`${Math.round(weather.temp_now)}°`,255,220,80,1);
-  fb.drawText(2,37,`${Math.round(weather.temp_min)}°`,100,150,255,1);
-  fb.drawTextCenter(31,37,'-',60,70,110,1);
-  fb.drawTextRight(62,37,`${Math.round(weather.temp_max)}°`,255,140,60,1);
-  fb.drawTextCenter(31,47,weatherLabel(weather.pictocode),170,210,170,1);
-  fb.fillRect(0,55,64,1,22,32,58);
-  fb.drawTextClipped(1,57,weather.location,150,140,160,1,1,62);
-}
-
-// ── Birthday/Jour-J screen ────────────────────────────────────────────────────
-function splitBdayLabel(label) {
-  const chars = [...label];
-  const l1 = chars.slice(0,9).join('');
-  if (chars.length <= 9) return [l1,'',''];
-  const l2 = chars.slice(9,19).join('');
-  if (chars.length <= 19) return [l1,l2,''];
-  const l3 = chars.slice(19,29).join('');
-  return [l1,l2,l3];
-}
-
-function buildBdayRows(board) {
-  const rows = [];
-  for (const name of (board.birthdays || [])) {
-    const [l1,l2,l3] = splitBdayLabel(name);
-    rows.push({accent:[220,200,80],icon:'cake',text:[255,240,160],l1,l2,l3});
-  }
-  for (const ev of (board.events || [])) {
-    const label = ev.icon === 'present'
-      ? `+${ev.days}j ${ev.label}`
-      : `J-${ev.days} ${ev.label}`;
-    const [icon,accent,text] = ev.icon === 'present'
-      ? ['present',[100,120,240],[180,200,255]]
-      : ['heart',[180,80,220],[220,170,255]];
-    const [l1,l2,l3] = splitBdayLabel(label);
-    rows.push({accent,icon,text,l1,l2,l3});
-  }
-  return rows;
-}
-
-function rowHeight(row) {
-  return row.l3 ? 27 : row.l2 ? 18 : 9;
-}
-
-function paginateBday(rows) {
-  const pages = [];
-  let start = 0, used = 0;
-  for (let i = 0; i < rows.length; i++) {
-    const h = rowHeight(rows[i]);
-    if (used + h > 54 && i > start) { pages.push([start,i]); start = i; used = 0; }
-    used += h;
-  }
-  if (start < rows.length) pages.push([start, rows.length]);
-  return pages;
-}
-
-function computeBirthdayPages(board) {
-  const rows = buildBdayRows(board);
-  if (!rows.length) return 1;
-  return Math.max(1, paginateBday(rows).length);
-}
-
-function drawBirthdayJourJ(fb, board, page) {
-  fb.fillRect(0,0,64,64,14,10,30);
-  fb.fillRect(0,0,64,9,42,18,62);
-  fb.drawText(1,1,'Moments',230,200,255,1);
-  fb.fillRect(0,9,64,1,65,35,85);
-
-  const rows = buildBdayRows(board);
-  if (!rows.length) {
-    fb.drawTextCenter(31,30,'Aucun',80,70,100,1);
-    fb.drawTextCenter(31,39,'evenement',80,70,100,1);
+// ── Hub screen ────────────────────────────────────────────────────────────────
+function drawHub(fb, stop, linesPerScreen, weather) {
+  const now=new Date();
+  fb.fillRect(0,0,64,64,...BG_NAVY);
+  drawHubHeader(fb, now.getHours(), now.getMinutes(), weather);
+  const deps=(stop.deps||[]).slice(0,linesPerScreen);
+  if (deps.length===0) {
+    fb.drawTextCenter(31,42,'no data',...TEXT_DIM,1);
     return;
   }
-  const pages = paginateBday(rows);
-  const p = Math.min(page, pages.length - 1);
-  const [start, end] = pages[p];
-
-  let y = 10;
-  for (let s = 0; s < end - start; s++) {
-    const row = rows[start + s];
-    const h = rowHeight(row);
-    const [br,bg,bb] = s%2===0 ? [18,13,34] : [14,10,28];
-    fb.fillRect(0,y,64,h,br,bg,bb);
-    fb.fillRect(0,y,2,h,...row.accent);
-    if (row.icon==='cake')    drawIconCake(fb,3,y+1);
-    else if(row.icon==='present') drawIconPresent(fb,3,y+1);
-    else                      drawIconHeart(fb,3,y+1);
-    fb.drawText(11,y+1,row.l1,...row.text,1);
-    if (row.l2) fb.drawTextClipped(3,y+10,row.l2,...row.text,1,3,63);
-    if (row.l3) fb.drawTextClipped(3,y+19,row.l3,...row.text,1,3,63);
-    y += h;
+  let rowH, startY, showName;
+  if (linesPerScreen===4)      { rowH=8;  startY=30; showName=false; }
+  else if (linesPerScreen===3) { rowH=8;  startY=39; showName=true; }
+  else if (linesPerScreen===2) { rowH=13; startY=38; showName=true; }
+  else                          { rowH=18; startY=42; showName=true; }
+  if (showName) {
+    const name=String(stop.name||'').substring(0,10);
+    fb.drawText(2,30,name,...TEXT_DIM,1);
   }
+  deps.forEach((d,i) => drawDepRowBlock(fb,startY+i*rowH,rowH,d.line,d.dest,d.next,d.after));
+  if (linesPerScreen===4) fb.fillRect(0,62,64,2,...BG_NAVY);
 }
 
-// ── App state ─────────────────────────────────────────────────────────────────
+// ── Moment screen ─────────────────────────────────────────────────────────────
+function drawMomentHeader(fb, hours, mins) {
+  fb.fillRect(0,0,64,10,...BG_NAVY);
+  const hhmm=String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0');
+  fb.drawText(17,1,hhmm,...TEXT_MID,1);
+  fb.fillRect(0,9,64,1,...DIVIDER);
+}
+
+function wrapTo(text, n) {
+  const out=[]; let pos=0;
+  while (pos<text.length) { out.push(text.slice(pos,pos+n)); pos+=n; }
+  return out;
+}
+
+function drawMoment(fb, kind, prefix, body, color) {
+  const now=new Date();
+  fb.fillRect(0,0,64,64,...BG_NAVY);
+  drawMomentHeader(fb, now.getHours(), now.getMinutes());
+  const [br,bg,bb]=tintBlock(...color);
+  fb.fillRect(0,11,64,18,br,bg,bb);
+  if (!prefix) {
+    drawIconCake(fb,29,17);
+  } else {
+    drawMomentIcon(fb,kind,4,17);
+    fb.drawText(14,13,prefix,...color,2);
+  }
+  const lines=wrapTo(String(body),10);
+  lines.slice(0,4).forEach((l,i)=>fb.drawText(2,31+i*9,l,...WHITE,1));
+}
+
+// ── Demo data (editable via sidebar) ─────────────────────────────────────────
+let STOPS = [
+  { name: 'A-Bugatti', deps: [
+    { line:'A', dest:'ILLK', next:3,  after:15 },
+    { line:'B', dest:'LING', next:7,  after:18 },
+    { line:'D', dest:'POTE', next:5,  after:14 },
+    { line:'E', dest:'ROBE', next:9,  after:22 },
+  ]},
+  { name: 'Centradie', deps: [
+    { line:'C', dest:'HOER', next:2,  after:12 },
+    { line:'F', dest:'KIBI', next:6,  after:20 },
+    { line:'G', dest:'CONT', next:4,  after:11 },
+    { line:'A', dest:'GRIF', next:8,  after:24 },
+  ]},
+];
+
+let WEATHER = { pictocode:2, temp_now:14, temp_min:8, temp_max:19 };
+
+let BIRTHDAYS = ['Marie-Helene'];
+let EVENTS = [
+  { label:'Voyage en Irlande', days:1, icon:'present' },
+  { label:'Anniversaire Mariage', days:15, icon:'heart' },
+  { label:'Fete Nationale', days:32, icon:'star' },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
 const SCALE = 8;
 const canvas = document.getElementById('display');
-canvas.width  = 64 * SCALE;
-canvas.height = 64 * SCALE;
-
+canvas.width = 64 * SCALE; canvas.height = 64 * SCALE;
 const fb = new Fb();
-let playing = true;
-let screenIdx = 0;
-let screens = [];
-let dwellMs = 7000;
-let progressStart = Date.now();
-let rafId = null;
-let lastSecond = -1;
 
-// Demo stops config
-const stopConfigs = [
-  { enabled: true, ref: '298B', name: 'Jean Jaurès',
-    lines: [
-      { line:'A', destination:'Hautepierre', departures:[3,11] },
-      { line:'B', destination:'Illkirch Lixenbuhl', departures:[7,18] },
-    ]},
-  { enabled: false, ref: '298A', name: 'Jean Jaurès',
-    lines: [
-      { line:'C', destination:'Elsau', departures:[2,9] },
-      { line:'D', destination:'Aristide Briand', departures:[5,14] },
-      { line:'E', destination:'Baggersee Plage', departures:[8,20] },
-    ]},
-  { enabled: false, ref: '233A', name: "Homme de Fer",
-    lines: [
-      { line:'A', destination:'Lingolsheim', departures:[1,8] },
-      { line:'B', destination:'Hoenheim', departures:[4,13] },
-      { line:'C', destination:'Neuhof', departures:[6,17] },
-      { line:'D', destination:'Poteries', departures:[9,22] },
-    ]},
-];
+let tramSecs   = 6;
+let momentSecs = 1;
+let linesCount = 4;
+let pos        = 0;
+let elapsed    = 0;
+let paused     = false;
 
-let wxConfig = { enabled: true, pictocode: 1, temp_now: 18, temp_min: 6, temp_max: 22, location: 'Strasbourg' };
-let bdayConfig = { enabled: true };
-let bdayNames = ['Marie-Helene'];
-let eventList = [
-  { label: 'Voyage en Irlande', days: 1, icon: 'present' },
-  { label: 'Anniversaire Mariage', days: 15, icon: 'heart' },
-  { label: 'Noel en famille', days: 243, icon: 'heart' },
-];
-
-function getBoard() {
-  return {
-    birthdays: bdayNames,
-    events: eventList,
-  };
+function getMoments() {
+  const m = [];
+  BIRTHDAYS.forEach(name => m.push({ kind:'cake', prefix:'', body:name, color:CAKE_GOLD }));
+  EVENTS.forEach(ev => m.push({ kind:ev.icon, prefix:'J-'+ev.days, body:ev.label, color:momentColor(ev.icon) }));
+  return m;
 }
 
-function buildScreens() {
-  const list = [];
-  stopConfigs.forEach((stop, i) => {
-    if (stop.enabled) list.push({ type: 'dep', stop });
-  });
-  if (wxConfig.enabled) list.push({ type: 'wx' });
-  if (bdayConfig.enabled) {
-    const board = getBoard();
-    const n = computeBirthdayPages(board);
-    for (let p = 0; p < n; p++) list.push({ type: 'bday', page: p });
-  }
-  if (!list.length) list.push({ type: 'dep', stop: stopConfigs[0] });
-  screens = list;
-  if (screenIdx >= screens.length) screenIdx = 0;
+function buildCycle() {
+  const cycle = [];
+  STOPS.forEach((s,i) => cycle.push({ type:'hub', idx:i, dur:tramSecs }));
+  const moments = getMoments();
+  moments.forEach((_,i) => cycle.push({ type:'moment', idx:i, dur:momentSecs }));
+  return cycle;
 }
 
-function screenLabel(s) {
-  if (s.type === 'dep') return `Départs — ${s.stop.ref}`;
-  if (s.type === 'wx')  return 'Météo';
-  return `Moments ${screens.filter(x=>x.type==='bday').indexOf(s)+1}/${screens.filter(x=>x.type==='bday').length}`;
-}
+function render() {
+  const cycle   = buildCycle();
+  const moments = getMoments();
+  const s       = cycle[pos % cycle.length];
+  const now     = new Date();
 
-function screenClass(s) {
-  if (s.type === 'dep') return 'dep';
-  if (s.type === 'wx')  return 'wx';
-  return 'bday';
-}
-
-function renderScreen() {
-  const s = screens[screenIdx];
-  fb.px.fill(0);
-  const wx = wxConfig.enabled ? wxConfig : null;
-  if (s.type === 'dep') {
-    drawDepartures(fb, s.stop, wx);
-  } else if (s.type === 'wx') {
-    drawWeather(fb, wxConfig);
+  if (s.type === 'hub') {
+    drawHub(fb, STOPS[s.idx], linesCount, WEATHER);
   } else {
-    drawBirthdayJourJ(fb, getBoard(), s.page);
+    const m = moments[s.idx];
+    if (m) drawMoment(fb, m.kind, m.prefix, m.body, m.color);
+    else   drawHub(fb, STOPS[0], linesCount, WEATHER);
   }
   fb.paint(canvas, SCALE);
-  document.getElementById('screen-name').textContent = screenLabel(s);
-  document.getElementById('screen-pos').textContent = `${screenIdx+1} / ${screens.length}`;
-  updateDots();
-}
 
-function updateDots() {
-  const wrap = document.getElementById('dots');
-  if (wrap.children.length !== screens.length) {
-    wrap.innerHTML = '';
-    screens.forEach((s,i) => {
-      const d = document.createElement('div');
-      d.className = 'dot ' + screenClass(s);
-      d.title = screenLabel(s);
-      d.onclick = () => { screenIdx = i; progressStart = Date.now(); renderScreen(); };
-      wrap.appendChild(d);
-    });
-  }
-  [...wrap.children].forEach((d,i) => {
-    d.classList.toggle('active', i === screenIdx);
+  // Update UI
+  const label = s.type==='hub'
+    ? 'Hub · '+(STOPS[s.idx]||{name:'?'}).name
+    : 'Moment · '+(moments[s.idx]||{body:'?'}).body;
+  document.getElementById('screen-name').textContent = label;
+  const remaining = Math.max(0, s.dur - elapsed).toFixed(1);
+  document.getElementById('screen-remaining').textContent = remaining+'s / '+s.dur+'s';
+
+  // Progress bar (position within total cycle)
+  let cycleTotal = 0, acc = 0;
+  cycle.forEach(x => cycleTotal += x.dur);
+  for (let i=0; i<pos%cycle.length; i++) acc += cycle[i].dur;
+  acc += elapsed;
+  document.getElementById('progress-bar').style.width = (acc/cycleTotal*100)+'%';
+
+  // Cycle bar
+  const bar = document.getElementById('cycle-bar');
+  bar.innerHTML = '';
+  cycle.forEach((sl,i) => {
+    const d = document.createElement('div');
+    d.className = 'cycle-slot '+(sl.type==='hub'?'hub':'moment')+(i===pos%cycle.length?' active':'');
+    d.style.flex = sl.dur;
+    d.textContent = sl.type==='hub' ? 'S'+(sl.idx+1) : 'M'+(sl.idx+1);
+    d.onclick = () => { pos=i; elapsed=0; render(); };
+    bar.appendChild(d);
   });
 }
 
-function loop(ts) {
-  // Rebuild dots if screen count changed
-  if (document.getElementById('dots').children.length !== screens.length) updateDots();
+// ── Rotation timer ────────────────────────────────────────────────────────────
+let lastMinute = new Date().getMinutes();
+let lastRenderMs = performance.now();
 
-  // Re-render every second for live clock
-  const sec = Math.floor(Date.now() / 1000);
-  if (sec !== lastSecond) { lastSecond = sec; renderScreen(); }
+setInterval(() => {
+  if (paused) { render(); return; }
+  const now    = new Date();
+  const newMin = now.getMinutes();
+  elapsed += 0.1;
 
-  // Progress bar
-  const elapsed = Date.now() - progressStart;
-  const pct = Math.min(100, elapsed / dwellMs * 100);
-  document.getElementById('progress-bar').style.width = pct + '%';
-
-  // Auto-advance
-  if (playing && elapsed >= dwellMs) {
-    screenIdx = (screenIdx + 1) % screens.length;
-    progressStart = Date.now();
-    renderScreen();
+  const cycle = buildCycle();
+  const s = cycle[pos % cycle.length];
+  if (elapsed >= s.dur) {
+    pos = (pos + 1) % cycle.length;
+    elapsed = 0;
+    lastMinute = newMin;
+    render();
+  } else if (newMin !== lastMinute) {
+    lastMinute = newMin;
+    render();
+  } else {
+    // Update remaining countdown + progress only
+    const remaining = Math.max(0, s.dur - elapsed).toFixed(1);
+    document.getElementById('screen-remaining').textContent = remaining+'s / '+s.dur+'s';
+    let cycleTotal=0, acc=0;
+    cycle.forEach(x=>cycleTotal+=x.dur);
+    for (let i=0;i<pos%cycle.length;i++) acc+=cycle[i].dur;
+    acc+=elapsed;
+    document.getElementById('progress-bar').style.width=(acc/cycleTotal*100)+'%';
   }
-
-  rafId = requestAnimationFrame(loop);
-}
+}, 100);
 
 // ── Controls ──────────────────────────────────────────────────────────────────
+function updateSliders() {
+  tramSecs   = parseInt(document.getElementById('tram-secs').value);
+  momentSecs = parseInt(document.getElementById('moment-secs').value);
+  linesCount = parseInt(document.getElementById('lines-count').value);
+  document.getElementById('tram-val').textContent   = tramSecs+'s';
+  document.getElementById('moment-val').textContent = momentSecs+'s';
+  document.getElementById('lines-val').textContent  = linesCount;
+  elapsed = 0; render();
+}
+
 function togglePlay() {
-  playing = !playing;
+  paused = !paused;
   const btn = document.getElementById('play-btn');
-  btn.textContent = playing ? '⏸ Pause' : '▶ Play';
-  btn.classList.toggle('paused', !playing);
-  if (playing) progressStart = Date.now();
-}
-function nextScreen() { screenIdx=(screenIdx+1)%screens.length; progressStart=Date.now(); renderScreen(); }
-function prevScreen() { screenIdx=(screenIdx-1+screens.length)%screens.length; progressStart=Date.now(); renderScreen(); }
-function dwellChange(el) { dwellMs=el.value*1000; document.getElementById('dwell-val').textContent=el.value+'s'; }
-
-// ── Stop blocks UI ────────────────────────────────────────────────────────────
-function buildLineSel(stopIdx, lineIdx) {
-  const lines = ['A','B','C','D','E','F','G'];
-  const sel = document.createElement('select');
-  sel.style.cssText = 'width:40px;font-size:11px;';
-  lines.forEach(l => { const o=document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o); });
-  sel.value = stopConfigs[stopIdx].lines[lineIdx].line;
-  sel.onchange = () => { stopConfigs[stopIdx].lines[lineIdx].line = sel.value; buildScreens(); renderScreen(); };
-  return sel;
+  btn.textContent = paused ? '▶ Play' : '⏸ Pause';
+  btn.className   = 'play-btn' + (paused ? ' paused' : '');
 }
 
+function prevScreen() { const c=buildCycle(); pos=(pos-1+c.length)%c.length; elapsed=0; render(); }
+function nextScreen() { const c=buildCycle(); pos=(pos+1)%c.length; elapsed=0; render(); }
+
+// ── Weather inputs ────────────────────────────────────────────────────────────
+document.getElementById('wx-pictocode').onchange = function() {
+  WEATHER.pictocode = parseInt(this.value); render();
+};
+document.getElementById('wx-temp').oninput = function() {
+  WEATHER.temp_now = parseFloat(this.value)||0; render();
+};
+document.getElementById('wx-min').oninput = function() {
+  WEATHER.temp_min = parseFloat(this.value)||0; render();
+};
+document.getElementById('wx-max').oninput = function() {
+  WEATHER.temp_max = parseFloat(this.value)||0; render();
+};
+
+// ── Stop controls ─────────────────────────────────────────────────────────────
 function buildStopsUI() {
-  const cont = document.getElementById('stops-container');
-  cont.innerHTML = '';
-  stopConfigs.forEach((stop, si) => {
-    const blk = document.createElement('div'); blk.className = 'stop-block';
-    // Header
-    const hdr = document.createElement('div'); hdr.className = 'stop-block-header';
-    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=stop.enabled; cb.className='stop-enable';
-    cb.onchange = () => { stop.enabled=cb.checked; buildScreens(); renderScreen(); };
-    const lbl = document.createElement('label'); lbl.textContent = `Arrêt ${si+1}`;
-    hdr.appendChild(cb); hdr.appendChild(lbl); blk.appendChild(hdr);
-    // Ref / Name
-    const f1 = document.createElement('div'); f1.className='stop-field';
-    f1.innerHTML='<span>Réf</span>'; const ri=document.createElement('input'); ri.type='text'; ri.value=stop.ref;
-    ri.oninput=()=>{stop.ref=ri.value;buildScreens();renderScreen();}; f1.appendChild(ri);
-    const f2=document.createElement('div'); f2.className='stop-field';
-    f2.innerHTML='<span>Nom</span>'; const ni=document.createElement('input'); ni.type='text'; ni.value=stop.name;
-    ni.oninput=()=>{stop.name=ni.value;buildScreens();renderScreen();}; f2.appendChild(ni);
-    blk.appendChild(f1); blk.appendChild(f2);
-    // Lines
-    const f3=document.createElement('div'); f3.className='stop-field';
-    f3.innerHTML='<span>Lignes</span>';
-    const nsel=document.createElement('select'); nsel.style.cssText='width:50px;font-size:11px;';
-    [1,2,3,4].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;nsel.appendChild(o);});
-    nsel.value=stop.lines.length;
-    nsel.onchange=()=>{
-      const n=+nsel.value;
-      const tpl=[{line:'A',destination:'Terminus A',departures:[3,11]},{line:'B',destination:'Terminus B',departures:[7,18]},
-                 {line:'C',destination:'Terminus C',departures:[2,9]},{line:'D',destination:'Terminus D',departures:[5,14]}];
-      while(stop.lines.length<n) stop.lines.push(tpl[stop.lines.length]||tpl[3]);
-      stop.lines=stop.lines.slice(0,n);
-      buildStopsUI(); buildScreens(); renderScreen();
-    };
-    f3.appendChild(nsel); blk.appendChild(f3);
-    // Per-line config
-    stop.lines.forEach((line, li) => {
-      const lf=document.createElement('div'); lf.className='stop-field';
-      const ls=buildLineSel(si,li); lf.appendChild(ls);
-      const di=document.createElement('input'); di.type='text'; di.value=line.destination; di.style.cssText='flex:1;font-size:11px;';
-      di.oninput=()=>{line.destination=di.value;renderScreen();};
-      lf.appendChild(di);
-      const t1=document.createElement('input'); t1.type='number'; t1.value=line.departures[0]; t1.style.cssText='width:34px;font-size:11px;';
-      t1.oninput=()=>{line.departures[0]=+t1.value;renderScreen();};
-      const t2=document.createElement('input'); t2.type='number'; t2.value=line.departures[1]; t2.style.cssText='width:34px;font-size:11px;';
-      t2.oninput=()=>{line.departures[1]=+t2.value;renderScreen();};
-      lf.appendChild(t1); lf.appendChild(t2); blk.appendChild(lf);
+  const container = document.getElementById('stops-container');
+  container.innerHTML = '';
+  STOPS.forEach((stop, si) => {
+    const block = document.createElement('div');
+    block.className = 'stop-block';
+    let html = `<div class="stop-block-header">
+      <input class="stop-name-input" value="${stop.name}" oninput="STOPS[${si}].name=this.value;render()">
+    </div>`;
+    stop.deps.forEach((d, di) => {
+      html += `<div class="dep-row">
+        <input class="dep-line" type="text" value="${d.line}" maxlength="2"
+          oninput="STOPS[${si}].deps[${di}].line=this.value.toUpperCase();render()">
+        <input class="dep-dest" type="text" value="${d.dest}" maxlength="7"
+          oninput="STOPS[${si}].deps[${di}].dest=this.value;render()">
+        <input class="dep-t" type="number" value="${d.next}" min="0" max="99"
+          oninput="STOPS[${si}].deps[${di}].next=parseInt(this.value)||0;render()">
+        <input class="dep-t" type="number" value="${d.after}" min="0" max="99"
+          oninput="STOPS[${si}].deps[${di}].after=parseInt(this.value)||0;render()">
+      </div>`;
     });
-    cont.appendChild(blk);
+    block.innerHTML = html;
+    container.appendChild(block);
   });
 }
 
-// ── Event/Birthday list UI ────────────────────────────────────────────────────
-function renderBdayList() {
-  const el = document.getElementById('bday-list'); el.innerHTML='';
-  bdayNames.forEach((name,i) => {
-    const row=document.createElement('div'); row.className='event-row';
-    const inp=document.createElement('input'); inp.type='text'; inp.value=name;
-    inp.oninput=()=>{bdayNames[i]=inp.value;buildScreens();renderScreen();};
-    const del=document.createElement('button'); del.className='event-del'; del.textContent='✕';
-    del.onclick=()=>{bdayNames.splice(i,1);renderBdayList();buildScreens();renderScreen();};
-    row.appendChild(inp); row.appendChild(del); el.appendChild(row);
+// ── Moments controls ──────────────────────────────────────────────────────────
+function buildMomentsUI() {
+  // Birthdays
+  const bl = document.getElementById('bday-list');
+  bl.innerHTML = '';
+  BIRTHDAYS.forEach((name, i) => {
+    const row = document.createElement('div');
+    row.className = 'bday-row';
+    row.innerHTML = `<input type="text" value="${name}"
+        oninput="BIRTHDAYS[${i}]=this.value;render()">
+      <button class="event-del" onclick="BIRTHDAYS.splice(${i},1);buildMomentsUI();render()">✕</button>`;
+    bl.appendChild(row);
+  });
+
+  // Events
+  const el = document.getElementById('event-list');
+  el.innerHTML = '';
+  EVENTS.forEach((ev, i) => {
+    const row = document.createElement('div');
+    row.className = 'event-row';
+    row.innerHTML = `<input type="text" value="${ev.label}"
+        oninput="EVENTS[${i}].label=this.value;render()">
+      <input type="number" value="${ev.days}" min="0" max="999" style="width:48px;font-size:11px;background:#0a1020;border:1px solid #1a2240;color:#aab;border-radius:3px;padding:2px 4px"
+        oninput="EVENTS[${i}].days=parseInt(this.value)||0;buildMomentsUI();render()">
+      <select onchange="EVENTS[${i}].icon=this.value;buildMomentsUI();render()">
+        ${['star','party','heart','present','skull'].map(ic =>
+          `<option value="${ic}"${ic===ev.icon?' selected':''}>${ic}</option>`).join('')}
+      </select>
+      <button class="event-del" onclick="EVENTS.splice(${i},1);buildMomentsUI();render()">✕</button>`;
+    el.appendChild(row);
   });
 }
-function addBday() { bdayNames.push('Prénom'); renderBdayList(); buildScreens(); renderScreen(); }
 
-function renderEventList() {
-  const el=document.getElementById('event-list'); el.innerHTML='';
-  eventList.forEach((ev,i) => {
-    const row=document.createElement('div'); row.className='event-row';
-    const li=document.createElement('input'); li.type='text'; li.value=ev.label; li.placeholder='Label';
-    li.oninput=()=>{ev.label=li.value;buildScreens();renderScreen();};
-    const di=document.createElement('input'); di.type='number'; di.value=ev.days; di.style.width='44px'; di.title='Jours';
-    di.oninput=()=>{ev.days=+di.value;buildScreens();renderScreen();};
-    const ic=document.createElement('select'); ic.style.width='70px';
-    ['present','heart'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;ic.appendChild(o);});
-    ic.value=ev.icon; ic.onchange=()=>{ev.icon=ic.value;buildScreens();renderScreen();};
-    const del=document.createElement('button'); del.className='event-del'; del.textContent='✕';
-    del.onclick=()=>{eventList.splice(i,1);renderEventList();buildScreens();renderScreen();};
-    row.appendChild(li); row.appendChild(di); row.appendChild(ic); row.appendChild(del); el.appendChild(row);
-  });
+function addBday() {
+  BIRTHDAYS.push('Nouveau'); buildMomentsUI(); render();
 }
 function addEvent() {
-  eventList.push({label:'Nouvel événement',days:30,icon:'heart'});
-  renderEventList(); buildScreens(); renderScreen();
-}
-
-// ── Weather controls binding ──────────────────────────────────────────────────
-function bindWx() {
-  document.getElementById('wx-enabled').onchange = e => { wxConfig.enabled=e.target.checked; buildScreens(); renderScreen(); };
-  document.getElementById('wx-pictocode').onchange = e => { wxConfig.pictocode=+e.target.value; renderScreen(); };
-  document.getElementById('wx-temp').oninput = e => { wxConfig.temp_now=+e.target.value; renderScreen(); };
-  document.getElementById('wx-min').oninput  = e => { wxConfig.temp_min=+e.target.value; renderScreen(); };
-  document.getElementById('wx-max').oninput  = e => { wxConfig.temp_max=+e.target.value; renderScreen(); };
-  document.getElementById('wx-loc').oninput  = e => { wxConfig.location=e.target.value; renderScreen(); };
-  document.getElementById('bday-enabled').onchange = e => { bdayConfig.enabled=e.target.checked; buildScreens(); renderScreen(); };
+  EVENTS.push({ label:'Evenement', days:7, icon:'star' }); buildMomentsUI(); render();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildStopsUI();
-renderBdayList();
-renderEventList();
-bindWx();
-buildScreens();
-renderScreen();
-requestAnimationFrame(loop);
+buildMomentsUI();
+render();
 </script>
 </body>
 </html>

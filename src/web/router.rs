@@ -66,6 +66,12 @@ async fn stop_details_handler(
 #[derive(Deserialize)]
 struct ConfigUpdate {
     monitoring_refs: Vec<String>,
+    #[serde(default)]
+    pixoo64_tram_screen_seconds: Option<u32>,
+    #[serde(default)]
+    pixoo64_moment_screen_seconds: Option<u32>,
+    #[serde(default)]
+    pixoo64_lines_per_screen: Option<u8>,
 }
 
 const MAX_REF_LEN:  usize = 50;
@@ -99,6 +105,19 @@ async fn config_handler(
     {
         let mut mr = state.monitoring_refs.write().await;
         *mr = new_refs.clone();
+    }
+
+    if let Some(v) = body.pixoo64_tram_screen_seconds {
+        use std::sync::atomic::Ordering::Relaxed;
+        state.pixoo64_tram_screen_seconds.store(v.clamp(1, 60), Relaxed);
+    }
+    if let Some(v) = body.pixoo64_moment_screen_seconds {
+        use std::sync::atomic::Ordering::Relaxed;
+        state.pixoo64_moment_screen_seconds.store(v.clamp(1, 30), Relaxed);
+    }
+    if let Some(v) = body.pixoo64_lines_per_screen {
+        use std::sync::atomic::Ordering::Relaxed;
+        state.pixoo64_lines_per_screen.store(v.clamp(1, 4) as u32, Relaxed);
     }
 
     info!(monitoring_refs = ?new_refs, "Stops updated via configuration UI");
