@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CTS Departures — Documentation</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --warn: #d29922;
+      --danger: #f85149;
+      --tram-red: #e2001a;
+      --tram-blue: #004f9f;
+      --radius: 8px;
+      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 56px;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-brand .tram-icon { font-size: 1.3rem; }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    nav ul li a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.15s;
+    }
+
+    nav ul li a:hover { color: var(--accent); }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(160deg, #0d1117 0%, #161b22 60%, #0d1522 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+    }
+
+    .hero .badge {
+      display: inline-block;
+      background: rgba(88, 166, 255, 0.12);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 0.25rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, #e6edf3, #58a6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 680px;
+      margin: 0 auto 2rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.4rem;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ── SECTION ── */
+    .section {
+      padding: 4rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section:last-child { border-bottom: none; }
+
+    .section-header {
+      margin-bottom: 2.5rem;
+    }
+
+    .section-header h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      scroll-margin-top: 70px;
+    }
+
+    .section-header p {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      scroll-margin-top: 70px;
+    }
+
+    p { margin-bottom: 1rem; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── FEATURE GRID ── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .feature-card:hover { border-color: var(--accent); }
+
+    .feature-card .icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* ── SCREENSHOTS ── */
+    .screenshot-full {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      width: 100%;
+      max-width: 100%;
+      display: block;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-row {
+      display: grid;
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+
+    .screenshot-row.cols-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .screenshot-row.cols-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+    .screenshot-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .screenshot-item img {
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      width: 100%;
+    }
+
+    .screenshot-item .caption {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── CODE ── */
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.65;
+      margin: 1rem 0 1.5rem;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.875em;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.4em;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    .comment { color: #6e7681; }
+    .key { color: #79c0ff; }
+    .value { color: #a5d6ff; }
+    .str { color: #a8ff78; }
+    .kw { color: #ff7b72; }
+
+    /* ── TABLE ── */
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 1.25rem 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.65rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── CALLOUT ── */
+    .callout {
+      display: flex;
+      gap: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1.25rem 0;
+      font-size: 0.92rem;
+    }
+
+    .callout.warn { border-left-color: var(--warn); }
+    .callout.tip { border-left-color: var(--accent2); }
+
+    .callout .icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+    .callout p { margin: 0; color: var(--muted); }
+    .callout p strong { color: var(--text); }
+
+    /* ── STEPS ── */
+    .steps {
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      counter-increment: step;
+      min-width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0d1117;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .step-body { flex: 1; }
+    .step-body strong { display: block; margin-bottom: 0.25rem; }
+    .step-body p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+    /* ── PIXOO LAYOUT DEMO ── */
+    .pixoo-demo {
+      background: #000;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.8;
+      margin: 1.25rem 0;
+      max-width: 340px;
+    }
+
+    .pixoo-header { color: #fff; border-bottom: 1px solid #333; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
+    .pixoo-clock { color: #fff; font-size: 1.1em; }
+    .pixoo-weather { color: #facc15; }
+    .pixoo-row { padding: 0.1rem 0; }
+    .pixoo-row.line-a { border-left: 3px solid #e2001a; padding-left: 0.5rem; }
+    .pixoo-row.line-b { border-left: 3px solid #004f9f; padding-left: 0.5rem; }
+    .pixoo-row.line-c { border-left: 3px solid #e87722; padding-left: 0.5rem; }
+    .pixoo-dest { color: #fff; }
+    .pixoo-time1 { color: #facc15; }
+    .pixoo-time2 { color: #ca8a04; }
+
+    /* ── ICON BADGES ── */
+    .icon-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .icon-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.4rem 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+
+    /* ── API TABLE ── */
+    .method {
+      display: inline-block;
+      padding: 0.15em 0.55em;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .method.get { background: rgba(63, 185, 80, 0.15); color: var(--accent2); }
+    .method.post { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--accent); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      nav ul { display: none; }
+      .hero { padding: 3rem 1.5rem 2.5rem; }
+      .container { padding: 0 1.25rem; }
+      .section { padding: 2.5rem 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ NAVIGATION ════════════════════ -->
+<nav>
+  <a href="#" class="nav-brand">
+    <span class="tram-icon">🚋</span>
+    CTS Departures
+  </a>
+  <ul>
+    <li><a href="#apercu">Aperçu</a></li>
+    <li><a href="#installation">Installation</a></li>
+    <li><a href="#configuration">Configuration</a></li>
+    <li><a href="#fonctionnalites">Fonctionnalités</a></li>
+    <li><a href="#pixoo64">Pixoo64</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="#securite">Sécurité</a></li>
+  </ul>
+</nav>
+
+<!-- ════════════════════ HERO ════════════════════ -->
+<header class="hero">
+  <div class="badge">Réseau CTS · Strasbourg</div>
+  <h1>Tableau de départs<br>en temps réel</h1>
+  <p>
+    Suivez les départs du réseau CTS directement dans votre navigateur ou sur un écran LED Divoom Pixoo64.
+    Mise à jour automatique via WebSocket — aucun rechargement de page.
+  </p>
+  <div class="hero-actions">
+    <a href="https://github.com/jbmeyer/cts-departures" class="btn btn-primary">
+      ⬢ Voir sur GitHub
+    </a>
+    <a href="#installation" class="btn btn-secondary">
+      ↓ Guide d'installation
+    </a>
+  </div>
+</header>
+
+<!-- ════════════════════ APERÇU ════════════════════ -->
+<section class="section" id="apercu">
+  <div class="container">
+    <div class="section-header">
+      <h2>Aperçu</h2>
+      <p>Un tableau de bord complet pour suivre les horaires de tramway en temps réel.</p>
+    </div>
+
+    <img src="screenshots/board-desktop.gif" alt="Tableau de départs — bureau" class="screenshot-full" />
+
+    <p>
+      L'application interroge l'<a href="https://www.cts-strasbourg.eu/fr/open-data/">API SIRI 2.0 de la CTS</a>
+      et diffuse les données en direct vers tous les navigateurs connectés via WebSocket.
+      Un seul binaire auto-contenu sert à la fois l'interface web et l'API REST.
+    </p>
+
+    <div class="feature-grid" style="margin-top: 2rem;">
+      <div class="feature-card">
+        <div class="icon">🔴</div>
+        <h3>Temps réel confirmé GPS</h3>
+        <p>Les horaires en <strong>gras</strong> sont confirmés par GPS. Les horaires en <em>italique</em> sont théoriques (grille horaire).</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔄</div>
+        <h3>Rotation multi-arrêts</h3>
+        <p>Surveillez plusieurs codes d'arrêt simultanément. Le tableau défile automatiquement entre les arrêts.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📱</div>
+        <h3>Responsive &amp; tactile</h3>
+        <p>Disposition compacte sur mobile (≤ 480 px). Glissement gauche/droite pour changer d'arrêt manuellement.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">⛅</div>
+        <h3>Météo intégrée</h3>
+        <p>Bandeau météo en bas du tableau : température min/max, précipitations, indice UV. Fond animé (pluie, neige, soleil…).</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🎂</div>
+        <h3>Anniversaires du jour</h3>
+        <p>Affiche les anniversaires depuis un fichier JSON de contacts, avec calcul automatique de l'âge.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📅</div>
+        <h3>Compteur Jour J</h3>
+        <p>Défilement des prochains événements avec icône, label et décompte en jours. Animation confettis le jour J.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">💡</div>
+        <h3>Écran LED Pixoo64</h3>
+        <p>Affichage <em>Ambient Hub</em> sur une matrice LED 64×64 Divoom Pixoo64, avec horloge et bandes colorées par ligne.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📦</div>
+        <h3>Binaire unique</h3>
+        <p>L'interface web est intégrée à la compilation. Déployez avec un simple <code>scp</code>, aucune dépendance externe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ INSTALLATION ════════════════════ -->
+<section class="section" id="installation">
+  <div class="container">
+    <div class="section-header">
+      <h2>Installation</h2>
+      <p>Compilez depuis les sources ou déployez le binaire pré-compilé.</p>
+    </div>
+
+    <h3>Prérequis</h3>
+    <ul style="margin-left: 1.5rem; color: var(--muted); font-size: 0.95rem; line-height: 2;">
+      <li>Rust 1.75+ (utilise <code>async fn</code> dans les traits via AFIT)</li>
+      <li>Un jeton API CTS Open Data — gratuit, à demander sur <a href="https://www.cts-strasbourg.eu/fr/open-data/">cts-strasbourg.eu</a></li>
+      <li><em>Facultatif</em> — Clé API <a href="https://www.meteoblue.com/en/weather-api">Meteoblue</a> pour la météo</li>
+      <li><em>Facultatif</em> — Un appareil Divoom Pixoo64 pour l'affichage LED</li>
+    </ul>
+
+    <h3>Compilation native (Linux aarch64)</h3>
+    <pre><code><span class="comment"># Build de développement</span>
+cargo build
+
+<span class="comment"># Build de production optimisé (LTO activé)</span>
+cargo build --release
+<span class="comment"># ou via le script fourni :</span>
+./build_release.sh</code></pre>
+
+    <h3>Cross-compilation depuis macOS (M1/M2/M3) → Freebox Delta</h3>
+    <p>
+      Bien que Mac et Freebox soient tous deux ARM64, le Mac produit un binaire Mach-O (macOS) tandis que
+      la Freebox attend un ELF Linux. La solution est
+      <a href="https://github.com/rust-cross/cargo-zigbuild"><code>cargo-zigbuild</code></a> :
+      Zig embarque un cross-compilateur — aucun Docker requis.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Configuration unique</strong>
+          <pre style="margin-top:0.5rem;"><code>cargo install cargo-zigbuild
+rustup target add aarch64-unknown-linux-musl</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Compiler et déployer</strong>
+          <pre style="margin-top:0.5rem;"><code>./build_freebox.sh</code></pre>
+          <p>Produit un ELF statique (~3,4 Mo) dans <code>dist-freebox/</code> et le copie automatiquement sur les instances via <code>scp</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Lancer le serveur</strong>
+          <pre style="margin-top:0.5rem;"><code><span class="comment"># Avec la configuration par défaut</span>
+cargo run --release
+
+<span class="comment"># Avec un fichier de configuration personnalisé</span>
+cargo run --release -- /chemin/vers/config.toml</code></pre>
+          <p>Puis ouvrir <code>http://localhost:3000</code> dans votre navigateur.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="icon">💡</span>
+      <p><strong>Pourquoi musl et non gnu ?</strong>
+      <code>musl</code> produit un binaire entièrement statique, sans dépendance à la version glibc de la Freebox.
+      Déploiement simplifié, zéro surprise « mauvaise glibc ».</p>
+    </div>
+
+    <h3>Mode démo (sans clés API)</h3>
+    <p>CTS et météo peuvent être simulés indépendamment. Utilisez <code>demo.toml</code> pour un démo entièrement autonome :</p>
+    <pre><code>cargo run -- demo.toml</code></pre>
+    <p>La démo active des départs CTS simulés, une météo simulée, les anniversaires et le compteur Jour J. Les horaires sont légèrement jittérisés à chaque cycle pour donner une impression de vivant.</p>
+  </div>
+</section>
+
+<!-- ════════════════════ CONFIGURATION ════════════════════ -->
+<section class="section" id="configuration">
+  <div class="container">
+    <div class="section-header">
+      <h2>Configuration</h2>
+      <p>Copiez et éditez <code>config.toml</code>. Toutes les clés CTS sont préfixées <code>cts_</code>, météo <code>meteoblue_</code>, écran LED <code>pixoo64_</code>.</p>
+    </div>
+
+    <h3>Configuration CTS</h3>
+    <pre><code><span class="comment"># ── API CTS ───────────────────────────────────────────────────────────────────</span>
+
+<span class="comment"># Votre jeton API CTS Open Data</span>
+<span class="key">cts_api_token</span> = <span class="str">"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"</span>
+
+<span class="comment"># Codes d'arrêt à surveiller — tableau TOML inline.
+# Ajoutez plusieurs entrées pour tourner automatiquement entre les arrêts.
+# Exemples : "233A" = Homme de Fer,  "298B" = Jean Jaurès (dir. Gare Centrale)</span>
+<span class="key">cts_monitoring_ref</span> = [<span class="str">"298B"</span>]
+
+<span class="comment"># Durée d'affichage de chaque arrêt en secondes (multi-arrêt uniquement)</span>
+<span class="key">cts_stop_rotation_in_second</span> = <span class="value">15</span>
+
+<span class="comment"># Fréquence d'interrogation de l'API en minutes</span>
+<span class="key">cts_polling_interval_minutes</span> = <span class="value">2</span>
+
+<span class="comment"># Nombre maximum de prochains départs demandés par appel API</span>
+<span class="key">cts_max_stop_visits</span> = <span class="value">10</span>
+
+<span class="comment"># Adresse du serveur web (0.0.0.0 pour écouter sur toutes les interfaces)</span>
+<span class="key">listen_addr</span> = <span class="str">"0.0.0.0:3000"</span>
+
+<span class="comment"># Simulation CTS (données fictives, aucune clé nécessaire)</span>
+<span class="key">cts_simulation</span> = <span class="kw">false</span></code></pre>
+
+    <h3>Fenêtres d'interrogation (style crontab)</h3>
+    <p>
+      Restreignez les appels API aux plages horaires de service grâce à des expressions crontab à 5 champs.
+      Les points-virgules séparent plusieurs clauses ; l'interrogation a lieu dès qu'une clause correspond.
+    </p>
+    <pre><code><span class="comment"># Interrogation uniquement pendant les heures de service :</span>
+<span class="comment">#   Semaine 6h–23h, week-end 8h–23h :</span>
+<span class="key">cts_always_query</span> = <span class="kw">false</span>
+<span class="key">cts_query_intervals</span> = <span class="str">"* 6-23 * * 1-5; * 8-23 * * 0,6"</span>
+
+<span class="comment"># Matin + après-midi + soir :</span>
+<span class="comment"># cts_query_intervals = "* 6-9,14-18,22-23 * * *"</span></code></pre>
+
+    <h3>Météo Meteoblue (facultatif)</h3>
+    <pre><code><span class="key">meteoblue_enabled</span>                   = <span class="kw">true</span>
+<span class="key">meteoblue_api_key</span>                   = <span class="str">"VOTRE_CLÉ_METEOBLUE"</span>
+<span class="key">meteoblue_location</span>                  = <span class="str">"Strasbourg"</span>
+<span class="key">meteoblue_polling_interval_minutes</span>  = <span class="value">60</span>
+<span class="key">meteoblue_simulation</span>                = <span class="kw">false</span></code></pre>
+
+    <h3>Écran LED Pixoo64 (facultatif)</h3>
+    <pre><code><span class="key">pixoo64_enabled</span>              = <span class="kw">true</span>
+<span class="key">pixoo64_address</span>              = <span class="str">"192.168.1.42"</span>
+<span class="key">pixoo64_simulation</span>           = <span class="kw">false</span>   <span class="comment"># true = preview PNG uniquement</span>
+<span class="key">pixoo64_brightness</span>           = <span class="value">80</span>      <span class="comment"># luminosité 0–100</span>
+<span class="key">pixoo64_tram_screen_seconds</span>  = <span class="value">6</span>       <span class="comment"># durée de chaque écran départs (1–60)</span>
+<span class="key">pixoo64_moment_screen_seconds</span>= <span class="value">1</span>       <span class="comment"># durée de chaque écran anniversaire/Jour J (1–30)</span>
+<span class="key">pixoo64_lines_per_screen</span>     = <span class="value">4</span>       <span class="comment"># lignes de départ par écran (1–4)</span></code></pre>
+
+    <h3>Anniversaires (facultatif)</h3>
+    <pre><code><span class="key">birthday_enabled</span> = <span class="kw">true</span>
+<span class="key">birthday_file</span>    = <span class="str">"data/birthdays.json"</span></code></pre>
+
+    <p>Format du fichier JSON :</p>
+    <pre><code>{
+  <span class="key">"birthdays"</span>: [
+    { <span class="key">"name"</span>: <span class="str">"Jean Martin"</span>,   <span class="key">"date"</span>: <span class="str">"12/04"</span>       },
+    { <span class="key">"name"</span>: <span class="str">"Claire Dupont"</span>, <span class="key">"date"</span>: <span class="str">"03/07/1985"</span> }
+  ]
+}</code></pre>
+    <p style="color: var(--muted); font-size:0.9rem;">Format de date : <code>JJ/MM</code> (annuel, sans année) ou <code>JJ/MM/AAAA</code> (âge calculé et affiché automatiquement).</p>
+
+    <h3>Compteur Jour J (facultatif)</h3>
+    <pre><code><span class="key">jour_j_enabled</span>      = <span class="kw">true</span>
+<span class="key">birthday_days_ahead</span> = <span class="value">7</span>
+
+<span class="key">jour_j_events</span> = [
+  { <span class="key">date</span> = <span class="str">"14/07/2026"</span>, <span class="key">label</span> = <span class="str">"Fête Nationale"</span>, <span class="key">icon</span> = <span class="str">"star"</span>    },
+  { <span class="key">date</span> = <span class="str">"25/12/2026"</span>, <span class="key">label</span> = <span class="str">"Noël"</span>,           <span class="key">icon</span> = <span class="str">"present"</span> },
+  { <span class="key">date</span> = <span class="str">"31/12/2026"</span>, <span class="key">label</span> = <span class="str">"Réveillon"</span>,      <span class="key">icon</span> = <span class="str">"party"</span>   },
+]</code></pre>
+
+    <p>Icônes disponibles :</p>
+    <div class="icon-list">
+      <span class="icon-badge">⭐ <code>star</code></span>
+      <span class="icon-badge">🎉 <code>party</code></span>
+      <span class="icon-badge">❤️ <code>heart</code></span>
+      <span class="icon-badge">🎁 <code>present</code></span>
+      <span class="icon-badge">💀 <code>skull</code></span>
+    </div>
+
+    <div class="callout">
+      <span class="icon">ℹ️</span>
+      <p>Pour des raisons de sécurité, stockez vos clés API dans des fichiers séparés :<br>
+      <code>cts_api_token_file = "/etc/cts/token"</code><br>
+      <code>meteoblue_api_key_file = "/etc/cts/meteoblue_key"</code></p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ FONCTIONNALITÉS ════════════════════ -->
+<section class="section" id="fonctionnalites">
+  <div class="container">
+    <div class="section-header">
+      <h2>Fonctionnalités</h2>
+      <p>Tour d'horizon des principales fonctions de l'application.</p>
+    </div>
+
+    <!-- STATUS -->
+    <h3>Statut système</h3>
+    <p>
+      Cliquez sur le <strong>point de statut (●)</strong> dans l'en-tête pour ouvrir l'overlay de statut.
+      Il présente deux onglets :
+    </p>
+    <ul style="margin-left: 1.5rem; color: var(--muted); font-size:0.95rem; line-height:2;">
+      <li><strong>CTS</strong> — codes d'arrêts surveillés, flag simulation, intervalle de polling, configuration des fenêtres crontab, horodatage du prochain appel.</li>
+      <li><strong>Météoblue</strong> — nom de lieu résolu, coordonnées, dernier fetch, valeurs météo actuelles, état des fenêtres d'interrogation.</li>
+    </ul>
+
+    <div class="screenshot-row cols-2">
+      <div class="screenshot-item">
+        <img src="screenshots/status-cts.png" alt="Statut — CTS" />
+        <span class="caption">Onglet statut CTS</span>
+      </div>
+      <div class="screenshot-item">
+        <img src="screenshots/status-meteoblue.png" alt="Statut — Météoblue" />
+        <span class="caption">Onglet statut Météoblue</span>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <h3>Configuration à chaud</h3>
+    <p>
+      Cliquez sur le bouton <strong>Configuration</strong> dans l'en-tête pour accéder aux réglages sans redémarrer le serveur.
+    </p>
+
+    <div class="screenshot-row cols-3">
+      <div class="screenshot-item">
+        <img src="screenshots/config-arret.png" alt="Config — Arrêt" />
+        <span class="caption">Sélection d'arrêt</span>
+      </div>
+      <div class="screenshot-item">
+        <img src="screenshots/config-search.png" alt="Config — Recherche" />
+        <span class="caption">Recherche d'arrêt</span>
+      </div>
+      <div class="screenshot-item">
+        <img src="screenshots/config-jour.png" alt="Config — Compteur Jour J" />
+        <span class="caption">Gestion des événements Jour J</span>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="icon">✅</span>
+      <p><strong>Sélecteur d'arrêt</strong> — parcourez tous les arrêts CTS et changez l'arrêt surveillé à la volée.
+      La modification est sauvegardée dans <code>config.toml</code> et un nouveau poll est déclenché immédiatement.
+      La liste des arrêts est récupérée depuis l'API CTS réelle, même en mode simulation.</p>
+    </div>
+
+    <!-- WEATHER -->
+    <h3>Widget météo</h3>
+    <p>
+      Quand <code>meteoblue_enabled = true</code>, le bas du tableau affiche une bande météo en direct :
+    </p>
+    <pre><code>☁  7°C / 19°C  💧 2.5 mm  UV 3</code></pre>
+    <ul style="margin-left: 1.5rem; color: var(--muted); font-size:0.95rem; line-height:2;">
+      <li>Le nom de ville (<code>meteoblue_location</code>) est résolu en coordonnées via l'API Meteoblue au démarrage.</li>
+      <li>Un <strong>fond animé</strong> s'affiche derrière la bande : gouttes de pluie, flocons de neige, nuages, soleil, éclairs… selon le pictocode Meteoblue courant.</li>
+      <li>Quand le tableau est chargé et l'espace réduit, la bande météo se réduit gracieusement — les lignes de départ ont toujours la priorité.</li>
+    </ul>
+
+    <!-- BIRTHDAY -->
+    <h3>Anniversaires du jour</h3>
+    <p>
+      Quand <code>birthday_enabled = true</code> et que moins de 4 lignes de départ sont affichées,
+      les anniversaires du jour s'affichent en défilement horizontal. L'âge est calculé automatiquement
+      si l'année de naissance est renseignée.
+    </p>
+
+    <!-- JOUR J -->
+    <h3>Compteur Jour J</h3>
+    <p>
+      Quand <code>jour_j_enabled = true</code>, une banderole défilante liste tous les événements à venir
+      avec leur icône, leur libellé et le nombre de jours restants.
+    </p>
+    <ul style="margin-left: 1.5rem; color: var(--muted); font-size:0.95rem; line-height:2;">
+      <li>Les anniversaires proches (dans <code>birthday_days_ahead</code> jours) sont automatiquement fusionnés dans le défilement Jour J.</li>
+      <li>Les événements du <strong>jour J</strong> font clignoter leur badge en or avec une animation confettis.</li>
+      <li>Gérez les événements à la volée via <strong>Configuration → Jour J</strong> : ajout, suppression, réglage de l'horizon d'anniversaires.</li>
+      <li>Les événements passés sont élagués automatiquement à l'ouverture de la config.</li>
+    </ul>
+
+    <!-- ARABESQUES -->
+    <h3>Canvas arabesque</h3>
+    <p>
+      La zone vide sous la bande météo contient une animation ornementale lente : cinq designs d'arabesque SVG
+      se dessinent progressivement (animation <code>stroke-dashoffset</code>), se maintiennent brièvement,
+      puis s'effacent avant que le design suivant commence. Purement décoratif.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════════ PIXOO64 ════════════════════ -->
+<section class="section" id="pixoo64">
+  <div class="container">
+    <div class="section-header">
+      <h2>Écran LED Pixoo64</h2>
+      <p>Affichage <em>Ambient Hub</em> sur une matrice LED 64×64 Divoom Pixoo64.</p>
+    </div>
+
+    <img src="screenshots/pixoo64.gif" alt="Pixoo64 en action" class="screenshot-full" style="max-width:400px; margin: 0 auto 2rem;" />
+
+    <h3>Mise en page</h3>
+    <p>Chaque écran partage un <strong>bandeau d'en-tête permanent</strong> (y = 0–28) :</p>
+    <ul style="margin-left: 1.5rem; color: var(--muted); font-size:0.95rem; line-height:2;">
+      <li>Grande horloge <code>HH:MM</code> (échelle 2, blanc)</li>
+      <li>Icône météo + température actuelle (jaune) + min/max (bleu atténué)</li>
+      <li>Séparateur 1 px</li>
+    </ul>
+
+    <p>Le <strong>corps</strong> (y = 29–63) alterne entre :</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Lignes</th>
+            <th>Hauteur par ligne</th>
+            <th>Nom d'arrêt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>4 lignes</td><td>4</td><td>8 px</td><td>Non</td></tr>
+          <tr><td>3 lignes</td><td>3</td><td>8 px</td><td>Oui</td></tr>
+          <tr><td>2 lignes</td><td>2</td><td>13 px</td><td>Oui</td></tr>
+          <tr><td>1 ligne</td><td>1</td><td>18 px</td><td>Oui</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Chaque bande de ligne affiche : lettre de ligne (couleur marque) | destination (4 car., blanc) | prochain départ right-aligné (jaune, ou <strong>orange vif</strong> si &lt; 2 min) | deuxième départ (ambre).</p>
+
+    <div class="pixoo-demo">
+      <div class="pixoo-header">
+        <span class="pixoo-clock">14:37</span>  <span class="pixoo-weather">⛅ 12° / 19°  💧 UV3</span>
+      </div>
+      <div class="pixoo-row line-a">
+        <span class="pixoo-dest">A  HFEI</span>  <span class="pixoo-time1">2'</span>  <span class="pixoo-time2">8'</span>
+      </div>
+      <div class="pixoo-row line-b">
+        <span class="pixoo-dest">B  GARE</span>  <span class="pixoo-time1">4'</span>  <span class="pixoo-time2">12'</span>
+      </div>
+      <div class="pixoo-row line-c">
+        <span class="pixoo-dest">C  ILLK</span>  <span class="pixoo-time1">7'</span>  <span class="pixoo-time2">19'</span>
+      </div>
+    </div>
+
+    <h3>Clés de configuration</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Clé</th><th>Défaut</th><th>Plage</th><th>Rechargement à chaud</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>pixoo64_enabled</code></td><td><code>false</code></td><td>—</td><td>Non</td></tr>
+          <tr><td><code>pixoo64_address</code></td><td>—</td><td>—</td><td>Non</td></tr>
+          <tr><td><code>pixoo64_simulation</code></td><td><code>false</code></td><td>—</td><td>Non</td></tr>
+          <tr><td><code>pixoo64_brightness</code></td><td>—</td><td>0–100</td><td>Non (démarrage uniquement)</td></tr>
+          <tr><td><code>pixoo64_tram_screen_seconds</code></td><td><code>6</code></td><td>1–60</td><td>Oui</td></tr>
+          <tr><td><code>pixoo64_moment_screen_seconds</code></td><td><code>1</code></td><td>1–30</td><td>Oui</td></tr>
+          <tr><td><code>pixoo64_lines_per_screen</code></td><td><code>4</code></td><td>1–4</td><td>Oui</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="icon">🖥️</span>
+      <p><strong>Mode simulation</strong> — activez <code>pixoo64_simulation = true</code> pour prévisualiser les frames en PNG
+      via <code>/api/pixoo64/preview</code> sans envoyer quoi que ce soit à l'appareil.
+      Ouvrez également <code>mockup_pixoo64.html</code> pour un aperçu interactif 512×512 avec contrôles de rotation live.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ API ════════════════════ -->
+<section class="section" id="api">
+  <div class="container">
+    <div class="section-header">
+      <h2>API REST &amp; WebSocket</h2>
+      <p>Tous les endpoints <code>/api/*</code> sont bloqués par nginx pour les clients externes (non-LAN) — ils renvoient 403 avant d'atteindre le serveur Rust.</p>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Endpoint</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method get">GET</span> <code>/ws</code></td>
+            <td>Flux WebSocket — pousse le JSON <code>DepartureBoard</code> à chaque mise à jour</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span> <code>/api/stops</code></td>
+            <td>Liste tous les arrêts logiques (triés par nom)</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span> <code>/api/stops/:code/details</code></td>
+            <td>Arrêts physiques et lignes/directions sous un code logique</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span> <code>/api/config</code></td>
+            <td><code>{"monitoring_refs":["298B"]}</code> — change les arrêts surveillés à chaud</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span> <code>/api/jour-j</code></td>
+            <td>Met à jour les événements Jour J et l'horizon d'anniversaires</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span> <code>/api/status</code></td>
+            <td>État du polling, statut météo, événements Jour J et config anniversaires</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span> <code>/api/pixoo64/preview</code></td>
+            <td>Dernière frame Pixoo64 en PNG (mode simulation uniquement)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Rechargement à chaud via API</h3>
+    <p>Les clés Pixoo64 qui supportent le rechargement à chaud peuvent être mises à jour sans redémarrage :</p>
+    <pre><code>curl -X POST http://localhost:3000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"pixoo64_lines_per_screen": 2}'</code></pre>
+    <p style="color:var(--muted); font-size:0.9rem;">La modification prend effet dès la prochaine frame rendue.</p>
+  </div>
+</section>
+
+<!-- ════════════════════ SÉCURITÉ ════════════════════ -->
+<section class="section" id="securite">
+  <div class="container">
+    <div class="section-header">
+      <h2>Sécurité &amp; Déploiement</h2>
+      <p>L'application est conçue pour être exposée sur internet via un reverse proxy nginx.</p>
+    </div>
+
+    <h3>Contrôle d'accès géographique</h3>
+    <p>
+      nginx utilise un bloc <code>geo</code> pour classifier les requêtes en internes (LAN) ou externes.
+      La variable <code>$cts_is_external</code> pilote toutes les décisions d'accès :
+    </p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Surface</th><th>Interne (LAN)</th><th>Externe (internet)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tableau de bord (WebSocket)</td>
+            <td>Tableau complet avec anniversaires et Jour J</td>
+            <td>Tableau livré, mais <code>birthdays_today</code> et <code>jour_j_events</code> sont <strong>supprimés côté serveur</strong></td>
+          </tr>
+          <tr>
+            <td><code>/api/stops</code>, <code>/api/config</code>, <code>/api/jour-j</code>, <code>/api/status</code></td>
+            <td>Autorisé</td>
+            <td><strong>Bloqué par nginx (403)</strong> — n'atteint jamais Rust</td>
+          </tr>
+          <tr>
+            <td>Boutons Config et Statut</td>
+            <td>Visibles</td>
+            <td>Masqués (UI uniquement — le blocage API est la vraie barrière)</td>
+          </tr>
+          <tr>
+            <td>Lignes Anniversaires / Jour J</td>
+            <td>Visibles</td>
+            <td>Masquées (JS) — données absentes du payload de toute façon</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="icon">⚠️</span>
+      <p><strong>Pourquoi supprimer côté serveur et pas seulement cacher en JS ?</strong>
+      Le JavaScript exécuté dans le navigateur peut être modifié par n'importe qui.
+      Masquer un élément UI n'empêche pas un attaquant de lire les frames WebSocket directement dans les DevTools.
+      Le serveur maintient deux canaux de diffusion — un complet (interne), un filtré (externe) —
+      et route chaque client WebSocket vers le canal approprié selon l'en-tête <code>X-CTS-External</code> positionné par nginx.</p>
+    </div>
+
+    <h3>Limitation de débit</h3>
+    <p>
+      <code>GET /api/stops</code> et les endpoints de découverte d'arrêts sont limités à 10 requêtes/minute par IP
+      (zone <code>cts_stops</code> dans <code>nginx-conf.d-cts.conf</code>).
+    </p>
+
+    <h3>Configuration multi-instances nginx</h3>
+    <p>Le fichier <code>dist/nginx-default</code> couvre trois instances simultanées :</p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Instance</th><th>Préfixe de chemin</th><th>Port</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Jaurès</td><td><code>/cts/jaures/</code></td><td>3000</td></tr>
+          <tr><td>Gallia</td><td><code>/cts/gallia/</code></td><td>3001</td></tr>
+          <tr><td>Porte Hop</td><td><code>/cts/portehop/</code></td><td>3002</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted); font-size:0.9rem;">
+      Chaque instance possède ses propres blocs location WebSocket, API et assets statiques.
+      Une page d'erreur partagée (<code>dist/cts-offline.html</code>) est servie lorsqu'un backend est indisponible.
+    </p>
+
+    <h3>Artefacts de déploiement</h3>
+    <ul style="margin-left: 1.5rem; color: var(--muted); font-size:0.95rem; line-height:2;">
+      <li><code>dist/nginx-conf.d-cts.conf</code> → déployer dans <code>/etc/nginx/conf.d/cts.conf</code></li>
+      <li><code>dist/nginx-default</code> → déployer dans <code>/etc/nginx/sites-enabled/default</code></li>
+      <li><code>dist/cts-offline.html</code> → déployer dans <code>/var/www/html/</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ════════════════════ FOOTER ════════════════════ -->
+<footer>
+  <p>
+    <strong>CTS Departures</strong> — Tableau de départs en temps réel pour le réseau CTS de Strasbourg.<br />
+    Licence <a href="https://github.com/jbmeyer/cts-departures/blob/main/LICENSE">MIT</a> ·
+    Données fournies par <a href="https://www.cts-strasbourg.eu/fr/open-data/">CTS Open Data</a> ·
+    Météo par <a href="https://www.meteoblue.com/">Meteoblue</a>
+  </p>
+</footer>
+
+</body>
+</html>
