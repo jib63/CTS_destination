@@ -115,6 +115,10 @@ const TL: Glyph = [0x40,0xA0,0x10,0x00,0x00,0x00,0x00]; // ~
 
 /// Degree sign ° (non-ASCII — handle separately in lookup)
 pub const DEGREE: Glyph = [0x60,0x90,0x90,0x60,0x00,0x00,0x00];
+/// Accented E glyphs used by French stop names and personal names.
+/// The base letter is compressed vertically to leave two rows for the accent.
+const E_ACUTE_UPPER: Glyph = [0x10,0x20,0xF8,0x80,0xF0,0x80,0xF8]; // É
+const E_ACUTE_LOWER: Glyph = [0x10,0x20,0x70,0x88,0xF8,0x80,0x70]; // é
 /// Tilde ~ reused for "≈" approximation sign
 #[allow(dead_code)]
 pub const TILDE:  Glyph = TL;
@@ -221,6 +225,33 @@ pub fn glyph(ch: char) -> &'static Glyph {
         '}'  => &RBC,
         '~'  => &TL,
         '\u{00B0}' => &DEGREE, // °
+        'É' => &E_ACUTE_UPPER,
+        'é' => &E_ACUTE_LOWER,
+
+        // Keep other common French characters readable even when the 5×7
+        // font has no room for a distinct accent.  These aliases are much
+        // preferable to the blank fallback previously used for all Unicode.
+        'À' | 'Â' | 'Ä' => &GA,
+        'à' | 'â' | 'ä' => &LC,
+        'Ç' => &GC,
+        'ç' => &LC_,
+        'È' | 'Ê' | 'Ë' => &GE,
+        'è' | 'ê' | 'ë' => &LE,
+        'Î' | 'Ï' => &GI,
+        'î' | 'ï' => &LI,
+        'Ô' | 'Ö' => &GO,
+        'ô' | 'ö' => &LO,
+        'Ù' | 'Û' | 'Ü' => &GU,
+        'ù' | 'û' | 'ü' => &LU,
+        'Ÿ' => &GY,
+        'ÿ' => &LY,
+        'Æ' => &GA,
+        'æ' => &LC,
+        'Œ' => &GO,
+        'œ' => &LO,
+        '\u{00A0}' => &SP,             // non-breaking space
+        '\u{2018}' | '\u{2019}' => &AP, // typographic apostrophes
+        '\u{2013}' | '\u{2014}' => &MI, // en/em dashes
         _    => &SP,
     }
 }
@@ -231,3 +262,35 @@ pub const CHAR_W: i32 = 5;
 pub const CHAR_H: i32 = 7;
 /// Default horizontal spacing between characters (1px gap).
 pub const CHAR_SPACING: i32 = 1;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_all_letters_visible(text: &str) {
+        for ch in text.chars().filter(|ch| !ch.is_whitespace()) {
+            assert_ne!(glyph(ch), &SP, "{ch:?} unexpectedly rendered as blank");
+        }
+    }
+
+    #[test]
+    fn acute_e_has_a_visible_accented_glyph_in_both_cases() {
+        assert_eq!(glyph('É'), &E_ACUTE_UPPER);
+        assert_eq!(glyph('é'), &E_ACUTE_LOWER);
+        assert_ne!(glyph('É'), glyph('E'));
+        assert_ne!(glyph('é'), glyph('e'));
+    }
+
+    #[test]
+    fn common_french_characters_never_fall_back_to_blank() {
+        for ch in "ÀÂÄàâäÇçÉÈÊËéèêëÎÏîïÔÖôöÙÛÜùûüŸÿÆæŒœ".chars() {
+            assert_ne!(glyph(ch), &SP, "{ch:?} unexpectedly rendered as blank");
+        }
+    }
+
+    #[test]
+    fn reported_pixoo_texts_render_every_letter() {
+        assert_all_letters_visible("GUILLAUMIN Frédéric");
+        assert_all_letters_visible("C RÉPU");
+    }
+}
