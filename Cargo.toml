@@ -8,12 +8,12 @@ repository = "https://github.com/jib63/CTS_destination"
 
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync", "signal"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
-axum = { version = "0.7", features = ["ws"] }
-tower-http = { version = "0.5", features = ["compression-gzip"] }
+toml = "1"
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.7", features = ["compression-gzip"] }
 chrono = { version = "0.4", features = ["serde"] }
 rust-embed = "8"
 mime_guess = "2"
@@ -22,8 +22,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2"
 anyhow = "1"
 futures-util = "0.3"
-png = "0.17"
-base64 = "0.22"
+png = "0.18"
+base64 = "0.23"
 
 [profile.release]
 opt-level = "s"
