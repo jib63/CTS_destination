@@ -1,7 +1,7 @@
-use chrono::{Local, NaiveTime, Timelike};
+use chrono::{DateTime, Local, NaiveTime, Timelike};
 
 use crate::departure::model::DepartureBoard;
-use crate::meteoblue::model::WeatherSnapshot;
+use crate::pixoo64::compact_font;
 use crate::pixoo64::font::{self, CHAR_H, CHAR_SPACING, CHAR_W};
 
 // ── Framebuffer ───────────────────────────────────────────────────────────────
@@ -51,9 +51,24 @@ impl Fb {
         cx
     }
 
-    pub fn draw_text_right(&mut self, x_right: i32, y: i32, text: &str, r: u8, g: u8, b: u8, scale: i32) {
-        let w = text_width(text, scale);
-        self.draw_text(x_right - w + 1, y, text, r, g, b, scale);
+    fn draw_compact(&mut self, x: i32, y: i32, text: &str, color: (u8, u8, u8)) {
+        for (i, ch) in text.chars().enumerate() {
+            for (dy, row) in compact_font::glyph(ch).iter().enumerate() {
+                for dx in 0..3 {
+                    if row & (4 >> dx) != 0 {
+                        self.set(x + i as i32 * 4 + dx, y + dy as i32, color.0, color.1, color.2);
+                    }
+                }
+            }
+        }
+    }
+
+    fn draw_compact_right(&mut self, right: i32, y: i32, text: &str, color: (u8, u8, u8)) {
+        self.draw_compact(right - compact_width(text) + 1, y, text, color);
+    }
+
+    fn draw_compact_center(&mut self, y: i32, text: &str, color: (u8, u8, u8)) {
+        self.draw_compact((FB_W as i32 - compact_width(text)) / 2, y, text, color);
     }
 
     pub fn draw_text_center(&mut self, cx: i32, y: i32, text: &str, r: u8, g: u8, b: u8, scale: i32) {
@@ -70,31 +85,23 @@ fn text_width(text: &str, scale: i32) -> i32 {
     n * (CHAR_W + CHAR_SPACING) * scale - CHAR_SPACING * scale
 }
 
+fn compact_width(text: &str) -> i32 {
+    (text.chars().count() as i32 * 4 - 1).max(0)
+}
+
 // ── Color palette ─────────────────────────────────────────────────────────────
 
-const BG_NAVY:   (u8,u8,u8) = (14,  20,  40);
-const DIVIDER:   (u8,u8,u8) = (30,  50,  80);
-const WHITE:     (u8,u8,u8) = (255, 255, 255);
-const YELLOW:    (u8,u8,u8) = (255, 220, 80);
-const AMBER_DIM: (u8,u8,u8) = (160, 122, 40);
-const TEXT_DIM:  (u8,u8,u8) = (94,  111, 142);
-const TEXT_MID:  (u8,u8,u8) = (143, 160, 187);
+const STATION_BG: (u8, u8, u8) = (0, 0, 0);
+const STATION_TEXT: (u8, u8, u8) = (237, 244, 255);
+const STATION_DIM: (u8, u8, u8) = (148, 168, 186);
+const STATION_RULE: (u8, u8, u8) = (36, 52, 66);
+const STATION_NEXT: (u8, u8, u8) = (255, 206, 99);
+const STATION_AFTER: (u8, u8, u8) = (170, 142, 85);
 
 const CAKE_GOLD: (u8,u8,u8) = (255, 224, 144);
 const GIFT_BLUE: (u8,u8,u8) = (180, 200, 255);
 const HEART_LIL: (u8,u8,u8) = (220, 171, 255);
 const STAR_GOLD: (u8,u8,u8) = (255, 210, 63);
-
-// ── Color-block tint (design §6) ──────────────────────────────────────────────
-
-/// Blend a line/moment color with dark navy base at alpha=0.42.
-/// base = (26, 38, 66); result = line*0.42 + base*0.58
-fn tint_block(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
-    let bl = |line: u8, base: u8| -> u8 {
-        (line as f32 * 0.42 + base as f32 * 0.58).round() as u8
-    };
-    (bl(r, 26), bl(g, 38), bl(b, 66))
-}
 
 // ── CTS line colors ───────────────────────────────────────────────────────────
 
@@ -108,60 +115,6 @@ fn line_color_rgb(line: char) -> (u8, u8, u8) {
         'F' => (197,  20,  91),
         'G' => ( 92, 107, 192),
         _   => ( 84, 110, 122),
-    }
-}
-
-// ── Small weather icon (6×5) ──────────────────────────────────────────────────
-
-pub fn draw_weather_icon_sm(fb: &mut Fb, x: i32, y: i32, pictocode: u32) {
-    let night = pictocode > 100;
-    let c = if night { pictocode - 100 } else { pictocode };
-
-    if night && c <= 3 {
-        fb.fill_rect(x+1, y,   4, 2, 220,220,180);
-        fb.fill_rect(x,   y+2, 2, 2, 220,220,180);
-        return;
-    }
-    match c {
-        1 => {
-            fb.fill_rect(x+2, y,   2, 1, 255,220,0);
-            fb.fill_rect(x+1, y+1, 4, 3, 255,220,0);
-            fb.fill_rect(x+2, y+4, 2, 1, 255,220,0);
-        }
-        2 | 3 => {
-            fb.set(x+4, y, 255,200,0);
-            fb.fill_rect(x+1, y+1, 2, 1, 255,200,0);
-            fb.fill_rect(x,   y+2, 6, 3, 200,200,210);
-        }
-        4 | 31 | 34 => {
-            fb.fill_rect(x+1, y,   4, 2, 180,180,200);
-            fb.fill_rect(x,   y+2, 6, 3, 200,200,210);
-        }
-        5 | 6 => {
-            for row in 0..5 {
-                let xoff = if row % 2 == 0 { 0 } else { 1 };
-                fb.fill_rect(x+xoff, y+row, 5, 1, 160,160,180);
-            }
-        }
-        7 | 8 | 9 | 10 | 11 | 19 | 33 | 35 => {
-            fb.fill_rect(x, y, 6, 2, 100,140,200);
-            fb.set(x+1, y+3, 100,160,255); fb.set(x+3, y+3, 100,160,255); fb.set(x+5, y+3, 100,160,255);
-            fb.set(x+0, y+4, 100,160,255); fb.set(x+2, y+4, 100,160,255); fb.set(x+4, y+4, 100,160,255);
-        }
-        14..=18 => {
-            fb.fill_rect(x, y, 6, 2, 160,180,220);
-            fb.set(x+1, y+3, 220,240,255); fb.set(x+3, y+3, 220,240,255); fb.set(x+5, y+3, 220,240,255);
-            fb.set(x+0, y+4, 220,240,255); fb.set(x+2, y+4, 220,240,255); fb.set(x+4, y+4, 220,240,255);
-        }
-        20..=28 => {
-            fb.fill_rect(x,   y,   6, 2, 80,80,120);
-            fb.fill_rect(x+2, y+2, 2, 2, 255,240,0);
-            fb.fill_rect(x+1, y+4, 2, 1, 255,240,0);
-        }
-        _ => {
-            fb.fill_rect(x+1, y,   4, 2, 160,160,180);
-            fb.fill_rect(x,   y+2, 6, 3, 180,180,200);
-        }
     }
 }
 
@@ -202,160 +155,142 @@ fn draw_icon_star(fb: &mut Fb, x: i32, y: i32) {
     fb.set(x+1, y+5, r, g, b); fb.set(x+4, y+5, r, g, b);
 }
 
-// ── Shared hub header (y=0..28) ───────────────────────────────────────────────
+// ── Station layout ───────────────────────────────────────────────────────────
 
-/// Draw the standard Ambient Hub header band (y=0..28).
-/// Big HH:MM at scale 2, weather glyph + temp + min/max strip at y=19, divider at y=28.
-pub fn draw_hub_header(fb: &mut Fb, now: NaiveTime, weather: Option<&WeatherSnapshot>) {
-    let (bn, gn, rn) = BG_NAVY;
-    fb.fill_rect(0, 0, 64, 28, bn, gn, rn);
-
-    let hhmm = format!("{:02}:{:02}", now.hour(), now.minute());
-    let (wr, wg, wb) = WHITE;
-    fb.draw_text(2, 2, &hhmm, wr, wg, wb, 2);
-
-    if let Some(w) = weather {
-        draw_weather_icon_sm(fb, 2, 20, w.pictocode.into());
-        let temp = format!("{}°", w.temp_now.round() as i32);
-        let (yr, yg, yb) = YELLOW;
-        fb.draw_text(10, 19, &temp, yr, yg, yb, 1);
-        let minmax = format!("{}/{}°", w.temp_min.round() as i32, w.temp_max.round() as i32);
-        let (mr, mg, mb) = TEXT_MID;
-        fb.draw_text(32, 19, &minmax, mr, mg, mb, 1);
-    } else {
-        let (dr, dg, db) = TEXT_DIM;
-        fb.draw_text(32, 19, "--/--°", dr, dg, db, 1);
-    }
-
-    let (dr, dg, db) = DIVIDER;
-    fb.fill_rect(0, 28, 64, 1, dr, dg, db);
+struct StationRow<'a> {
+    line: &'a crate::departure::model::LineDepartures,
+    next: Option<&'a crate::departure::model::DepartureTime>,
+    after: Option<&'a crate::departure::model::DepartureTime>,
 }
 
-// ── Departure row (color-block treatment) ────────────────────────────────────
-
-/// Draw one color-block departure row at y with height h.
-/// h=8 for 3-/4-line mode, h=13 for 2-line, h=18 for 1-line.
-pub fn draw_dep_row_block(
-    fb: &mut Fb,
-    y: i32,
-    h: i32,
-    line: char,
-    dest: &str,
-    next_min: Option<u32>,
-    after_min: Option<u32>,
-) {
-    let (lr, lg, lb) = line_color_rgb(line);
-    let (br, bg, bb) = tint_block(lr, lg, lb);
-    fb.fill_rect(0, y, 64, h, br, bg, bb);
-
-    let ty = y + (h - 8) / 2;
-
-    // Line letter in full brand color
-    fb.draw_char(2, ty, line, lr, lg, lb, 1);
-
-    // Destination: first 4 chars, uppercase, white
-    let dest4: String = dest.chars().take(4).collect::<String>().to_uppercase();
-    let (wr, wg, wb) = WHITE;
-    fb.draw_text(10, ty, &dest4, wr, wg, wb, 1);
-
-    // NEXT time right-aligned at x=49, red if < 2 min, yellow otherwise
-    if let Some(m) = next_min {
-        let t = format!("{}", m.min(99));
-        let (tr, tg, tb) = if m < 2 { (255u8, 140u8, 30u8) } else { YELLOW };
-        fb.draw_text_right(49, ty, &t, tr, tg, tb, 1);
-    }
-
-    // AFTER time right-aligned at x=63, amberDim
-    if let Some(m) = after_min {
-        let t = format!("{}", m.min(99));
-        let (ar, ag, ab) = AMBER_DIM;
-        fb.draw_text_right(63, ty, &t, ar, ag, ab, 1);
+impl StationRow<'_> {
+    fn next_minutes(&self, now: DateTime<Local>) -> Option<u32> {
+        self.next.map(|d| minutes_until(d.expected, now))
     }
 }
 
-// ── Hub screen ────────────────────────────────────────────────────────────────
+fn minutes_until(expected: DateTime<chrono::Utc>, now: DateTime<Local>) -> u32 {
+    expected.signed_duration_since(now).num_minutes().max(0) as u32
+}
 
-/// Draw the full Ambient Hub screen for one stop.
-pub fn draw_hub(fb: &mut Fb, board: &DepartureBoard, lines_per_screen: u8, now: NaiveTime) {
-    let (bn, gn, rn) = BG_NAVY;
-    fb.fill_rect(0, 0, 64, 64, bn, gn, rn);
-    draw_hub_header(fb, now, board.weather.as_ref());
+/// Pick upcoming services locally; never mutate the payload used by the web.
+fn station_rows(board: &DepartureBoard, now: DateTime<Local>) -> Vec<StationRow<'_>> {
+    let mut rows: Vec<_> = board.lines.iter().map(|line| {
+        let mut departures = line.departures.iter().filter(|d| d.expected >= now);
+        StationRow { line, next: departures.next(), after: departures.next() }
+    }).collect();
+    rows.sort_by_key(|row| row.next.map(|d| d.expected).unwrap_or(DateTime::<chrono::Utc>::MAX_UTC));
+    rows
+}
 
-    let n = lines_per_screen as usize;
-    let actual_count = board.lines.len().min(n);
+fn draw_station_header(fb: &mut Fb, now: NaiveTime) {
+    fb.draw_compact(2, 2, &format!("{:02}:{:02}", now.hour(), now.minute()), STATION_TEXT);
+}
 
-    // Stop name when fewer than 4 rows are actually displayed
-    if actual_count < 4 {
-        let name: String = board.stop_name.chars().take(10).collect();
-        let (dr, dg, db) = TEXT_DIM;
-        fb.draw_text(2, 30, &name, dr, dg, db, 1);
-    }
+fn draw_station_row(fb: &mut Fb, y: i32, height: i32, row: &StationRow<'_>, now: DateTime<Local>) {
+    let code: String = row.line.line.chars().flat_map(char::to_uppercase).take(3).collect();
+    let color = line_color_rgb(code.chars().next().unwrap_or('?'));
+    // Leave room for two-/three-digit bus numbers as well as tram letters.
+    let badge_width = (compact_width(&code) + 2).max(7);
+    fb.fill_rect(1, y, badge_width, 7, color.0, color.1, color.2);
+    fb.draw_compact(1 + (badge_width - compact_width(&code)) / 2, y + 1, &code, STATION_BG);
 
-    let rows_to_show = board.lines.iter().take(actual_count);
-
-    match actual_count {
-        4 => {
-            for (i, line) in rows_to_show.enumerate() {
-                let (next, after) = departure_mins(line);
-                let lc = line.line.chars().next().unwrap_or('?');
-                draw_dep_row_block(fb, 30 + i as i32 * 8, 8, lc, &line.destination_short, next, after);
-            }
-            fb.fill_rect(0, 62, 64, 2, bn, gn, rn);
-        }
-        3 => {
-            for (i, line) in rows_to_show.enumerate() {
-                let (next, after) = departure_mins(line);
-                let lc = line.line.chars().next().unwrap_or('?');
-                draw_dep_row_block(fb, 39 + i as i32 * 8, 8, lc, &line.destination_short, next, after);
-            }
-        }
-        2 => {
-            let starts = [38i32, 51];
-            for (i, line) in rows_to_show.enumerate() {
-                let (next, after) = departure_mins(line);
-                let lc = line.line.chars().next().unwrap_or('?');
-                draw_dep_row_block(fb, starts[i], 13, lc, &line.destination_short, next, after);
-            }
-        }
-        _ => {
-            // 1-line
-            if let Some(line) = board.lines.first() {
-                let (next, after) = departure_mins(line);
-                let lc = line.line.chars().next().unwrap_or('?');
-                draw_dep_row_block(fb, 42, 18, lc, &line.destination_short, next, after);
-            }
-        }
-    }
-
-    // "no data" fallback when board is empty / offline
-    if board.lines.is_empty() {
-        let (dr, dg, db) = TEXT_DIM;
-        fb.draw_text_center(31, 42, "no data", dr, dg, db, 1);
+    let dest_x = badge_width + 4;
+    let dest_chars = ((39 - dest_x) / 4).min(6) as usize;
+    let destination: String = row.line.destination_short.chars()
+        .flat_map(char::to_uppercase).take(dest_chars).collect();
+    fb.draw_compact(dest_x, y + 1, &destination, STATION_TEXT);
+    let next = row.next_minutes(now).map(|m| m.min(99).to_string()).unwrap_or_else(|| "--".into());
+    let after = row.after.map(|d| minutes_until(d.expected, now).min(99).to_string())
+        .unwrap_or_else(|| "--".into());
+    fb.draw_compact_right(49, y + 1, &next, STATION_NEXT);
+    fb.draw_compact_right(61, y + 1, &after, STATION_AFTER);
+    if height > 9 {
+        fb.fill_rect(dest_x, y + height - 2, 62 - dest_x, 1, 20, 33, 42);
     }
 }
 
-fn departure_mins(line: &crate::departure::model::LineDepartures) -> (Option<u32>, Option<u32>) {
-    let mins = |idx: usize| -> Option<u32> {
-        line.departures.get(idx).map(|d| {
-            d.expected.signed_duration_since(chrono::Utc::now())
-                .num_minutes().max(0) as u32
-        })
+/// Symbolic approach over a 15-minute horizon, based on the expected departure.
+/// The tram moves only as the remaining time changes; this is not a GPS position.
+fn tram_x(seconds_remaining: i64) -> i32 {
+    let seconds = seconds_remaining.clamp(0, 15 * 60);
+    2 + (((15 * 60 - seconds) * 31 + 450) / 900) as i32
+}
+
+fn draw_tram_footer(fb: &mut Fb, row: Option<&StationRow<'_>>, now: DateTime<Local>) {
+    let Some((row, departure)) = row.and_then(|row| row.next.map(|d| (row, d))) else {
+        fb.draw_compact_center(58, "AUCUN DEPART", STATION_DIM);
+        return;
     };
-    (mins(0), mins(1))
+    let seconds = departure.expected.signed_duration_since(now).num_seconds().max(0);
+    let x = tram_x(seconds);
+    let (r, g, b) = line_color_rgb(row.line.line.chars().next().unwrap_or('?'));
+    fb.fill_rect(1, 63, 46, 1, STATION_RULE.0, STATION_RULE.1, STATION_RULE.2);
+    fb.fill_rect(45, 56, 1, 7, STATION_DIM.0, STATION_DIM.1, STATION_DIM.2);
+    fb.fill_rect(43, 56, 5, 1, STATION_DIM.0, STATION_DIM.1, STATION_DIM.2);
+    fb.fill_rect(x + 1, 57, 8, 1, r, g, b);
+    fb.fill_rect(x, 58, 10, 3, r, g, b);
+    for window in [1, 4, 7] {
+        fb.fill_rect(x + window, 58, 2, 1, 0, 0, 0);
+    }
+    for wheel in [1, 7] {
+        fb.fill_rect(x + wheel, 61, 2, 1, STATION_DIM.0, STATION_DIM.1, STATION_DIM.2);
+    }
+    let minutes = seconds / 60;
+    let label = if minutes == 0 { "ICI".into() } else { format!("{}M", minutes.min(99)) };
+    fb.draw_compact(51, 58, &label, STATION_NEXT);
+}
+
+fn draw_station_empty(fb: &mut Fb, message: Option<&str>) {
+    let message = message.unwrap_or("En attente des prochains departs");
+    if message.starts_with("Démarrage") {
+        fb.draw_text_center(31, 21, "CTS", STATION_TEXT.0, STATION_TEXT.1, STATION_TEXT.2, 2);
+        fb.draw_compact_center(43, "DEMARRAGE", STATION_NEXT);
+        for x in [23, 31, 39] { fb.fill_rect(x, 55, 2, 2, STATION_DIM.0, STATION_DIM.1, STATION_DIM.2); }
+        return;
+    }
+    fb.fill_rect(23, 17, 18, 12, STATION_RULE.0, STATION_RULE.1, STATION_RULE.2);
+    fb.fill_rect(25, 19, 14, 8, 0, 0, 0);
+    for x in [27, 35] { fb.fill_rect(x, 22, 2, 2, STATION_DIM.0, STATION_DIM.1, STATION_DIM.2); }
+    fb.fill_rect(28, 30, 8, 1, STATION_DIM.0, STATION_DIM.1, STATION_DIM.2);
+    fb.draw_compact_center(35, "AUCUNE DONNEE", STATION_NEXT);
+    for (i, text) in wrap_to(message, 15).iter().take(3).enumerate() {
+        fb.draw_compact_center(44 + i as i32 * 6, text, STATION_DIM);
+    }
+}
+
+/// Render the approved Station screen. The weather field is intentionally ignored.
+pub fn draw_hub(fb: &mut Fb, board: &DepartureBoard, lines_per_screen: u8, now: DateTime<Local>) {
+    fb.fill_rect(0, 0, 64, 64, 0, 0, 0);
+    draw_station_header(fb, now.time());
+    if board.lines.is_empty() || board.offline_message.is_some() {
+        fb.fill_rect(1, 10, 62, 1, STATION_RULE.0, STATION_RULE.1, STATION_RULE.2);
+        draw_station_empty(fb, board.offline_message.as_deref());
+        return;
+    }
+
+    let rows = station_rows(board, now);
+    let count = rows.len().min(lines_per_screen.clamp(1, 4) as usize);
+    let name: String = board.stop_name.chars().flat_map(char::to_uppercase).take(15).collect();
+    fb.draw_compact(2, 12, &name, STATION_DIM);
+    fb.fill_rect(1, 20, 62, 1, STATION_RULE.0, STATION_RULE.1, STATION_RULE.2);
+    let has_realtime = rows.iter().take(count).any(|row| row.next.is_some_and(|d| d.is_real_time));
+    let status = if has_realtime { (46, 171, 101) } else { STATION_NEXT };
+    fb.fill_rect(60, 3, 2, 2, status.0, status.1, status.2);
+
+    let height = 33 / count as i32;
+    for (i, row) in rows.iter().take(count).enumerate() {
+        draw_station_row(fb, 23 + i as i32 * height, height, row, now);
+    }
+    draw_tram_footer(fb, rows.first(), now);
 }
 
 // ── Moment screen ─────────────────────────────────────────────────────────────
 
-/// Draw the compact moment-screen header (y=0..9): small centered clock.
+/// Use the Station clock on every screen.
 pub fn draw_moment_header(fb: &mut Fb, now: NaiveTime) {
-    let (bn, gn, rn) = BG_NAVY;
-    fb.fill_rect(0, 0, 64, 10, bn, gn, rn);
-    let hhmm = format!("{:02}:{:02}", now.hour(), now.minute());
-    let (mr, mg, mb) = TEXT_MID;
-    // 5 chars × 6px = 30px wide → center at x = (64-30)/2 = 17
-    fb.draw_text(17, 1, &hhmm, mr, mg, mb, 1);
-    let (dr, dg, db) = DIVIDER;
-    fb.fill_rect(0, 9, 64, 1, dr, dg, db);
+    draw_station_header(fb, now);
+    fb.fill_rect(1, 10, 62, 1, STATION_RULE.0, STATION_RULE.1, STATION_RULE.2);
 }
 
 /// Draw one moment screen.
@@ -371,32 +306,38 @@ pub fn draw_moment(
     color: (u8, u8, u8),
     now: NaiveTime,
 ) {
-    let (bn, gn, rn) = BG_NAVY;
-    fb.fill_rect(0, 0, 64, 64, bn, gn, rn);
+    fb.fill_rect(0, 0, 64, 64, 0, 0, 0);
     draw_moment_header(fb, now);
-
-    // Hero band y=11..28 (18px)
-    let (br, bg, bb) = tint_block(color.0, color.1, color.2);
-    fb.fill_rect(0, 11, 64, 18, br, bg, bb);
-
     if prefix.is_empty() {
-        // Birthday: center icon at x=29
-        draw_icon_cake(fb, 29, 17);
-    } else {
-        // Icon at x=4, prefix at x=14 y=13 scale=2
-        match kind {
-            "present" | "party" => draw_icon_present(fb, 4, 17),
-            "heart"             => draw_icon_heart(fb, 4, 17),
-            "star"  | "skull"   => draw_icon_star(fb, 4, 17),
-            _                   => draw_icon_cake(fb, 4, 17),
+        fb.draw_compact_center(14, "JOYEUX ANNIV.", (255, 159, 198));
+        fb.fill_rect(24, 32, 17, 9, 255, 159, 198);
+        fb.fill_rect(23, 30, 19, 3, STATION_TEXT.0, STATION_TEXT.1, STATION_TEXT.2);
+        for x in [27, 35] {
+            fb.fill_rect(x, 24, 2, 6, STATION_TEXT.0, STATION_TEXT.1, STATION_TEXT.2);
+            fb.fill_rect(x, 21, 2, 2, STATION_NEXT.0, STATION_NEXT.1, STATION_NEXT.2);
         }
-        fb.draw_text(14, 13, prefix, color.0, color.1, color.2, 2);
+        fb.fill_rect(24, 41, 17, 1, 186, 99, 141);
+        fb.fill_rect(28, 34, 2, 2, 212, 84, 142);
+        fb.fill_rect(35, 37, 2, 2, 212, 84, 142);
+    } else {
+        match kind {
+            "present" | "party" => draw_icon_present(fb, 2, 14),
+            "heart"             => draw_icon_heart(fb, 2, 14),
+            "star"  | "skull"   => draw_icon_star(fb, 2, 14),
+            _                   => draw_icon_cake(fb, 2, 14),
+        }
+        let title = if kind == "present" { "ANNIVERSAIRE" } else { "JOUR J" };
+        fb.draw_compact(11, 15, title, STATION_DIM);
+        let scale = if text_width(prefix, 2) <= 62 { 2 } else { 1 };
+        if text_width(prefix, scale) <= 62 {
+            fb.draw_text_center(31, 25, prefix, color.0, color.1, color.2, scale);
+        } else {
+            let prefix: String = prefix.chars().take(15).collect();
+            fb.draw_compact_center(28, &prefix, color);
+        }
     }
-
-    // Body: wrap 10 chars/line, 4 lines max, starting y=31, 9px spacing
-    let (wr, wg, wb) = WHITE;
-    for (i, line) in wrap_to(body, 10).iter().take(4).enumerate() {
-        fb.draw_text(2, 31 + i as i32 * 9, line, wr, wg, wb, 1);
+    for (i, line) in wrap_to(body, 15).iter().take(3).enumerate() {
+        fb.draw_compact_center(45 + i as i32 * 6, line, STATION_TEXT);
     }
 }
 
@@ -422,7 +363,7 @@ pub fn render_hub_frame(
     board: &DepartureBoard,
     lines_per_screen: u8,
 ) -> String {
-    let now = Local::now().time();
+    let now = Local::now();
     draw_hub(fb, board, lines_per_screen, now);
     fb_to_base64(fb)
 }
@@ -461,4 +402,142 @@ pub fn fb_to_base64(fb: &Fb) -> String {
     use base64::engine::general_purpose::STANDARD;
     use base64::Engine;
     STANDARD.encode(fb.as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+    use crate::cts::simulation::simulate_board;
+    use crate::meteoblue::simulation::simulate_weather;
+
+    fn fixed_now() -> DateTime<Local> {
+        DateTime::parse_from_rfc3339("2026-10-24T15:42:00+02:00")
+            .unwrap().with_timezone(&Local)
+    }
+
+    fn station_board() -> DepartureBoard {
+        let now = fixed_now();
+        let mut board = simulate_board("test", 4, &[]);
+        board.stop_name = "République".into();
+        for (i, line) in board.lines.iter_mut().enumerate() {
+            for (j, departure) in line.departures.iter_mut().enumerate() {
+                departure.expected = (now + Duration::minutes(3 + i as i64 * 2 + j as i64 * 12)).to_utc();
+            }
+        }
+        board
+    }
+
+    fn pixel(fb: &Fb, x: usize, y: usize) -> &[u8] {
+        let index = (y * FB_W + x) * 3;
+        &fb.as_bytes()[index..index + 3]
+    }
+
+    #[test]
+    fn pixoo_ignores_weather_without_changing_the_shared_board() {
+        let now = fixed_now();
+        for count in 1..=4 {
+            let mut board = simulate_board("test", count, &[]);
+            // Fixed content: do not let a minute rollover affect this comparison.
+            for line in &mut board.lines {
+                line.departures.clear();
+            }
+            let mut without_weather = Fb::new();
+            draw_hub(&mut without_weather, &board, count, now);
+
+            board.weather = Some(simulate_weather("Strasbourg"));
+            let mut with_weather = Fb::new();
+            draw_hub(&mut with_weather, &board, count, now);
+
+            assert_eq!(with_weather.as_bytes(), without_weather.as_bytes());
+            assert!(
+                board.weather.is_some(),
+                "weather must remain available to the web"
+            );
+        }
+    }
+
+    #[test]
+    fn four_departure_rows_keep_the_stop_name_visible() {
+        let now = fixed_now();
+        let mut board = simulate_board("test", 4, &[]);
+        board.stop_name = "Republique".to_owned();
+        let mut fb = Fb::new();
+        draw_hub(&mut fb, &board, 4, now);
+
+        let name_visible = (12..17).any(|y| {
+            let start = (y * FB_W + 2) * 3;
+            let end = (y * FB_W + 30) * 3;
+            fb.as_bytes()[start..end]
+                .chunks_exact(3)
+                .any(|p| p == [STATION_DIM.0, STATION_DIM.1, STATION_DIM.2])
+        });
+        assert!(
+            name_visible,
+            "the reclaimed weather strip should identify the stop with four rows"
+        );
+    }
+
+    #[test]
+    fn all_row_counts_leave_the_tram_footer_intact() {
+        let now = fixed_now();
+        let board = station_board();
+        let mut reference = Fb::new();
+        draw_hub(&mut reference, &board, 1, now);
+        let footer = &reference.as_bytes()[56 * FB_W * 3..];
+        for count in 1..=4 {
+            let mut fb = Fb::new();
+            draw_hub(&mut fb, &board, count, now);
+            assert_eq!(&fb.as_bytes()[56 * FB_W * 3..], footer);
+            let height = 33 / count as usize;
+            for i in 0..count as usize {
+                let color = line_color_rgb(board.lines[i].line.chars().next().unwrap());
+                assert_eq!(pixel(&fb, 1, 24 + i * height), &[color.0, color.1, color.2]);
+            }
+            assert!(fb.as_bytes()[55 * FB_W * 3..56 * FB_W * 3].iter().all(|p| *p == 0));
+        }
+    }
+
+    #[test]
+    fn tram_approaches_monotonically_and_stays_before_the_stop() {
+        assert_eq!(tram_x(1800), 2);
+        assert_eq!(tram_x(900), 2);
+        assert_eq!(tram_x(0), 33);
+        assert_eq!(tram_x(-60), 33);
+        for remaining in (1..=900).rev() {
+            assert!(tram_x(remaining - 1) >= tram_x(remaining));
+            assert!(tram_x(remaining) + 10 < 45);
+        }
+    }
+
+    #[test]
+    fn departed_services_are_skipped_without_mutating_the_shared_payload() {
+        let now = fixed_now();
+        let mut board = station_board();
+        board.lines[0].departures[0].expected = (now - Duration::seconds(1)).to_utc();
+        let before = serde_json::to_string(&board).unwrap();
+        let rows = station_rows(&board, now);
+        assert_eq!(rows[0].line.line, "D");
+        assert_eq!(rows[0].next_minutes(now), Some(5));
+        assert_eq!(rows.iter().find(|row| row.line.line == "C").unwrap().next_minutes(now), Some(15));
+        let mut fb = Fb::new();
+        draw_hub(&mut fb, &board, 4, now);
+        assert_eq!(pixel(&fb, tram_x(300) as usize, 59), &[46, 139, 60]);
+        assert_eq!(serde_json::to_string(&board).unwrap(), before);
+    }
+
+    #[test]
+    fn missing_departures_and_offline_state_do_not_show_a_phantom_tram() {
+        let now = fixed_now();
+        let mut board = station_board();
+        for line in &mut board.lines { line.departures.clear(); }
+        let mut expected = Fb::new();
+        draw_tram_footer(&mut expected, None, now);
+        let mut fb = Fb::new();
+        draw_hub(&mut fb, &board, 4, now);
+        assert_eq!(&fb.as_bytes()[56 * FB_W * 3..], &expected.as_bytes()[56 * FB_W * 3..]);
+        board.offline_message = Some("Connexion indisponible".into());
+        draw_hub(&mut fb, &board, 4, now);
+        assert_eq!(pixel(&fb, 45, 63), &[0, 0, 0]);
+    }
 }

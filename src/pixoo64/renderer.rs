@@ -34,6 +34,13 @@ struct MomentItem {
     color:  (u8, u8, u8),
 }
 
+/// Cache the last successfully delivered bitmap so second-by-second rendering
+/// sends a device command only when a pixel actually changes.
+struct FrameDelivery {
+    pic_id: u32,
+    last_frame: Option<Vec<u8>>,
+}
+
 fn extract_moments(payload: &BoardPayload) -> Vec<MomentItem> {
     let Some(board) = payload.boards.first() else {
         return vec![];
@@ -125,10 +132,14 @@ pub async fn pixoo_worker(
     brightness: Option<u8>,
 ) {
     let mut fb = Fb::new();
-    let mut pic_id: u32 = std::time::SystemTime::now()
+    let pic_id: u32 = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as u32;
+    let mut delivery = FrameDelivery {
+        pic_id,
+        last_frame: None,
+    };
 
     let mut payload = Box::new(BoardPayload {
         boards: vec![DepartureBoard::offline(
@@ -175,7 +186,7 @@ pub async fn pixoo_worker(
     render_slot(
         &mut fb, &cycle, pos, &payload, &moments,
         state.pixoo64_lines_per_screen.load(Relaxed) as u8,
-        &state, &addr, simulation, &mut pic_id,
+        &state, &addr, simulation, &mut delivery,
     ).await;
 
     loop {
@@ -197,13 +208,13 @@ pub async fn pixoo_worker(
                     info!(pos, screen = ?cycle[pos].kind, "Pixoo64 screen rotation");
                     render_slot(
                         &mut fb, &cycle, pos, &payload, &moments, lines_n,
-                        &state, &addr, simulation, &mut pic_id,
+                        &state, &addr, simulation, &mut delivery,
                     ).await;
-                } else if new_min != last_minute {
+                } else if new_min != last_minute || matches!(cycle[pos].kind, ScreenKind::Hub { .. }) {
                     last_minute = new_min;
                     render_slot(
                         &mut fb, &cycle, pos, &payload, &moments, lines_n,
-                        &state, &addr, simulation, &mut pic_id,
+                        &state, &addr, simulation, &mut delivery,
                     ).await;
                 }
             }
@@ -221,7 +232,7 @@ pub async fn pixoo_worker(
                         last_minute = Local::now().minute();
                         render_slot(
                             &mut fb, &cycle, pos, &payload, &moments, lines_n,
-                            &state, &addr, simulation, &mut pic_id,
+                            &state, &addr, simulation, &mut delivery,
                         ).await;
                     }
                     None => {
@@ -244,7 +255,7 @@ async fn render_slot(
     state:      &Arc<AppState>,
     addr:       &Option<String>,
     simulation: bool,
-    pic_id:     &mut u32,
+    delivery:   &mut FrameDelivery,
 ) {
     let slot = &cycle[pos % cycle.len()];
 
@@ -266,31 +277,36 @@ async fn render_slot(
         }
     };
 
+    if delivery.last_frame.as_deref() == Some(fb.as_bytes()) {
+        return;
+    }
+
     {
         let png = fb_to_png(fb);
-        if let Ok(mut guard) = state.pixoo64_preview.try_write() {
-            *guard = Some(png);
-        }
+        *state.pixoo64_preview.write().await = Some(png);
     }
 
     if simulation {
+        delivery.last_frame = Some(fb.as_bytes().to_vec());
         return;
     }
 
     if let Some(host) = addr {
-        *pic_id = pic_id.wrapping_add(1);
+        delivery.pic_id = delivery.pic_id.wrapping_add(1);
         let url  = format!("http://{}/post", host);
         let body = serde_json::json!({
             "Command":   "Draw/SendHttpGif",
             "PicNum":    1,
             "PicWidth":  64,
             "PicOffset": 0,
-            "PicID":     *pic_id,
+            "PicID":     delivery.pic_id,
             "PicSpeed":  1000,
             "PicData":   b64,
         });
         match state.http_client.post(&url).json(&body).send().await {
-            Ok(resp) if resp.status().is_success() => {}
+            Ok(resp) if resp.status().is_success() => {
+                delivery.last_frame = Some(fb.as_bytes().to_vec());
+            }
             Ok(resp) => warn!(status = %resp.status(), "Pixoo64 device returned error"),
             Err(e)   => warn!(error = %e, "Pixoo64 HTTP send failed"),
         }

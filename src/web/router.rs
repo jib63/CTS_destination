@@ -29,7 +29,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/ws", get(ws_handler))
         .route("/api/stops", get(stops_handler))
-        .route("/api/stops/:code/details", get(stop_details_handler))
+        .route("/api/stops/{code}/details", get(stop_details_handler))
         .route("/api/config", post(config_handler))
         .route("/api/jour-j", post(jour_j_handler))
         .route("/api/status", get(status_handler))

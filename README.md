@@ -367,25 +367,19 @@ The empty zone below the weather banner contains a slow ornamental animation: ar
 
 ## Pixoo64 LED display
 
-When `pixoo64_enabled = true`, the display renders the **Ambient Hub** design on a Divoom Pixoo64 64×64 LED matrix.
+When `pixoo64_enabled = true`, the display renders the **Station** design on a Divoom Pixoo64 64×64 LED matrix. This layout is specific to the LED display; the web board is unchanged. Weather is never displayed on the Pixoo64, even if it is enabled for the web board.
 
 ### Layout
 
-Every screen shares a permanent **header band** (y=0–28):
-- Large `HH:MM` clock (scale 2, white)
-- Weather icon + current temperature (yellow) + min/max (muted blue)
-- 1px divider
+The black background and compact 3×5 pixel font leave room for:
 
-The **body** (y=29–63) cycles through:
+- **Header** — small `HH:MM` clock, stop name (up to 15 characters), and a divider at y=20. A green dot indicates an upcoming real-time departure; amber indicates timetable-only or unavailable departures.
+- **Departure rows** (y=23–55) — 1–4 rows with line-color badges, destinations of up to 6 characters, next departure in gold and following departure in dim amber. Both columns are in minutes. Row spacing adapts to the configured line count; bus numbers of up to three characters are supported.
+- **Mini tram footer** (y=56–63) — a pixel tram in the nearest displayed departure's line color approaches a stop over a fixed 15-minute horizon. Its position represents remaining time, not GPS location. The label shows `3M`, for example, or `ICI` during the final minute. Expired departures are skipped; missing data never produces a phantom tram.
+- **Moment screens** — matching compact clock and black background, birthday cake or event icon, adaptive `J-N` counter, and up to three lines of text.
+- **Startup / offline screens** — explicit messages without reserving a weather strip.
 
-1. **Hub screen** — one per `cts_monitoring_ref` entry. Departure rows are rendered as full-width tinted color-block bands, one per tram line, using each line's brand color:
-   - **4-line mode** — 4 rows of 8px, no stop name
-   - **3-line mode** — stop name + 3 rows of 8px
-   - **2-line mode** — stop name + 2 rows of 13px
-   - **1-line mode** — stop name + 1 row of 18px
-   - Row content: line letter (full brand color) | destination 4 chars (white) | next time right-aligned (yellow, or **hot orange** if < 2 min) | second time right-aligned (amber)
-   - Stops with no live lines and no offline message are skipped in the cycle
-2. **Moment screen** — compact clock header + tinted hero band (icon + event label) + wrapped body text; one per birthday and Jour-J event
+The worker checks the Station screen every second and sends a device command only when the bitmap changes. The existing stop/moment rotation and duration settings still apply.
 
 ### Config keys
 
@@ -403,7 +397,7 @@ Hot-reload: `POST /api/config {"pixoo64_lines_per_screen": 2}` takes effect on t
 
 - **Simulation mode** — set `pixoo64_simulation = true` to render frames as PNG previews at `/api/pixoo64/preview` without sending anything to the device.
 - **Brightness** — uses `Channel/SetBrightness`; sent once at startup.
-- **Mockup** — open `mockup_pixoo64.html` in a browser for a 512×512 interactive preview with editable stops, weather, moments, and live rotation controls.
+- **Preview** — `/api/pixoo64/preview` shows the same Station bitmap used by the device.
 
 ---
 
