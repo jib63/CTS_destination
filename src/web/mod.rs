@@ -74,6 +74,7 @@ pub struct AppState {
     pub pixoo64_enabled: bool,
     pub pixoo64_sequence: RwLock<Option<crate::pixoo64::sequence::Sequence>>,
     pub pixoo64_config_changed: Notify,
+    pub pixoo64_platform_labels: RwLock<crate::pixoo64::platforms::Labels>,
     /// Latest rendered frame as PNG bytes; served at /api/pixoo64/preview.
     pub pixoo64_preview: RwLock<Option<Vec<u8>>>,
     /// Seconds each tram hub screen is shown (hot-reloadable).
@@ -207,6 +208,7 @@ impl AppState {
             pixoo64_enabled: pixoo_enabled,
             pixoo64_sequence: RwLock::new(None),
             pixoo64_config_changed: Notify::new(),
+            pixoo64_platform_labels: RwLock::new(Default::default()),
             pixoo64_preview: RwLock::new(None),
             pixoo64_tram_screen_seconds:   AtomicU32::new(pixoo_tram_secs),
             pixoo64_moment_screen_seconds: AtomicU32::new(pixoo_moment_secs),

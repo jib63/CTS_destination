@@ -94,6 +94,7 @@ async fn main() -> Result<()> {
     );
 
     *app_state.pixoo64_sequence.write().await = config.pixoo64_sequence.clone();
+    *app_state.pixoo64_platform_labels.write().await = config.pixoo64_platform_labels.clone();
 
     let mut renderers: Vec<Box<dyn DisplayRenderer>> = vec![Box::new(WebRenderer {
         state: app_state.clone(),

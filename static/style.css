@@ -1709,3 +1709,5 @@ html, body {
 }
 
 #config-tabs .config-tab[hidden] { display: none; }
+
+#config-tab-pixoo64 .px-platform-caption { color: #c6d6e8; font-size: .8rem; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; }

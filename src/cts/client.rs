@@ -261,6 +261,7 @@ async fn fetch_departures(
         .context("API response contained no StopMonitoringDelivery")?;
 
     let min_cycle_secs = parse_iso_duration_secs(&delivery.shortest_possible_cycle);
+    crate::pixoo64::platforms::remember(state, crate::pixoo64::platforms::observations(&delivery.monitored_stop_visit)).await;
     let board = DepartureBoard::from_delivery(&delivery, Utc::now(), monitoring_ref.to_owned());
     Ok((board, min_cycle_secs))
 }
@@ -350,6 +351,8 @@ pub async fn fetch_stop_details(state: &AppState, logical_code: &str) -> Result<
         .into_iter()
         .next()
         .context("No StopMonitoringDelivery in stop details response")?;
+
+    crate::pixoo64::platforms::remember(state, crate::pixoo64::platforms::observations(&delivery.monitored_stop_visit)).await;
 
     // Group by physical stop code, preserving first-seen order
     let mut order: Vec<String> = Vec::new();

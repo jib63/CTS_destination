@@ -21,7 +21,7 @@
         dirty = true; report("Modifications non enregistrées."); refreshSummary();
     }
     function platformLabel(p) {
-        return (p.name || "Quai") + " · " + (p.directions.length ? p.directions.join(" / ") : "Réf. " + p.ref) + (p.directions.length ? " (" + p.ref + ")" : "");
+        return (p.name || "Arrêt à identifier") + " · " + (p.directions.length ? p.directions.join(" / ") : "Directions encore inconnues (" + p.ref + ")");
     }
     function isDeparture(step) { return step.screen === "station" || step.screen === "miniature"; }
     function refreshSummary() {
@@ -52,6 +52,11 @@
                 changed(); renderSteps(); focusStep(i);
             });
             var platform = el("select"); platform.id = "px-platform-" + i;
+            var platformCaption = el("small", "px-platform-caption");
+            function describePlatform() {
+                var selected = data.platforms.find(function (p) {return p.ref === step.platform;});
+                platformCaption.textContent = selected ? (selected.directions.join(" · ") || "Directions encore inconnues") : "Chaque quai sélectionné dans Arrêt";
+            }
             if (isDeparture(step)) {
                 platform.append(option("", "Tous les quais configurés"));
                 data.platforms.forEach(function (p) { platform.append(option(p.ref, platformLabel(p))); });
@@ -59,12 +64,14 @@
                 platform.value = step.platform || "";
                 platform.addEventListener("change", function () {
                     if (platform.value) step.platform = platform.value; else delete step.platform;
-                    changed();
+                    describePlatform(); changed();
                 });
             } else { platform.append(option("", "Tous les éléments disponibles")); platform.disabled = true; }
             var seconds = el("input"); seconds.type = "number"; seconds.min = "1"; seconds.max = "300"; seconds.step = "1"; seconds.value = step.seconds; seconds.id = "px-seconds-" + i;
             seconds.addEventListener("input", function () { step.seconds = seconds.valueAsNumber; changed(); });
-            row.append(field("Écran", type), field(isDeparture(step) ? "Quai et directions" : "Contenu", platform), field(isDeparture(step) ? "Durée (s)" : "Par élément (s)", seconds));
+            var platformField = field(isDeparture(step) ? "Quai et directions" : "Contenu", platform);
+            if (isDeparture(step)) {describePlatform(); platformField.append(platformCaption);}
+            row.append(field("Écran", type), platformField, field(isDeparture(step) ? "Durée (s)" : "Par élément (s)", seconds));
             var actions = el("div", "px-step-actions");
             [["↑", "Monter", -1], ["↓", "Descendre", 1]].forEach(function (a) {
                 var b = button(a[0], function () { var target = i + a[2]; draft.steps.splice(target, 0, draft.steps.splice(i, 1)[0]); changed(); renderSteps(); focusStep(target); });

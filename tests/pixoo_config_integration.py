@@ -97,6 +97,21 @@ jour_j_events = []
         p=start()
         assert request()[0]==404 and request(body=expected)[0]==404
         assert request('/api/status')[0]==200
-        print(json.dumps({'disabled_device_rejected':'OK','single_platform_and_replacement':'OK','api_validation':'OK','external_and_cross_origin_rejected':'OK','write_failure_preserves_live_settings':'OK','comments_and_permissions_preserved':'OK','other_settings_preserved':'OK','restart_persistence':'OK','preview_after_restart':'OK'}))
+        # Cold start outside service hours: no departures or CTS request needed.
+        p.terminate();p.wait(timeout=10)
+        config.write_text(config.read_text().replace('pixoo64_enabled = false','pixoo64_enabled = true') + '\ncts_always_query = false\ncts_query_intervals = "0 0 31 2 *"\npixoo64_platform_labels = { "other-quai" = { name = "Autre arrêt", directions = ["A → Nord"] } }\n')
+        p=start()
+        offline=json.loads(request()[1])
+        assert [v['name'] for v in offline['platforms']]==['Jean Jaurès','Jean Jaurès']
+        assert offline['platforms'][0]['directions']==['C → Gare Centrale','D → Poteries']
+        assert 'Neuhof' in offline['platforms'][1]['directions'][0]
+        assert 'Kehl' in offline['platforms'][1]['directions'][1]
+        assert request('/api/config',{'monitoring_refs':['other-quai']})[0]==200
+        other=json.loads(request()[1])
+        assert other['platforms']==[{'ref':'other-quai','name':'Autre arrêt','directions':['A → Nord']}]
+        assert request(body=other['settings'])[0]==200
+        p.terminate();p.wait(timeout=10);p=start()
+        assert json.loads(request()[1])['platforms']==other['platforms']
+        print(json.dumps({'offline_names_and_directions':'OK','disabled_device_rejected' :'OK','single_platform_and_replacement':'OK','api_validation':'OK','external_and_cross_origin_rejected':'OK','write_failure_preserves_live_settings':'OK','comments_and_permissions_preserved':'OK','other_settings_preserved':'OK','restart_persistence':'OK','preview_after_restart':'OK'}))
     finally:
         p.terminate();p.wait(timeout=10)

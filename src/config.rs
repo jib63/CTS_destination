@@ -101,6 +101,9 @@ pub struct AppConfig {
     pub pixoo64_brightness: Option<u8>,
     /// Optional editable playlist; absent retains the validated legacy cycle.
     pub pixoo64_sequence: Option<crate::pixoo64::sequence::Sequence>,
+    /// Last known public stop names and directions, retained outside service hours.
+    #[serde(default)]
+    pub pixoo64_platform_labels: crate::pixoo64::platforms::Labels,
 
     // ── Meteoblue weather widget ──────────────────────────────────────────────
     /// When true, show the weather widget in the board footer.

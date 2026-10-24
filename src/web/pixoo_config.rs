@@ -62,13 +62,23 @@ pub async fn get_config(State(state): State<Arc<AppState>>, headers: HeaderMap) 
         .as_ref()
         .and_then(|s| serde_json::from_str::<Value>(s).ok())
         .unwrap_or(Value::Null);
+    let labels = state.pixoo64_platform_labels.read().await;
     let platforms = refs
         .iter()
         .map(|r| {
             let board = latest["boards"]
                 .as_array()
                 .and_then(|bs| bs.iter().find(|b| b["monitoring_ref"].as_str() == Some(r)));
-            let name = board.and_then(|b| b["stop_name"].as_str()).unwrap_or("");
+            let mut label = labels
+                .get(r)
+                .cloned()
+                .unwrap_or_else(|| crate::pixoo64::platforms::initial(r));
+            if let Some(name) = board
+                .and_then(|b| b["stop_name"].as_str())
+                .filter(|n| !n.trim().is_empty())
+            {
+                label.name = name.to_owned();
+            }
             let directions = board
                 .and_then(|b| b["lines"].as_array())
                 .map(|ls| {
@@ -83,7 +93,10 @@ pub async fn get_config(State(state): State<Arc<AppState>>, headers: HeaderMap) 
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();
-            json!({"ref":r,"name":name,"directions":directions})
+            if !directions.is_empty() && label.directions.is_empty() {
+                label.directions = directions;
+            }
+            json!({"ref":r,"name":label.name,"directions":label.directions})
         })
         .collect::<Vec<_>>();
     Json(json!({"enabled":state.pixoo64_enabled,"settings":settings,"defaults":defaults,"platforms":platforms,

@@ -96,6 +96,17 @@ Enregistrer et appliquer conserve le cycle dans `config.toml` et l’applique
 immédiatement, sans redémarrage. Le compte du service doit pouvoir écrire
 ce fichier. L’aperçu montre le cycle enregistré, pas les modifications en cours.
 
+## Noms des quais même hors service
+
+L’onglet Pixoo64 affiche les noms des arrêts et leurs directions à la place
+des références techniques. Les directions complètes restent lisibles sous
+chaque liste de choix. Les libellés CTS connus sont mémorisés dans
+`pixoo64_platform_labels` et conservés après redémarrage, sans requête CTS
+supplémentaire hors des horaires configurés. Jean Jaurès dispose de libellés
+initiaux pour les deux quais, même au premier démarrage hors service.
+Les autres quais encore inconnus gardent un libellé de secours jusqu’à
+l’obtention de leurs informations CTS.
+
 ## Cycle initial Station / Strasbourg miniature
 
 Cycle : Station A → Station B → anniversaires → événements → miniature A →
