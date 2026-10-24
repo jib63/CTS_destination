@@ -35,6 +35,10 @@ def main():
         "station-2-lines": "pixoo64-station-2-lines.png",
         "station-birthday": "pixoo64-station-birthday.png",
         "station-countdown": "pixoo64-station-countdown.png",
+        "miniature-day": "pixoo64-miniature-day.png",
+        "miniature-dawn": "pixoo64-miniature-dawn.png",
+        "miniature-sunset": "pixoo64-miniature-sunset.png",
+        "miniature-night": "pixoo64-miniature-night.png",
     }
     for source, target in stills.items():
         scaled(source).save(OUTPUT / target)
@@ -45,7 +49,14 @@ def main():
         duration=[item["duration_ms"] for item in manifest], loop=0,
         optimize=True, disposal=2,
     )
-    print(f"Saved {len(stills)} PNGs and {len(images)} GIF frames to {OUTPUT}")
+    cycle = [scaled(name) for name in [
+        "alternate-station-outward", "alternate-station-inward", "alternate-miniature",
+    ]]
+    cycle[0].save(
+        OUTPUT / "pixoo64-alternating.gif", save_all=True, append_images=cycle[1:],
+        duration=2400, loop=0, optimize=True, disposal=2,
+    )
+    print(f"Saved {len(stills)} PNGs and 2 GIFs to {OUTPUT}")
 
 
 if __name__ == "__main__":

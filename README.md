@@ -10,7 +10,19 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 |:---:|:---:|
 | ![Status CTS](docs/screenshots/status-cts.png) | ![Status Météoblue](docs/screenshots/status-meteoblue.png) |
 
-### PIXOO64 — Station
+### PIXOO64 — Station + Strasbourg miniature
+
+![PIXOO64 alternates the full Station tour and Strasbourg miniature C/D](docs/screenshots/pixoo64-alternating.gif)
+
+| Strasbourg miniature — day | Night |
+|:---:|:---:|
+| ![Miniature with C and D departures during the day](docs/screenshots/pixoo64-miniature-day.png) | ![Miniature with the night skyline](docs/screenshots/pixoo64-miniature-night.png) |
+
+| Dawn | Sunset |
+|:---:|:---:|
+| ![Miniature at dawn in Strasbourg](docs/screenshots/pixoo64-miniature-dawn.png) | ![Miniature at sunset in Strasbourg](docs/screenshots/pixoo64-miniature-sunset.png) |
+
+The Station layout from v1.5 is retained. A complete tour of its configured stops is followed by Strasbourg miniature, then enabled birthday/Jour-J screens. The miniature combines the C/D departures from platforms with the same station name, in both directions. Its light follows the sun over Strasbourg, calculated locally without a weather service.
 
 ![PIXOO64 Station — accelerated mini tram approach and moment screens](docs/screenshots/pixoo64.gif)
 
@@ -41,7 +53,7 @@ These images use the actual 64×64 Rust renderer and fictional data, enlarged wi
 - **Ornamental canvas** — arabesque SVG animations progress slowly in the empty zone below the weather banner, cycling through several designs
 - **Birthday of the day** — reads a JSON file of contacts and displays today's birthdays with age, when board space permits; J-0 birthdays are excluded from the Jour J row to avoid duplication
 - **Jour J countdown** — shows a scrolling marquee of multiple upcoming countdown events, each with a label and icon; events within N days of today are merged with upcoming birthdays in the same row; events at **J-0** (today) blink with a party animation
-- **Pixoo64 LED display** — renders the *Station* design on a Divoom Pixoo64 64×64 LED matrix: compact clock and stop name, 1–4 departure rows, a mini tram indicating the nearest departure, and birthday/Jour-J screens. Weather is omitted only on the PIXOO64; screen timing remains hot-reloadable.
+- **Pixoo64 LED display** — alternates the full *Station* tour with *Strasbourg miniature*: a pixel-art cathedral, the nearest C/D tram, two fixed C/D columns, and an automatic solar day/night cycle. Birthday/Jour-J screens and hot-reloadable timing are retained. Weather is omitted only on the PIXOO64.
 - **Stop picker** — browse all CTS stops and switch at runtime without restarting the server
 - **Crontab-style query windows** — restrict API polling to specific hours or days using 5-field crontab expressions, supporting different schedules for weekdays vs. weekends
 - **Independent simulation modes** — CTS and weather can each be simulated independently; no API keys needed for either
@@ -63,7 +75,7 @@ These images use the actual 64×64 Rust renderer and fictional data, enlarged wi
 
 ### Freebox release download
 
-Download `cts-departures-v1.5.0-freebox-aarch64.zip` from the [v1.5.0 release](https://github.com/jib63/CTS_destination/releases/tag/v1.5.0). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
+Download `cts-departures-v1.6.0-freebox-aarch64.zip` from the [v1.6.0 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.0). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
 
 To reproduce this public archive after installing the cross-compilation prerequisites below:
 
@@ -72,7 +84,7 @@ cargo zigbuild --locked --target aarch64-unknown-linux-musl --release --bin cts-
 python3 scripts/package_freebox.py
 ```
 
-The archive and its checksum are written under `target/release-v1.5.0/`. This packaging script uses a public example instead of copying your local configuration.
+The archive and its checksum are written under `target/release-v1.6.0/`. This packaging script uses a public example instead of copying your local configuration.
 
 ### On the target machine (Linux aarch64)
 
@@ -392,7 +404,7 @@ The empty zone below the weather banner contains a slow ornamental animation: ar
 
 ## Pixoo64 LED display
 
-When `pixoo64_enabled = true`, the display renders the **Station** design on a Divoom Pixoo64 64×64 LED matrix. This layout is specific to the LED display; the web board is unchanged. Weather is never displayed on the Pixoo64, even if it is enabled for the web board.
+When `pixoo64_enabled = true`, the Divoom Pixoo64 64×64 LED matrix alternates **Station** and **Strasbourg miniature** automatically. These layouts are specific to the LED display; the web board is unchanged. Weather is never displayed on the Pixoo64, even if it is enabled for the web board.
 
 ### Layout
 
@@ -404,7 +416,11 @@ The black background and compact 3×5 pixel font leave room for:
 - **Moment screens** — matching compact clock and black background, birthday cake or event icon, adaptive `J-N` counter, and up to three lines of text.
 - **Startup / offline screens** — explicit messages without reserving a weather strip.
 
-The worker checks the Station screen every second and sends a device command only when the bitmap changes. The existing stop/moment rotation and duration settings still apply.
+Strasbourg miniature uses a narrow, single-spire cathedral and two fixed columns (C on the left, D on the right). Each column shows its nearest departure and destination, then the following departure and its destination, potentially in the opposite direction. The tram and its large counter use the nearest service's color: orange for C, green for D. Minute suffixes are omitted in this layout; `ICI` indicates the last minute. Missing or expired services are not drawn as approaching trams. Platforms with the same station name are combined without mixing different stations or modifying the shared web data.
+
+Lighting is calculated locally for Strasbourg (48.5734° N, 7.7521° E) using the [NOAA solar-position approximation](https://gml.noaa.gov/grad/solcalc/solareqns.PDF). UTC-based calculations follow the seasons independently of the VM timezone or daylight-saving changes. The sky blends through dawn, daytime, sunset and night; windows become warm at twilight. The moon is decorative, not a calculated lunar phase. No Meteoblue credits or network requests are required.
+
+Rotation order: **Station for each platform → miniature once per distinct station → enabled moments → repeat**. Each departure screen uses `pixoo64_tram_screen_seconds`; moments use their existing duration. The worker checks departure screens every second and sends a device command only when the bitmap changes. Fresh API updates do not reset the rotation timer. `pixoo64_lines_per_screen` continues to control Station; the miniature always reserves both C/D columns.
 
 ### Config keys
 
@@ -422,7 +438,7 @@ Hot-reload: `POST /api/config {"pixoo64_lines_per_screen": 2}` takes effect on t
 
 - **Simulation mode** — set `pixoo64_simulation = true` to render frames as PNG previews at `/api/pixoo64/preview` without sending anything to the device.
 - **Brightness** — uses `Channel/SetBrightness`; sent once at startup.
-- **Preview** — `/api/pixoo64/preview` shows the same Station bitmap used by the device.
+- **Preview** — `/api/pixoo64/preview` shows the current bitmap (Station, miniature or moment) used by the device.
 - **README images** — regenerate the device screenshots offline with `python3 scripts/capture_pixoo64_gif.py` (Pillow required).
 
 ---

@@ -29,7 +29,7 @@ def main():
     (folder / "config.example.toml").write_text('''# Copy to config.toml for a NEW installation only.
 # Keep your existing config.toml when upgrading.
 cts_api_token = "REPLACE_WITH_YOUR_CTS_TOKEN"
-cts_monitoring_ref = ["298B"]
+cts_monitoring_ref = ["298B", "298A"]
 cts_polling_interval_minutes = 2
 cts_max_stop_visits = 10
 cts_simulation = false
@@ -83,10 +83,18 @@ locale ; configurer un reverse proxy pour l'accès web selon les besoins.
 Protéger le fichier de configuration car il contient le jeton CTS.
 Lancer `./cts-departures config.toml`, puis configurer son service systemd.
 
-## Design Station
+## Alternance Station / Strasbourg miniature
 
-Affichage de 1 à 4 lignes, nom d'arrêt, horloge compacte et mini tram illustrant
-le temps avant le départ (sans géolocalisation). Écrans anniversaires et Jour J.
+Un tour complet des quais au format Station est suivi de Strasbourg miniature
+pour chaque station, puis des écrans anniversaires et Jour J activés.
+Station conserve ses 1 à 4 lignes et son mini tram illustrant le temps d'attente.
+La miniature réunit les prochains C et D dans les deux directions, dans deux
+colonnes fixes, avec le prochain tram et son compteur à la couleur de sa ligne.
+Sa cathédrale et sa lumière évoluent entre aube, jour, coucher du soleil et nuit.
+Le cycle solaire est calculé localement pour Strasbourg, sans service météo.
+La durée de chaque écran reste réglée par `pixoo64_tram_screen_seconds`.
+Configurer les deux quais d'une station pour obtenir les deux directions ;
+l'exemple inclut les références 298B et 298A de Jean Jaurès.
 La météo n'occupe plus de zone sur le PIXOO64 ; l'interface web est conservée.
 ''')
     shutil.copy2(ROOT / "LICENSE", folder / "LICENSE")
