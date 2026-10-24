@@ -59,7 +59,10 @@ pub async fn poll_loop(
             if !in_window {
                 info!("Outside query window; sleeping 60 s before recheck");
                 let first_ref = monitoring_refs[0].clone();
-                let mut board = DepartureBoard::offline(first_ref, "Pas de service".to_string());
+                let mut board = DepartureBoard::offline(
+                    first_ref,
+                    "Hors plage de consultation".to_string(),
+                );
                 if state.meteoblue_enabled {
                     // Keep last known weather value; None if never fetched (panel hidden)
                     board.weather = state.meteoblue_latest.read().await.clone();

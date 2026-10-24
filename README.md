@@ -75,7 +75,7 @@ These images use the actual 64×64 Rust renderer and fictional data, enlarged wi
 
 ### Freebox release download
 
-Download `cts-departures-v1.6.6-freebox-aarch64.zip` from the [v1.6.6 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.6). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
+Download `cts-departures-v1.6.7-freebox-aarch64.zip` from the [v1.6.7 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.7). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
 
 To reproduce this public archive after installing the cross-compilation prerequisites below:
 
@@ -84,7 +84,7 @@ cargo zigbuild --locked --target aarch64-unknown-linux-musl --release --bin cts-
 python3 scripts/package_freebox.py
 ```
 
-The archive and its checksum are written under `target/release-v1.6.6/`. This packaging script uses a public example instead of copying your local configuration.
+The archive and its checksum are written under `target/release-v1.6.7/`. This packaging script uses a public example instead of copying your local configuration.
 
 ### On the target machine (Linux aarch64)
 
