@@ -10,7 +10,19 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 |:---:|:---:|
 | ![Status CTS](docs/screenshots/status-cts.png) | ![Status Météoblue](docs/screenshots/status-meteoblue.png) |
 
-![Pixoo64](docs/screenshots/pixoo64.gif)
+### PIXOO64 — Station
+
+![PIXOO64 Station — accelerated mini tram approach and moment screens](docs/screenshots/pixoo64.gif)
+
+| Station — 4 lines | Station — 2 lines |
+|:---:|:---:|
+| ![Station with four departure rows and mini tram](docs/screenshots/pixoo64-station.png) | ![Station with two departure rows](docs/screenshots/pixoo64-station-2-lines.png) |
+
+| Birthday | Jour J countdown |
+|:---:|:---:|
+| ![Station birthday screen with fictional sample name](docs/screenshots/pixoo64-station-birthday.png) | ![Station countdown screen](docs/screenshots/pixoo64-station-countdown.png) |
+
+These images use the actual 64×64 Rust renderer and fictional data, enlarged without smoothing. The GIF accelerates a 15-minute approach: the mini tram indicates remaining departure time, not a GPS position. Weather is omitted on the PIXOO64; the web interface shown above is unchanged.
 
 | Config — Arrêt | Config — Recherche | Config — Compteur J |
 |:---:|:---:|:---:|
@@ -29,7 +41,7 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 - **Ornamental canvas** — arabesque SVG animations progress slowly in the empty zone below the weather banner, cycling through several designs
 - **Birthday of the day** — reads a JSON file of contacts and displays today's birthdays with age, when board space permits; J-0 birthdays are excluded from the Jour J row to avoid duplication
 - **Jour J countdown** — shows a scrolling marquee of multiple upcoming countdown events, each with a label and icon; events within N days of today are merged with upcoming birthdays in the same row; events at **J-0** (today) blink with a party animation
-- **Pixoo64 LED display** — renders an *Ambient Hub* on a Divoom Pixoo64 64×64 LED matrix: each screen has a permanent header (big clock + weather strip), the body cycles through one departure board per stop (tram lines as full-width tinted color-block rows) and compact moment screens for birthdays and Jour-J events; all timing is hot-reloadable at runtime
+- **Pixoo64 LED display** — renders the *Station* design on a Divoom Pixoo64 64×64 LED matrix: compact clock and stop name, 1–4 departure rows, a mini tram indicating the nearest departure, and birthday/Jour-J screens. Weather is omitted only on the PIXOO64; screen timing remains hot-reloadable.
 - **Stop picker** — browse all CTS stops and switch at runtime without restarting the server
 - **Crontab-style query windows** — restrict API polling to specific hours or days using 5-field crontab expressions, supporting different schedules for weekdays vs. weekends
 - **Independent simulation modes** — CTS and weather can each be simulated independently; no API keys needed for either
@@ -48,6 +60,19 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 ---
 
 ## Build
+
+### Freebox release download
+
+Download `cts-departures-v1.5.0-freebox-aarch64.zip` from the [v1.5.0 release](https://github.com/jib63/CTS_destination/releases/tag/v1.5.0). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
+
+To reproduce this public archive after installing the cross-compilation prerequisites below:
+
+```bash
+cargo zigbuild --locked --target aarch64-unknown-linux-musl --release --bin cts-departures
+python3 scripts/package_freebox.py
+```
+
+The archive and its checksum are written under `target/release-v1.5.0/`. This packaging script uses a public example instead of copying your local configuration.
 
 ### On the target machine (Linux aarch64)
 
@@ -398,6 +423,7 @@ Hot-reload: `POST /api/config {"pixoo64_lines_per_screen": 2}` takes effect on t
 - **Simulation mode** — set `pixoo64_simulation = true` to render frames as PNG previews at `/api/pixoo64/preview` without sending anything to the device.
 - **Brightness** — uses `Channel/SetBrightness`; sent once at startup.
 - **Preview** — `/api/pixoo64/preview` shows the same Station bitmap used by the device.
+- **README images** — regenerate the device screenshots offline with `python3 scripts/capture_pixoo64_gif.py` (Pillow required).
 
 ---
 
