@@ -75,7 +75,7 @@ These images use the actual 64×64 Rust renderer and fictional data, enlarged wi
 
 ### Freebox release download
 
-Download `cts-departures-v1.6.1-freebox-aarch64.zip` from the [v1.6.1 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.1). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
+Download `cts-departures-v1.6.5-freebox-aarch64.zip` from the [v1.6.5 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.5). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
 
 To reproduce this public archive after installing the cross-compilation prerequisites below:
 
@@ -84,7 +84,7 @@ cargo zigbuild --locked --target aarch64-unknown-linux-musl --release --bin cts-
 python3 scripts/package_freebox.py
 ```
 
-The archive and its checksum are written under `target/release-v1.6.1/`. This packaging script uses a public example instead of copying your local configuration.
+The archive and its checksum are written under `target/release-v1.6.5/`. This packaging script uses a public example instead of copying your local configuration.
 
 ### On the target machine (Linux aarch64)
 
@@ -421,6 +421,38 @@ Strasbourg miniature uses a narrow, single-spire cathedral and two fixed columns
 Lighting is calculated locally for Strasbourg (48.5734° N, 7.7521° E) using the [NOAA solar-position approximation](https://gml.noaa.gov/grad/solcalc/solareqns.PDF). UTC-based calculations follow the seasons independently of the VM timezone or daylight-saving changes. The sky blends through dawn, daytime, sunset and night; windows become warm at twilight. The moon is decorative, not a calculated lunar phase. No Meteoblue credits or network requests are required.
 
 Rotation order (v1.6.1): **Station A → Station B → birthdays → events → miniature A → miniature B → birthdays → events → repeat**. Platforms keep their configured order; disabled or empty moments are skipped. Each departure screen uses `pixoo64_tram_screen_seconds`, doubled for Jean Jaurès towards Gare Centrale / Poteries (CTS reference `298B`, called quai A here): **12 seconds instead of 6 by default**, in both designs. This priority follows the platform reference even if the boards are reordered or the service is offline. Moments retain their existing duration. The two miniatures therefore cover both directions without mixing their departures. The worker checks departure screens every second and sends a device command only when the bitmap changes. Fresh API updates do not reset the rotation timer. `pixoo64_lines_per_screen` continues to control Station; the miniature always reserves both C/D columns.
+
+### Editable playlist in the web configuration
+
+![Pixoo64 playlist editor](docs/screenshots/config-pixoo64.png)
+
+Open **Configuration → Pixoo64**, after **Arrêt** and **Jour J**. Four starting models are available: Station only, Strasbourg miniature only, alternating complete tours, or alternating designs for each platform. Every model can be customized.
+
+Each step has a screen type (`station`, `miniature`, `birthdays`, `events`), an optional platform and a duration from **1 to 300 seconds**. Omit the platform to tour all configured platforms, spending that duration on each. Birthday and event durations apply to each available item; empty moment groups are skipped. Add, duplicate, remove or reorder steps with the buttons. Station can show 1–4 rows; miniature keeps its two C/D columns.
+
+**Enregistrer et appliquer** validates and saves the playlist in `config.toml`, then starts its first step immediately without restarting or redeploying. The live preview shows the saved cycle, not unsaved edits. Invalid values and failed saves leave the running settings unchanged. Existing configurations without a playlist retain the validated v1.6.1 behavior. Once saved, each step's duration is used exactly, without an implicit multiplier for Gare / Poteries.
+
+The editor and its API are available only when `pixoo64_enabled = true`, on the internal configuration interface. The tab stays hidden while the device is disabled. It does not change the web departure board, stop rotation, event sources, weather, or solar lighting. Device activation, address, simulation mode and brightness remain startup settings. Models, platform choices and the effective cycle follow **Arrêt**, including a single selected platform. Steps for removed platforms are omitted. If no departure step matches a completely new selection, the first step of each design is reused for all new platforms with its existing duration. Unsaved edits are retained and adapted when returning to the tab. Saving stores this adapted cycle.
+
+The dedicated API is `GET /api/pixoo64/config` (settings, models and current platforms) and `POST /api/pixoo64/config` with the complete settings:
+
+```json
+{
+  "lines_per_screen": 4,
+  "steps": [
+    {"screen": "station", "platform": "298B", "seconds": 12},
+    {"screen": "station", "platform": "298A", "seconds": 6},
+    {"screen": "birthdays", "seconds": 2},
+    {"screen": "events", "seconds": 2},
+    {"screen": "miniature", "platform": "298B", "seconds": 12},
+    {"screen": "miniature", "platform": "298A", "seconds": 6},
+    {"screen": "birthdays", "seconds": 2},
+    {"screen": "events", "seconds": 2}
+  ]
+}
+```
+
+The saved `pixoo64_sequence` is a TOML inline table containing `lines_per_screen` and `steps`. The other settings and comments are preserved. Up to 64 steps are supported, with at least one departure screen. After building the local debug binary, run `python3 tests/pixoo_config_integration.py` to check API validation, persistence, access restrictions, failed saves and loading after restart against an isolated simulator.
 
 ### Config keys
 

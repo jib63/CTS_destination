@@ -1037,6 +1037,8 @@
 
     function activateConfigTab(tab) {
         activeConfigTab = tab;
+        window.PixooConfig.close();
+        document.getElementById("config-tab-pixoo64").classList.toggle("hidden", tab !== "pixoo64");
         document.querySelectorAll("#config-tabs .config-tab").forEach(function (b) {
             b.classList.toggle("active", b.dataset.tab === tab);
         });
@@ -1056,15 +1058,22 @@
             arretEl.classList.add("hidden");
             jourjEl.classList.remove("hidden");
             openConfigJourJ();
+        } else if (tab === "pixoo64") {
+            arretEl.classList.add("hidden");
+            jourjEl.classList.add("hidden");
+            window.PixooConfig.open(BASE);
         }
     }
 
-    function openConfig() {
+    async function openConfig() {
+        var pixooEnabled = await window.PixooConfig.checkEnabled(BASE);
+        if (!pixooEnabled && activeConfigTab === "pixoo64") activeConfigTab = "arret";
         document.getElementById("config-overlay").classList.remove("hidden");
         activateConfigTab(activeConfigTab);
     }
 
     function closeConfig() {
+        window.PixooConfig.close();
         document.getElementById("config-overlay").classList.add("hidden");
     }
 

@@ -68,6 +68,7 @@
         <div id="config-tabs">
             <button class="config-tab active" data-tab="arret">Arrêt</button>
             <button class="config-tab" data-tab="jour-j">Jour J</button>
+            <button class="config-tab" data-tab="pixoo64" hidden>Pixoo64</button>
         </div>
 
         <!-- Tab: Arrêt -->
@@ -97,6 +98,11 @@
                 <div id="config-loading2" class="hidden">Chargement des directions…</div>
                 <div id="directions-grid"></div>
             </div>
+        </div>
+
+        <!-- Tab: Pixoo64 -->
+        <div id="config-tab-pixoo64" class="hidden">
+            <div id="pixoo-config-content"></div>
         </div>
 
         <!-- Tab: Jour J -->
@@ -255,6 +261,7 @@
       </defs>
     </svg>
 
+    <script src="pixoo-config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

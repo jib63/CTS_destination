@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "cts-departures"
-version = "1.6.1"
+version = "1.6.5"
 dependencies = [
  "anyhow",
  "axum",

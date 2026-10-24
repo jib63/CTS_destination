@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pub mod router;
+mod pixoo_config;
 pub mod ws;
 
 use std::sync::Arc;
@@ -35,6 +36,7 @@ pub struct AppState {
     pub stop_rotation_secs: Option<u64>,
     /// Path to config.toml, used when persisting configuration changes
     pub config_path: String,
+    pub config_edit_lock: tokio::sync::Mutex<()>,
 
     // ── API access (immutable after startup) ────────────────────────────
     pub cts_api_token: String,
@@ -70,6 +72,8 @@ pub struct AppState {
     // ── Pixoo64 LED display ─────────────────────────────────────────────────
     /// When true the Pixoo64 renderer is active.
     pub pixoo64_enabled: bool,
+    pub pixoo64_sequence: RwLock<Option<crate::pixoo64::sequence::Sequence>>,
+    pub pixoo64_config_changed: Notify,
     /// Latest rendered frame as PNG bytes; served at /api/pixoo64/preview.
     pub pixoo64_preview: RwLock<Option<Vec<u8>>>,
     /// Seconds each tram hub screen is shown (hot-reloadable).
@@ -178,6 +182,7 @@ impl AppState {
             monitoring_refs: RwLock::new(monitoring_refs),
             stop_rotation_secs,
             config_path,
+            config_edit_lock: tokio::sync::Mutex::new(()),
             cts_api_token: api_token,
             http_client,
             cts_max_stop_visits: max_stop_visits,
@@ -200,6 +205,8 @@ impl AppState {
             meteoblue_latest: RwLock::new(None),
             meteoblue_polling_interval_minutes: weather_polling_interval_minutes,
             pixoo64_enabled: pixoo_enabled,
+            pixoo64_sequence: RwLock::new(None),
+            pixoo64_config_changed: Notify::new(),
             pixoo64_preview: RwLock::new(None),
             pixoo64_tram_screen_seconds:   AtomicU32::new(pixoo_tram_secs),
             pixoo64_moment_screen_seconds: AtomicU32::new(pixoo_moment_secs),

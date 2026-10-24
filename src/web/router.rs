@@ -34,6 +34,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/jour-j", post(jour_j_handler))
         .route("/api/status", get(status_handler))
         .route("/api/pixoo64/preview", get(pixoo_preview_handler))
+        .route("/api/pixoo64/config", get(super::pixoo_config::get_config).post(super::pixoo_config::set_config))
         .fallback(static_handler)
         .with_state(state)
 }
@@ -97,6 +98,7 @@ async fn config_handler(
         return (StatusCode::BAD_REQUEST, "Monitoring ref too long").into_response();
     }
 
+    let _edit = state.config_edit_lock.lock().await;
     if let Err(e) = save_monitoring_ref(&state.config_path, &new_refs) {
         return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save config: {e}"))
             .into_response();
@@ -185,6 +187,7 @@ async fn jour_j_handler(
 
     let birthday_days_ahead = body.birthday_days_ahead.unwrap_or_else(|| state.birthday_days_ahead.load(Relaxed));
 
+    let _edit = state.config_edit_lock.lock().await;
     if let Err(e) = save_jour_j_events(&state.config_path, &events, birthday_days_ahead) {
         return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save config: {e}"))
             .into_response();

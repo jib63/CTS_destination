@@ -99,6 +99,8 @@ pub struct AppConfig {
     /// Screen brightness 0–100. Sent once at startup via Device/SetBrightness.
     /// Omit to leave the device brightness unchanged.
     pub pixoo64_brightness: Option<u8>,
+    /// Optional editable playlist; absent retains the validated legacy cycle.
+    pub pixoo64_sequence: Option<crate::pixoo64::sequence::Sequence>,
 
     // ── Meteoblue weather widget ──────────────────────────────────────────────
     /// When true, show the weather widget in the board footer.
@@ -178,6 +180,9 @@ impl AppConfig {
         config.pixoo64_moment_screen_seconds = config.pixoo64_moment_screen_seconds.clamp(1, 30);
         config.pixoo64_lines_per_screen      = config.pixoo64_lines_per_screen.clamp(1, 4);
 
+        if let Some(sequence) = &config.pixoo64_sequence {
+            sequence.validate().map_err(anyhow::Error::msg)?;
+        }
         Ok((config, token))
     }
 

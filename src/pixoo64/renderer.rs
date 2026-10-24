@@ -8,6 +8,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{info, warn};
 
 use super::miniature::draw_miniature;
+use super::sequence::{Screen, Sequence};
 use crate::departure::model::{BoardPayload, DepartureBoard};
 use crate::display::DisplayRenderer;
 use crate::pixoo64::draw::{
@@ -22,6 +23,7 @@ enum ScreenKind {
     Hub { stop_idx: usize },
     Miniature { stop_idx: usize },
     Moment { moment_idx: usize },
+    Waiting,
 }
 
 struct ScreenSlot {
@@ -122,6 +124,61 @@ fn build_cycle(
     slots
 }
 
+fn selected_cycle(
+    payload: &BoardPayload,
+    moments: &[MomentItem],
+    tram_secs: u32,
+    moment_secs: u32,
+    settings: Option<&Sequence>,
+) -> Vec<ScreenSlot> {
+    let Some(settings) = settings else {
+        return build_cycle(payload, moments, tram_secs, moment_secs);
+    };
+    let refs = payload
+        .boards
+        .iter()
+        .map(|b| b.monitoring_ref.clone())
+        .collect::<Vec<_>>();
+    let settings = settings.for_platforms(&refs);
+    let mut slots = Vec::new();
+    for step in &settings.steps {
+        if step.screen.departures() {
+            for (i, board) in payload.boards.iter().enumerate() {
+                if step
+                    .platform
+                    .as_ref()
+                    .is_none_or(|p| p == &board.monitoring_ref)
+                {
+                    slots.push(ScreenSlot {
+                        kind: if step.screen == Screen::Station {
+                            ScreenKind::Hub { stop_idx: i }
+                        } else {
+                            ScreenKind::Miniature { stop_idx: i }
+                        },
+                        duration_secs: step.seconds,
+                    });
+                }
+            }
+        } else {
+            for (i, item) in moments.iter().enumerate() {
+                if (item.kind == "cake") == (step.screen == Screen::Birthdays) {
+                    slots.push(ScreenSlot {
+                        kind: ScreenKind::Moment { moment_idx: i },
+                        duration_secs: step.seconds,
+                    });
+                }
+            }
+        }
+    }
+    if slots.is_empty() {
+        slots.push(ScreenSlot {
+            kind: ScreenKind::Waiting,
+            duration_secs: 6,
+        });
+    }
+    slots
+}
+
 // ── Pixoo64Renderer ───────────────────────────────────────────────────────────
 
 pub struct Pixoo64Renderer {
@@ -172,12 +229,14 @@ pub async fn pixoo_worker(
         stop_rotation_secs: None,
     });
 
+    let mut settings = state.pixoo64_sequence.read().await.clone();
     let mut moments = extract_moments(&payload);
-    let mut cycle = build_cycle(
+    let mut cycle = selected_cycle(
         &payload,
         &moments,
         state.pixoo64_tram_screen_seconds.load(Relaxed),
         state.pixoo64_moment_screen_seconds.load(Relaxed),
+        settings.as_ref(),
     );
     let mut pos: usize = 0;
     let mut elapsed: u32 = 0;
@@ -213,7 +272,11 @@ pub async fn pixoo_worker(
         pos,
         &payload,
         &moments,
-        state.pixoo64_lines_per_screen.load(Relaxed) as u8,
+        settings
+            .as_ref()
+            .map_or(state.pixoo64_lines_per_screen.load(Relaxed) as u8, |s| {
+                s.lines_per_screen
+            }),
         &state,
         &addr,
         simulation,
@@ -230,10 +293,10 @@ pub async fn pixoo_worker(
                 elapsed += 1;
                 let tram_secs   = state.pixoo64_tram_screen_seconds.load(Relaxed);
                 let moment_secs = state.pixoo64_moment_screen_seconds.load(Relaxed);
-                let lines_n     = state.pixoo64_lines_per_screen.load(Relaxed) as u8;
+                let lines_n     = settings.as_ref().map_or(state.pixoo64_lines_per_screen.load(Relaxed) as u8, |s|s.lines_per_screen);
                 let new_min     = Local::now().minute();
 
-                cycle = build_cycle(&payload, &moments, tram_secs, moment_secs);
+                cycle = selected_cycle(&payload, &moments, tram_secs, moment_secs, settings.as_ref());
                 let slot_dur = cycle[pos % cycle.len()].duration_secs;
 
                 if elapsed >= slot_dur {
@@ -253,6 +316,16 @@ pub async fn pixoo_worker(
                     ).await;
                 }
             }
+            _ = state.pixoo64_config_changed.notified() => {
+                settings = state.pixoo64_sequence.read().await.clone();
+                cycle = selected_cycle(&payload, &moments, state.pixoo64_tram_screen_seconds.load(Relaxed), state.pixoo64_moment_screen_seconds.load(Relaxed), settings.as_ref());
+                pos = 0;
+                elapsed = 0;
+                tick.reset();
+                let lines = settings.as_ref().map_or(state.pixoo64_lines_per_screen.load(Relaxed) as u8, |s|s.lines_per_screen);
+                render_slot(&mut fb, &cycle, pos, &payload, &moments, lines, &state, &addr, simulation, &mut delivery).await;
+                info!(steps=cycle.len(), "Pixoo64 edited cycle started");
+            }
             maybe = rx.recv() => {
                 match maybe {
                     Some(mut p) => {
@@ -263,8 +336,8 @@ pub async fn pixoo_worker(
                         moments = extract_moments(&payload);
                         let tram_secs   = state.pixoo64_tram_screen_seconds.load(Relaxed);
                         let moment_secs = state.pixoo64_moment_screen_seconds.load(Relaxed);
-                        let lines_n     = state.pixoo64_lines_per_screen.load(Relaxed) as u8;
-                        cycle = build_cycle(&payload, &moments, tram_secs, moment_secs);
+                        let lines_n     = settings.as_ref().map_or(state.pixoo64_lines_per_screen.load(Relaxed) as u8, |s|s.lines_per_screen);
+                        cycle = selected_cycle(&payload, &moments, tram_secs, moment_secs, settings.as_ref());
                         pos     = pos % cycle.len();
                         // Fresh API data must not restart the display timer:
                         // frequent updates would otherwise starve the second UI.
@@ -299,6 +372,11 @@ async fn render_slot(
     let slot = &cycle[pos % cycle.len()];
 
     let b64 = match &slot.kind {
+        ScreenKind::Waiting => render_hub_frame(
+            fb,
+            &DepartureBoard::offline(String::new(), "Aucun quai actif".into()),
+            lines_n,
+        ),
         ScreenKind::Hub { stop_idx } => {
             let board = payload
                 .boards
@@ -481,6 +559,99 @@ mod tests {
         assert_eq!(cycle[3].kind, ScreenKind::Miniature { stop_idx: 1 });
     }
 
+    #[test]
+    fn custom_steps_select_platforms_moments_and_exact_durations() {
+        use super::super::sequence::Step;
+        let payload = BoardPayload {
+            boards: vec![
+                simulate_board("298B", 4, &[]),
+                simulate_board("298A", 4, &[]),
+            ],
+            stop_rotation_secs: None,
+        };
+        let moments = vec![
+            MomentItem {
+                kind: "star".into(),
+                prefix: String::new(),
+                body: "Voyage".into(),
+                color: (1, 2, 3),
+            },
+            MomentItem {
+                kind: "cake".into(),
+                prefix: String::new(),
+                body: "Camille".into(),
+                color: (1, 2, 3),
+            },
+        ];
+        let settings = Sequence {
+            lines_per_screen: 2,
+            steps: vec![
+                Step {
+                    screen: Screen::Miniature,
+                    platform: Some("298A".into()),
+                    seconds: 19,
+                },
+                Step {
+                    screen: Screen::Birthdays,
+                    platform: None,
+                    seconds: 3,
+                },
+                Step {
+                    screen: Screen::Station,
+                    platform: None,
+                    seconds: 8,
+                },
+                Step {
+                    screen: Screen::Events,
+                    platform: None,
+                    seconds: 4,
+                },
+            ],
+        };
+        let slots = selected_cycle(&payload, &moments, 6, 1, Some(&settings));
+        assert_eq!(
+            slots.iter().map(|s| s.kind.clone()).collect::<Vec<_>>(),
+            vec![
+                ScreenKind::Miniature { stop_idx: 1 },
+                ScreenKind::Moment { moment_idx: 1 },
+                ScreenKind::Hub { stop_idx: 0 },
+                ScreenKind::Hub { stop_idx: 1 },
+                ScreenKind::Moment { moment_idx: 0 }
+            ]
+        );
+        assert_eq!(
+            slots.iter().map(|s| s.duration_secs).collect::<Vec<_>>(),
+            vec![19, 3, 8, 8, 4]
+        );
+        assert_eq!(
+            selected_cycle(&payload, &[], 6, 1, Some(&settings)).len(),
+            3
+        );
+        let missing = Sequence {
+            lines_per_screen: 4,
+            steps: vec![Step {
+                screen: Screen::Miniature,
+                platform: Some("removed".into()),
+                seconds: 6,
+            }],
+        };
+        assert_eq!(
+            selected_cycle(&payload, &[], 6, 1, Some(&missing))[0].kind,
+            ScreenKind::Miniature { stop_idx: 0 }
+        );
+        let mut single = payload.clone();
+        single.boards.truncate(1);
+        let cycle = selected_cycle(&single, &[], 6, 1, Some(&settings));
+        assert_eq!(cycle.len(), 1);
+        assert_eq!(cycle[0].kind, ScreenKind::Hub { stop_idx: 0 });
+        assert_eq!(cycle[0].duration_secs, 8);
+        single.boards.clear();
+        assert_eq!(
+            selected_cycle(&single, &[], 6, 1, Some(&missing))[0].kind,
+            ScreenKind::Waiting
+        );
+    }
+
     #[tokio::test]
     async fn frequent_payload_updates_do_not_prevent_actual_ui_alternation() {
         let state = AppState::new(
@@ -529,6 +700,36 @@ mod tests {
             station_seen |= preview.as_deref() == Some(fb_to_png(&frame).as_slice());
             draw_miniature(&mut frame, &payload.boards, 0, Local::now());
             miniature_seen |= preview.as_deref() == Some(fb_to_png(&frame).as_slice());
+        }
+        // Changing a 300-second playlist must apply immediately without a CTS poll.
+        for screen in [Screen::Miniature, Screen::Station] {
+            *state.pixoo64_sequence.write().await = Some(Sequence {
+                lines_per_screen: 1,
+                steps: vec![super::super::sequence::Step {
+                    screen,
+                    platform: Some("test".into()),
+                    seconds: 300,
+                }],
+            });
+            state.pixoo64_config_changed.notify_one();
+            tokio::time::timeout(std::time::Duration::from_secs(2), async {
+                loop {
+                    let mut frame = Fb::new();
+                    if screen == Screen::Miniature {
+                        draw_miniature(&mut frame, &payload.boards, 0, Local::now());
+                    } else {
+                        render_hub_frame(&mut frame, &payload.boards[0], 1);
+                    }
+                    if state.pixoo64_preview.read().await.as_deref()
+                        == Some(fb_to_png(&frame).as_slice())
+                    {
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                }
+            })
+            .await
+            .expect("edited playlist must reach preview without restart");
         }
         drop(tx);
         worker.await.unwrap();
