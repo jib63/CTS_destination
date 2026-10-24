@@ -85,14 +85,18 @@ Lancer `./cts-departures config.toml`, puis configurer son service systemd.
 
 ## Alternance Station / Strasbourg miniature
 
-Un tour complet des quais au format Station est suivi de Strasbourg miniature
-pour chaque station, puis des écrans anniversaires et Jour J activés.
+Cycle : Station A → Station B → anniversaires → événements → miniature A →
+miniature B → anniversaires → événements, puis retour à Station A.
+Les quais suivent l'ordre configuré ; seuls les moments activés sont affichés.
 Station conserve ses 1 à 4 lignes et son mini tram illustrant le temps d'attente.
-La miniature réunit les prochains C et D dans les deux directions, dans deux
+Chaque miniature affiche les prochains C et D de son quai uniquement, dans deux
 colonnes fixes, avec le prochain tram et son compteur à la couleur de sa ligne.
 Sa cathédrale et sa lumière évoluent entre aube, jour, coucher du soleil et nuit.
 Le cycle solaire est calculé localement pour Strasbourg, sans service météo.
-La durée de chaque écran reste réglée par `pixoo64_tram_screen_seconds`.
+La durée de base reste réglée par `pixoo64_tram_screen_seconds`.
+Le quai Jean Jaurès vers Gare Centrale / Poteries (référence CTS 298B) reste
+visible deux fois plus longtemps dans les deux designs : 12 s contre 6 s par défaut.
+Les anniversaires et événements conservent leur durée.
 Configurer les deux quais d'une station pour obtenir les deux directions ;
 l'exemple inclut les références 298B et 298A de Jean Jaurès.
 La météo n'occupe plus de zone sur le PIXOO64 ; l'interface web est conservée.

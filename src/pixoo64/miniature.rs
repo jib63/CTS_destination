@@ -16,12 +16,6 @@ const DIM: Color = [163, 179, 197];
 const C: Color = [255, 188, 107];
 const D: Color = [162, 217, 135];
 
-pub(super) fn same_station(a: &DepartureBoard, b: &DepartureBoard) -> bool {
-    (!a.monitoring_ref.is_empty() && a.monitoring_ref == b.monitoring_ref)
-        || (!a.stop_name.trim().is_empty()
-            && a.stop_name.trim().eq_ignore_ascii_case(b.stop_name.trim()))
-}
-
 #[derive(Clone, Copy)]
 struct Upcoming<'a> {
     line: &'a LineDepartures,
@@ -45,14 +39,15 @@ impl Upcoming<'_> {
 }
 
 fn upcoming(boards: &[DepartureBoard], stop_idx: usize, now: DateTime<Local>) -> Vec<Upcoming<'_>> {
-    let Some(anchor) = boards.get(stop_idx) else {
+    let Some(board) = boards.get(stop_idx) else {
         return Vec::new();
     };
-    let mut rows: Vec<_> = boards
+    if board.offline_message.is_some() {
+        return Vec::new();
+    }
+    let mut rows: Vec<_> = board
+        .lines
         .iter()
-        .enumerate()
-        .filter(|(i, b)| (*i == stop_idx || same_station(anchor, b)) && b.offline_message.is_none())
-        .flat_map(|(_, b)| &b.lines)
         .filter(|line| line.line.eq_ignore_ascii_case("C") || line.line.eq_ignore_ascii_case("D"))
         .flat_map(|line| {
             line.departures
@@ -324,7 +319,7 @@ fn column(p: &mut Painter<'_>, x: i32, code: char, rows: &[Upcoming<'_>], now: D
     }
 }
 
-/// Merge C/D departures from the platforms of this station only. The shared
+/// Show C/D departures from this platform only, keeping opposite directions separate. The shared
 /// boards, all other lines and weather remain untouched for the web and Station.
 pub fn draw_miniature(
     fb: &mut Fb,
@@ -432,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn both_platforms_and_directions_are_sorted_without_other_stations_or_expired_services() {
+    fn each_platform_keeps_its_own_directions_without_expired_services() {
         let mut boards = boards();
         boards[0].lines[0].departures[0].expected = (now() - Duration::seconds(1)).to_utc();
         boards[0].lines[1].departures.reverse(); // Do not depend on input order.
@@ -444,20 +439,34 @@ mod tests {
         boards.push(boards[1].clone()); // Duplicate platform must not duplicate departures.
         let before = serde_json::to_string(&boards).unwrap();
         let rows = upcoming(&boards, 0, now());
-        assert_eq!(rows.len(), 7);
-        assert_eq!(rows[0].line.destination, "Neuhof");
-        assert_eq!(rows[0].minutes(now()), 5);
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0].line.destination, "Poteries");
+        assert_eq!(rows[0].minutes(now()), 7);
         assert_eq!(
             rows.iter()
                 .filter(|r| r.code() == 'D')
                 .take(2)
                 .map(|r| r.line.destination.as_str())
                 .collect::<Vec<_>>(),
-            vec!["Poteries", "Kehl"]
+            vec!["Poteries", "Poteries"]
         );
         let mut fb = Fb::new();
         draw_miniature(&mut fb, &boards, 0, now());
         assert_eq!(serde_json::to_string(&boards).unwrap(), before);
+        let first_frame = fb.as_bytes().to_vec();
+        let reverse = upcoming(&boards, 1, now());
+        assert_eq!(reverse[0].line.destination, "Neuhof");
+        assert!(
+            reverse
+                .iter()
+                .all(|r| matches!(r.line.destination.as_str(), "Neuhof" | "Kehl"))
+        );
+        draw_miniature(&mut fb, &boards, 1, now());
+        assert_ne!(fb.as_bytes(), first_frame);
+        // An imminent opposite-direction tram must never leak onto this quai.
+        boards[1].lines[0].departures[0].expected = now().to_utc();
+        draw_miniature(&mut fb, &boards, 0, now());
+        assert_eq!(fb.as_bytes(), first_frame);
     }
 
     #[test]
@@ -481,11 +490,6 @@ mod tests {
         let mut boards = boards();
         let mut fb = Fb::new();
         boards[0].offline_message = Some("Connexion indisponible".into());
-        for line in &mut boards[1].lines {
-            for d in &mut line.departures {
-                d.expected = (now() - Duration::seconds(1)).to_utc();
-            }
-        }
         assert!(upcoming(&boards, 0, now()).is_empty());
         draw_miniature(&mut fb, &boards, 0, now());
         assert_ne!(pixel(&fb, 38, 26), C);

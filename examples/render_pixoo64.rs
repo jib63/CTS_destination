@@ -85,9 +85,10 @@ fn main() -> anyhow::Result<()> {
         let moment = DateTime::parse_from_rfc3339(&format!("2026-10-24T{time}:00+02:00"))?
             .with_timezone(&Local);
         let mut outward = board(moment, 3);
-        outward.monitoring_ref = "298A".into();
+        outward.monitoring_ref = "298B".into();
+        outward.lines.truncate(2);
         let mut inward = board(moment, 5);
-        inward.monitoring_ref = "298B".into();
+        inward.monitoring_ref = "298A".into();
         inward.lines.truncate(2);
         for (i, line) in inward.lines.iter_mut().enumerate() {
             line.destination = if i == 0 { "Neuhof" } else { "Kehl" }.into();
@@ -97,7 +98,27 @@ fn main() -> anyhow::Result<()> {
         draw_miniature(&mut fb, &pair, 0, moment);
         save(directory, &format!("miniature-{name}"), &fb)?;
         if name == "day" {
-            save(directory, "alternate-miniature", &fb)?;
+            save(directory, "alternate-miniature-outward", &fb)?;
+            draw_miniature(&mut fb, &pair, 1, moment);
+            save(directory, "alternate-miniature-inward", &fb)?;
+            draw_moment(
+                &mut fb,
+                "cake",
+                "",
+                "Camille",
+                moment_color("cake"),
+                moment.time(),
+            );
+            save(directory, "alternate-birthday", &fb)?;
+            draw_moment(
+                &mut fb,
+                "star",
+                "J-12",
+                "PROCHAIN VOYAGE",
+                moment_color("star"),
+                moment.time(),
+            );
+            save(directory, "alternate-countdown", &fb)?;
             draw_hub(&mut fb, &pair[0], 4, moment);
             save(directory, "alternate-station-outward", &fb)?;
             draw_hub(&mut fb, &pair[1], 4, moment);

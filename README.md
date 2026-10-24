@@ -22,7 +22,7 @@ The application polls the [CTS SIRI 2.0 API](https://www.cts-strasbourg.eu/fr/op
 |:---:|:---:|
 | ![Miniature at dawn in Strasbourg](docs/screenshots/pixoo64-miniature-dawn.png) | ![Miniature at sunset in Strasbourg](docs/screenshots/pixoo64-miniature-sunset.png) |
 
-The Station layout from v1.5 is retained. A complete tour of its configured stops is followed by Strasbourg miniature, then enabled birthday/Jour-J screens. The miniature combines the C/D departures from platforms with the same station name, in both directions. Its light follows the sun over Strasbourg, calculated locally without a weather service.
+The Station layout from v1.5 is retained. Each design tours the configured platforms separately, followed by enabled birthday/Jour-J screens. Since v1.6.1, each miniature shows only its own platform’s C/D departures; the Jean Jaurès platform towards Gare Centrale / Poteries stays visible twice as long in both designs. Its light follows the sun over Strasbourg, calculated locally without a weather service.
 
 ![PIXOO64 Station — accelerated mini tram approach and moment screens](docs/screenshots/pixoo64.gif)
 
@@ -75,7 +75,7 @@ These images use the actual 64×64 Rust renderer and fictional data, enlarged wi
 
 ### Freebox release download
 
-Download `cts-departures-v1.6.0-freebox-aarch64.zip` from the [v1.6.0 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.0). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
+Download `cts-departures-v1.6.1-freebox-aarch64.zip` from the [v1.6.1 release](https://github.com/jib63/CTS_destination/releases/tag/v1.6.1). It contains a static Linux ARM64 binary, an example configuration, installation notes and SHA-256 checksums. Existing installations should replace only the binary and keep their own configuration.
 
 To reproduce this public archive after installing the cross-compilation prerequisites below:
 
@@ -84,7 +84,7 @@ cargo zigbuild --locked --target aarch64-unknown-linux-musl --release --bin cts-
 python3 scripts/package_freebox.py
 ```
 
-The archive and its checksum are written under `target/release-v1.6.0/`. This packaging script uses a public example instead of copying your local configuration.
+The archive and its checksum are written under `target/release-v1.6.1/`. This packaging script uses a public example instead of copying your local configuration.
 
 ### On the target machine (Linux aarch64)
 
@@ -416,11 +416,11 @@ The black background and compact 3×5 pixel font leave room for:
 - **Moment screens** — matching compact clock and black background, birthday cake or event icon, adaptive `J-N` counter, and up to three lines of text.
 - **Startup / offline screens** — explicit messages without reserving a weather strip.
 
-Strasbourg miniature uses a narrow, single-spire cathedral and two fixed columns (C on the left, D on the right). Each column shows its nearest departure and destination, then the following departure and its destination, potentially in the opposite direction. The tram and its large counter use the nearest service's color: orange for C, green for D. Minute suffixes are omitted in this layout; `ICI` indicates the last minute. Missing or expired services are not drawn as approaching trams. Platforms with the same station name are combined without mixing different stations or modifying the shared web data.
+Strasbourg miniature uses a narrow, single-spire cathedral and two fixed columns (C on the left, D on the right). Each column shows its nearest departure and destination, then the following departure and its destination, from the same platform. The tram and its large counter use the nearest service's color: orange for C, green for D. Minute suffixes are omitted in this layout; `ICI` indicates the last minute. Missing or expired services are not drawn as approaching trams. Opposite platforms stay separate even when they have the same station name. The shared web data is never modified.
 
 Lighting is calculated locally for Strasbourg (48.5734° N, 7.7521° E) using the [NOAA solar-position approximation](https://gml.noaa.gov/grad/solcalc/solareqns.PDF). UTC-based calculations follow the seasons independently of the VM timezone or daylight-saving changes. The sky blends through dawn, daytime, sunset and night; windows become warm at twilight. The moon is decorative, not a calculated lunar phase. No Meteoblue credits or network requests are required.
 
-Rotation order: **Station for each platform → miniature once per distinct station → enabled moments → repeat**. Each departure screen uses `pixoo64_tram_screen_seconds`; moments use their existing duration. The worker checks departure screens every second and sends a device command only when the bitmap changes. Fresh API updates do not reset the rotation timer. `pixoo64_lines_per_screen` continues to control Station; the miniature always reserves both C/D columns.
+Rotation order (v1.6.1): **Station A → Station B → birthdays → events → miniature A → miniature B → birthdays → events → repeat**. Platforms keep their configured order; disabled or empty moments are skipped. Each departure screen uses `pixoo64_tram_screen_seconds`, doubled for Jean Jaurès towards Gare Centrale / Poteries (CTS reference `298B`, called quai A here): **12 seconds instead of 6 by default**, in both designs. This priority follows the platform reference even if the boards are reordered or the service is offline. Moments retain their existing duration. The two miniatures therefore cover both directions without mixing their departures. The worker checks departure screens every second and sends a device command only when the bitmap changes. Fresh API updates do not reset the rotation timer. `pixoo64_lines_per_screen` continues to control Station; the miniature always reserves both C/D columns.
 
 ### Config keys
 

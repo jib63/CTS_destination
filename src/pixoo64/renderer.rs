@@ -7,7 +7,7 @@ use chrono::{Local, Timelike};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{info, warn};
 
-use super::miniature::{draw_miniature, same_station};
+use super::miniature::draw_miniature;
 use crate::departure::model::{BoardPayload, DepartureBoard};
 use crate::display::DisplayRenderer;
 use crate::pixoo64::draw::{
@@ -68,63 +68,56 @@ fn extract_moments(payload: &BoardPayload) -> Vec<MomentItem> {
     moments
 }
 
+/// CTS 298B is Jean Jaurès towards Gare Centrale / Poteries (the user's quai A).
+/// Use the stable platform reference, not payload order or transient departures.
+fn platform_duration(board: &DepartureBoard, tram_secs: u32) -> u32 {
+    if board.monitoring_ref == "298B" {
+        tram_secs.saturating_mul(2)
+    } else {
+        tram_secs
+    }
+}
+
 fn build_cycle(
     payload: &BoardPayload,
     moments: &[MomentItem],
     tram_secs: u32,
     moment_secs: u32,
 ) -> Vec<ScreenSlot> {
-    let mut slots: Vec<ScreenSlot> = payload
+    let mut displayed_stops: Vec<_> = payload
         .boards
         .iter()
         .enumerate()
         .filter(|(_, b)| !b.lines.is_empty() || b.offline_message.is_some())
-        .map(|(i, _)| ScreenSlot {
-            kind: ScreenKind::Hub { stop_idx: i },
-            duration_secs: tram_secs,
-        })
+        .map(|(i, _)| i)
         .collect();
-
-    if slots.is_empty() {
-        slots.push(ScreenSlot {
-            kind: ScreenKind::Hub { stop_idx: 0 },
-            duration_secs: tram_secs,
-        });
+    if displayed_stops.is_empty() {
+        displayed_stops.push(0);
     }
 
-    // Complete the v1.5 Station tour first, then the miniature tour. Two
-    // platforms with the same stop name share a single C/D miniature screen.
-    // Mirror the Station tour's empty-board filtering, including its single
-    // fallback screen when the API returns no visits (and therefore no names).
-    let displayed_stops: Vec<_> = slots
-        .iter()
-        .filter_map(|s| match s.kind {
-            ScreenKind::Hub { stop_idx } => Some(stop_idx),
-            _ => None,
-        })
-        .collect();
-    let mut stations: Vec<usize> = Vec::new();
-    for i in displayed_stops {
-        let Some(board) = payload.boards.get(i) else {
-            continue;
-        };
-        if !stations
-            .iter()
-            .any(|&j| same_station(board, &payload.boards[j]))
-        {
-            stations.push(i);
+    // Keep each platform separate in both designs and repeat birthdays/events
+    // after each complete tour, preserving their original order and duration.
+    let mut slots = Vec::new();
+    for miniature in [false, true] {
+        for &stop_idx in &displayed_stops {
             slots.push(ScreenSlot {
-                kind: ScreenKind::Miniature { stop_idx: i },
-                duration_secs: tram_secs,
+                kind: if miniature {
+                    ScreenKind::Miniature { stop_idx }
+                } else {
+                    ScreenKind::Hub { stop_idx }
+                },
+                duration_secs: payload
+                    .boards
+                    .get(stop_idx)
+                    .map_or(tram_secs, |board| platform_duration(board, tram_secs)),
             });
         }
-    }
-
-    for i in 0..moments.len() {
-        slots.push(ScreenSlot {
-            kind: ScreenKind::Moment { moment_idx: i },
-            duration_secs: moment_secs,
-        });
+        for moment_idx in 0..moments.len() {
+            slots.push(ScreenSlot {
+                kind: ScreenKind::Moment { moment_idx },
+                duration_secs: moment_secs,
+            });
+        }
     }
     slots
 }
@@ -390,34 +383,84 @@ mod tests {
     }
 
     #[test]
-    fn full_station_tour_then_one_miniature_for_both_platforms_then_moments() {
-        let mut a = simulate_board("298A", 4, &[]);
-        a.stop_name = "Jean Jaurès".into();
+    fn each_platform_in_both_designs_with_moments_after_each_tour() {
+        let mut a = simulate_board("298B", 4, &[]);
+        a.stop_name = "Jean Jaures".into();
         let mut b = a.clone();
-        b.monitoring_ref = "298B".into();
+        b.monitoring_ref = "298A".into();
         let payload = BoardPayload {
             boards: vec![a, b],
             stop_rotation_secs: Some(5),
         };
-        let moments = vec![MomentItem {
-            kind: "cake".into(),
-            prefix: String::new(),
-            body: "Camille".into(),
-            color: (1, 2, 3),
-        }];
-        let cycle = build_cycle(&payload, &moments, 7, 11);
+        let moments = vec![
+            MomentItem {
+                kind: "cake".into(),
+                prefix: String::new(),
+                body: "Camille".into(),
+                color: (1, 2, 3),
+            },
+            MomentItem {
+                kind: "star".into(),
+                prefix: "J-12".into(),
+                body: "Voyage".into(),
+                color: (1, 2, 3),
+            },
+        ];
+        let cycle = build_cycle(&payload, &moments, 6, 1);
+        let expected = vec![
+            ScreenKind::Hub { stop_idx: 0 },
+            ScreenKind::Hub { stop_idx: 1 },
+            ScreenKind::Moment { moment_idx: 0 },
+            ScreenKind::Moment { moment_idx: 1 },
+            ScreenKind::Miniature { stop_idx: 0 },
+            ScreenKind::Miniature { stop_idx: 1 },
+            ScreenKind::Moment { moment_idx: 0 },
+            ScreenKind::Moment { moment_idx: 1 },
+        ];
+        // Check two complete cycles, including the wrap back to Station A.
         assert_eq!(
-            cycle.iter().map(|s| s.kind.clone()).collect::<Vec<_>>(),
-            vec![
-                ScreenKind::Hub { stop_idx: 0 },
-                ScreenKind::Hub { stop_idx: 1 },
-                ScreenKind::Miniature { stop_idx: 0 },
-                ScreenKind::Moment { moment_idx: 0 },
-            ]
+            (0..16)
+                .map(|i| cycle[i % cycle.len()].kind.clone())
+                .collect::<Vec<_>>(),
+            expected
+                .iter()
+                .cycle()
+                .take(16)
+                .cloned()
+                .collect::<Vec<_>>()
         );
         assert_eq!(
             cycle.iter().map(|s| s.duration_secs).collect::<Vec<_>>(),
-            vec![7, 7, 7, 11]
+            vec![12, 6, 1, 1, 12, 6, 1, 1]
+        );
+        let no_moments = build_cycle(&payload, &[], 8, 2);
+        assert_eq!(
+            no_moments
+                .iter()
+                .map(|s| s.duration_secs)
+                .collect::<Vec<_>>(),
+            vec![16, 8, 16, 8]
+        );
+        assert_eq!(no_moments.len(), 4);
+    }
+
+    #[test]
+    fn preferred_platform_duration_survives_reordering_and_missing_departures() {
+        let preferred = DepartureBoard::offline("298B".into(), "Indisponible".into());
+        let other = DepartureBoard::offline("298A".into(), "Indisponible".into());
+        let payload = BoardPayload {
+            boards: vec![other, preferred],
+            stop_rotation_secs: None,
+        };
+        let cycle = build_cycle(&payload, &[], 7, 1);
+        assert_eq!(
+            cycle.iter().map(|s| s.duration_secs).collect::<Vec<_>>(),
+            vec![7, 14, 7, 14]
+        );
+        assert_eq!(platform_duration(&payload.boards[1], u32::MAX), u32::MAX);
+        assert_eq!(
+            platform_duration(&DepartureBoard::offline("other".into(), String::new()), 7),
+            7
         );
     }
 

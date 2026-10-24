@@ -50,11 +50,14 @@ def main():
         optimize=True, disposal=2,
     )
     cycle = [scaled(name) for name in [
-        "alternate-station-outward", "alternate-station-inward", "alternate-miniature",
+        "alternate-station-outward", "alternate-station-inward",
+        "alternate-birthday", "alternate-countdown",
+        "alternate-miniature-outward", "alternate-miniature-inward",
+        "alternate-birthday", "alternate-countdown",
     ]]
     cycle[0].save(
         OUTPUT / "pixoo64-alternating.gif", save_all=True, append_images=cycle[1:],
-        duration=2400, loop=0, optimize=True, disposal=2,
+        duration=[4800, 2400, 1000, 1000, 4800, 2400, 1000, 1000], loop=0, optimize=True, disposal=2,
     )
     print(f"Saved {len(stills)} PNGs and 2 GIFs to {OUTPUT}")
 
